@@ -8,8 +8,14 @@ final class StubFetcher: HTTPFetching, @unchecked Sendable {
     }
 
     private let mode: Mode
+    private let lock = NSLock()
     private var responses: [URL: Result<String, Error>]
-    private(set) var requested: [URL] = []
+    private var _requested: [URL] = []
+
+    var requested: [URL] {
+        lock.lock(); defer { lock.unlock() }
+        return _requested
+    }
 
     init(json: String) {
         mode = .fixed(.success(json))
@@ -27,16 +33,19 @@ final class StubFetcher: HTTPFetching, @unchecked Sendable {
     }
 
     func set(_ url: URL, _ result: Result<String, Error>) {
+        lock.lock(); defer { lock.unlock() }
         responses[url] = result
     }
 
     func data(from url: URL) async throws -> Data {
-        requested.append(url)
         let result: Result<String, Error>
+        lock.lock()
+        _requested.append(url)
         switch mode {
         case .fixed(let fixed): result = fixed
         case .perURL: result = responses[url] ?? .failure(URLError(.fileDoesNotExist))
         }
+        lock.unlock()
         return Data(try result.get().utf8)
     }
 }
