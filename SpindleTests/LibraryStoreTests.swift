@@ -176,4 +176,63 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(seen.count, 2, "follow and refresh each parse once")
         XCTAssertEqual(seen, [false, false], "feeds are parsed off the main thread")
     }
+
+    // MARK: Stage 2 queries
+
+    private let pscURL = URL(string: "https://example.com/psc")!
+
+    private func twoShows(now: @escaping () -> Date = Date.init) async throws -> LibraryStore {
+        let stub = StubFetcher(responses: [feedURL: .success(SampleFeeds.longQuietThreeItems),
+                                           pscURL: .success(SampleFeeds.withPSC)])
+        let store = makeStore(stub, now: now)
+        _ = try await store.follow(feedURL: feedURL)
+        _ = try await store.follow(feedURL: pscURL)
+        return store
+    }
+
+    func testNewEpisodesAreUnplayedAcrossShowsNewestFirst() async throws {
+        let store = try await twoShows()
+        let all = store.newEpisodes()
+        XCTAssertEqual(all.map(\.guid), ["lq-113", "lq-112", "lq-111", "psc-1"], "dated first, newest first; undated last")
+        store.markPlayed(all[0])
+        XCTAssertEqual(store.newEpisodes().first?.guid, "lq-112")
+        XCTAssertFalse(store.newEpisodes().contains { $0.played })
+    }
+
+    func testNewEpisodesRespectsTheLimit() async throws {
+        let store = try await twoShows()
+        XCTAssertEqual(store.newEpisodes(limit: 2).map(\.guid), ["lq-113", "lq-112"])
+    }
+
+    func testMarkPlayedRecordsWhenAndUnplayedClearsIt() async throws {
+        let when = Date(timeIntervalSince1970: 1_800_000_000)
+        let store = try await twoShows(now: { when })
+        let episode = store.newEpisodes()[0]
+        XCTAssertNil(episode.playedAt)
+        store.markPlayed(episode)
+        XCTAssertEqual(episode.playedAt, when)
+        store.markUnplayed(episode)
+        XCTAssertNil(episode.playedAt)
+    }
+
+    func testDownloadedListsOnlyEpisodesWhoseFileExists() async throws {
+        let store = try await twoShows()
+        let episodes = store.newEpisodes()
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("spindle-\(UUID().uuidString).mp3")
+        try Data("x".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        episodes[1].localFile = file
+        episodes[2].localFile = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).mp3")
+        XCTAssertEqual(store.downloaded.map(\.guid), [episodes[1].guid])
+    }
+
+    func testMoveUpNextReorders() async throws {
+        let store = try await twoShows()
+        let e = store.newEpisodes()
+        store.enqueue(e[0]); store.enqueue(e[1]); store.enqueue(e[2])
+        store.moveUpNext(from: IndexSet(integer: 2), to: 0)
+        XCTAssertEqual(store.upNext.map(\.guid), [e[2].guid, e[0].guid, e[1].guid])
+        store.moveUpNext(from: IndexSet(integer: 0), to: 3)
+        XCTAssertEqual(store.upNext.map(\.guid), [e[0].guid, e[1].guid, e[2].guid])
+    }
 }

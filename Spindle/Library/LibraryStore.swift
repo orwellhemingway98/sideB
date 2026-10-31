@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI  // Array.move(fromOffsets:toOffset:)
 
 enum LibraryError: Error, Equatable {
     case invalidFeed
@@ -58,14 +59,32 @@ final class LibraryStore: ObservableObject {
     }
 
     func episodes(of show: Show) -> [Episode] {
-        show.episodes.sorted { a, b in
-            switch (a.published, b.published) {
-            case let (x?, y?) where x != y: return x > y
-            case (_?, nil): return true
-            case (nil, _?): return false
-            default: return a.feedOrder < b.feedOrder
-            }
+        show.episodes.sorted(by: Self.newestFirst)
+    }
+
+    /// Newest first: dated before undated, then the feed's own order.
+    private static func newestFirst(_ a: Episode, _ b: Episode) -> Bool {
+        switch (a.published, b.published) {
+        case let (x?, y?) where x != y: return x > y
+        case (_?, nil): return true
+        case (nil, _?): return false
+        default: return a.feedOrder < b.feedOrder
         }
+    }
+
+    private var allEpisodes: [Episode] { (try? context.fetch(FetchDescriptor<Episode>())) ?? [] }
+
+    /// Unplayed episodes from every show, newest first.
+    func newEpisodes(limit: Int = 100) -> [Episode] {
+        Array(allEpisodes.filter { !$0.played }.sorted(by: Self.newestFirst).prefix(limit))
+    }
+
+    /// Episodes whose downloaded file is on disk, newest first.
+    var downloaded: [Episode] {
+        allEpisodes.filter { episode in
+            guard let file = episode.localFile else { return false }
+            return FileManager.default.fileExists(atPath: file.path)
+        }.sorted(by: Self.newestFirst)
     }
 
     /// Same show if scheme (treated as https), host case, and trailing slash are the only differences.
@@ -205,6 +224,15 @@ final class LibraryStore: ObservableObject {
         save()
     }
 
+    /// Reorders Up Next the way a SwiftUI List's `onMove` describes it.
+    func moveUpNext(from source: IndexSet, to destination: Int) {
+        var current = entries
+        current.move(fromOffsets: source, toOffset: destination)
+        objectWillChange.send()
+        for (index, entry) in current.enumerated() { entry.order = index + 1 }
+        save()
+    }
+
     func popNext() -> Episode? {
         guard let first = entries.first else { return nil }
         objectWillChange.send()
@@ -225,6 +253,7 @@ final class LibraryStore: ObservableObject {
     func markPlayed(_ episode: Episode) {
         objectWillChange.send()
         episode.played = true
+        episode.playedAt = now()
         episode.position = 0
         save()
     }
@@ -233,6 +262,7 @@ final class LibraryStore: ObservableObject {
     func markUnplayed(_ episode: Episode) {
         objectWillChange.send()
         episode.played = false
+        episode.playedAt = nil
         save()
     }
 

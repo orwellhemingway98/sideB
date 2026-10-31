@@ -17,6 +17,8 @@ final class Episode {
     var summary: String?
     var position: TimeInterval = 0
     var played = false
+    /// When it was marked played; downloads are cleaned up a week after.
+    var playedAt: Date?
     var localFile: URL?
 
     init(guid: String, title: String, enclosureURL: URL) {
