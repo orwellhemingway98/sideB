@@ -158,4 +158,16 @@ final class PodcastPlayerTests: XCTestCase {
         XCTAssertEqual(engine.pauseCount, 1)
         XCTAssertEqual(player.failure, "Offline")
     }
+
+    func testEarlyZeroTickDoesNotOverwriteResumePoint() {
+        a.position = 600
+        player.open(a, autoplay: true)
+        XCTAssertEqual(engine.loads.last?.time, 597)
+        engine.fireTime(0.5)
+        player.pause()
+        XCTAssertEqual(a.position, 600)
+        engine.fireTime(597.5)
+        engine.fireTime(603)
+        XCTAssertEqual(player.position, 603)
+    }
 }

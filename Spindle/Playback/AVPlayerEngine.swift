@@ -9,6 +9,8 @@ final class AVPlayerEngine: AudioEngine {
     private var timeObserver: Any?
     private var isPlaying = false
     private var pendingStart: TimeInterval = 0
+    /// True from load until the resume seek has completed; ticks in between would report a pre-resume time.
+    private var seekOutstanding = false
 
     var onTime: ((TimeInterval) -> Void)?
     var onEnd: (() -> Void)?
@@ -27,7 +29,7 @@ final class AVPlayerEngine: AudioEngine {
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
                                                       queue: .main) { [weak self] time in
             MainActor.assumeIsolated {
-                guard let self, self.isPlaying, time.isNumeric else { return }
+                guard let self, self.isPlaying, !self.seekOutstanding, time.isNumeric else { return }
                 self.onTime?(time.seconds)
             }
         }
@@ -55,6 +57,7 @@ final class AVPlayerEngine: AudioEngine {
         item.audioTimePitchAlgorithm = .timeDomain
         self.item = item
         pendingStart = time
+        seekOutstanding = time > 0
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             let status = item.status
             let error = item.error ?? URLError(.unknown)
@@ -93,7 +96,14 @@ final class AVPlayerEngine: AudioEngine {
     }
 
     func seek(to time: TimeInterval) {
+        if let item, item.status != .readyToPlay {
+            // Not ready yet: replace the resume point so the seek can't be lost.
+            pendingStart = time
+            seekOutstanding = time > 0
+            return
+        }
         pendingStart = 0
+        seekOutstanding = false
         player.seek(to: CMTime(seconds: max(0, time), preferredTimescale: 600))
     }
 
@@ -101,8 +111,14 @@ final class AVPlayerEngine: AudioEngine {
     private func seekToPendingStart() {
         let time = pendingStart
         pendingStart = 0
-        guard time > 0 else { return }
-        player.seek(to: CMTime(seconds: time, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        guard time > 0 else { seekOutstanding = false; return }
+        player.seek(to: CMTime(seconds: time, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.seekOutstanding = false
+                self.onTime?(self.currentTime)
+            }
+        }
     }
 
     private func tearDownItem() {

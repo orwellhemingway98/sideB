@@ -17,6 +17,9 @@ final class PodcastPlayer: ObservableObject {
     private var needsReload = false
     /// Bumped on every load. A failure is handled at most once per generation; a failure in a new
     /// generation (the next episode opened after a dead link) is handled normally.
+    /// True after a load at a resume point until the first tick near it: until then `position` is not real
+    /// progress, so stray early ticks are ignored and nothing is saved.
+    private var awaitingResume = false
     private var generation = 0
     private var failureHandledIn = -1
 
@@ -50,6 +53,7 @@ final class PodcastPlayer: ObservableObject {
         engine.load(episode.playableURL, at: start)
         position = start
         lastSaved = start
+        awaitingResume = start > 0
     }
 
     // MARK: Transport
@@ -85,6 +89,7 @@ final class PodcastPlayer: ObservableObject {
     func seek(to time: TimeInterval) {
         guard episode != nil else { return }
         finished = false
+        awaitingResume = false
         let target = clamp(time)
         engine.seek(to: target)
         position = target
@@ -101,7 +106,7 @@ final class PodcastPlayer: ObservableObject {
     }
 
     func saveNow() {
-        guard let episode, !finished else { return }
+        guard let episode, !finished, !awaitingResume else { return }
         library.savePosition(position, of: episode)
         lastSaved = position
     }
@@ -116,6 +121,11 @@ final class PodcastPlayer: ObservableObject {
 
     private func handleTime(_ time: TimeInterval) {
         guard episode != nil, !finished else { return }
+        if awaitingResume {
+            // A tick far before the resume point comes from the item before its resume seek has landed.
+            guard abs(time - position) <= ResumePolicy.saveInterval else { return }
+            awaitingResume = false
+        }
         if failure == "Unavailable", !needsReload { failure = nil }
         position = time
         if ResumePolicy.isFinished(position: time, duration: duration) {
