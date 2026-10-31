@@ -13,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var strip: StatusStripController?
     private var libraryWindow: LibraryWindowController?
     private var fetcher: HTTPFetching?
+    private var artwork: ArtworkCache?
+    private var downloads: DownloadManager?
+    private var scheduler: RefreshScheduler?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.isRunningTests { return }
@@ -55,7 +58,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
                                           onLibrary: { [weak self] in self?.showLibrary() })
 
+        // Downloads live beside the library store, in Application Support/Spindle/Episodes.
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Spindle", isDirectory: true)
+        let downloads = DownloadManager(library: library, session: URLSessionDownloads(), root: root)
+        let cleanUp = { @MainActor [weak player] in
+            DownloadCleaner.purge(library.downloaded, now: .now, excluding: player?.episode,
+                                  remove: downloads.removeDownload)
+        }
+        let scheduler = RefreshScheduler(refresh: {
+            await library.refreshAll()
+            cleanUp()
+        })
+
         self.fetcher = fetcher
+        self.artwork = artwork
+        self.downloads = downloads
+        self.scheduler = scheduler
         self.library = library
         self.player = player
         self.nowPlaying = nowPlaying
@@ -65,7 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let episode = library.lastEpisode {
             player.open(episode, autoplay: false)
         }
-        Task { await library.refreshAll() }
+        cleanUp()
+        scheduler.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -77,7 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showLibrary() {
         guard let library, let nowPlaying, let fetcher else { return }
         if libraryWindow == nil {
-            let model = LibraryViewModel(library: library, fetcher: fetcher, nowPlaying: nowPlaying)
+            let model = LibraryViewModel(library: library, fetcher: fetcher, nowPlaying: nowPlaying,
+                                         downloads: downloads, scheduler: scheduler, artwork: artwork)
             libraryWindow = LibraryWindowController(model: model)
         }
         panel?.close()
