@@ -10,8 +10,12 @@ struct DialPanelView: View {
     @ObservedObject var library: LibraryStore
     @ObservedObject var artwork: ArtworkCache
     let onLibrary: () -> Void
+    /// Pops the disc out into the floating dial; nil hides the pill.
+    let onPopOut: (() -> Void)?
 
-    init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void) {
+    init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
+         onPopOut: (() -> Void)? = nil) {
+        self.onPopOut = onPopOut
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.library = library
@@ -210,7 +214,11 @@ struct DialPanelView: View {
     // MARK: Footer
 
     private var footer: some View {
-        pill("Library", action: onLibrary)
+        HStack {
+            pill("Library", action: onLibrary)
+            Spacer(minLength: 0)
+            if let onPopOut { pill("Pop out \u{2197}", action: onPopOut) }
+        }
     }
 }
 
@@ -246,7 +254,8 @@ final class DialPanelController {
 
     var isShown: Bool { panel.isVisible }
 
-    init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void) {
+    init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
+         onPopOut: (() -> Void)? = nil) {
         panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
@@ -257,7 +266,8 @@ final class DialPanelController {
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
-        let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary)
+        let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
+                                 onPopOut: onPopOut)
         let hosting = NSHostingView(rootView: root)
         panel.contentView = hosting
     }
