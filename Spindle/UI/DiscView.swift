@@ -22,7 +22,11 @@ struct DiscView: View {
     @State private var dragIgnored = false
     @State private var scroll = ScrollMonitor()
 
-    init(nowPlaying: NowPlaying) {
+    /// Which window the disc is in; only the panel's disc follows the panel's notifications.
+    let host: DiscHost
+
+    init(nowPlaying: NowPlaying, host: DiscHost = .panel) {
+        self.host = host
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
     }
@@ -57,14 +61,18 @@ struct DiscView: View {
             if inside { installScroll() } else { scroll.remove() }
         }
         // The monitor only acts on scrolls over the disc, so it can go in as soon as the panel shows.
-        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in installScroll() }
+        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in
+            if host.followsPanel { installScroll() }
+        }
         // A disc that appears while its panel is already up (the panel swaps in a new one when the first
         // episode opens) gets no didShow. Its anchor joins the window after onAppear, so check on the next turn.
         .onAppear {
             DispatchQueue.main.async { if scroll.anchorIsOnScreen { installScroll() } }
         }
         .onDisappear { scroll.remove() }
-        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in scroll.remove() }
+        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in
+            if host.followsPanel { scroll.remove() }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Dial")
         .accessibilityAddTraits(.isButton)
@@ -215,7 +223,7 @@ struct PlayPauseGlyph: Shape {
     }
 }
 
-/// ⏮ / ⏭ drawn in code: two triangles and a bar.
+/// ⏮ / ⏭ drawn in code: two triangles tip to base, then a bar; ⏮ is the mirror image of ⏭.
 struct TrackSkipGlyph: Shape {
     var forward: Bool
 
@@ -223,24 +231,14 @@ struct TrackSkipGlyph: Shape {
         let bar = rect.width * 0.14
         let half = (rect.width - bar) / 2
         var path = Path()
-        func triangle(from x: CGFloat) {
-            let tip = forward ? x + half : x
-            let base = forward ? x : x + half
-            path.move(to: CGPoint(x: base, y: rect.minY))
-            path.addLine(to: CGPoint(x: tip, y: rect.midY))
-            path.addLine(to: CGPoint(x: base, y: rect.maxY))
+        for start in [rect.minX, rect.minX + half] {
+            path.move(to: CGPoint(x: start, y: rect.minY))
+            path.addLine(to: CGPoint(x: start + half, y: rect.midY))
+            path.addLine(to: CGPoint(x: start, y: rect.maxY))
             path.closeSubpath()
         }
-        if forward {
-            triangle(from: rect.minX)
-            triangle(from: rect.minX + half * 0.55)
-            path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height))
-        } else {
-            path.addRect(CGRect(x: rect.minX, y: rect.minY, width: bar, height: rect.height))
-            triangle(from: rect.minX + bar + half * 0.45)
-            triangle(from: rect.minX + bar)
-        }
-        return path
+        path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height))
+        guard !forward else { return path }
+        return path.applying(CGAffineTransform(translationX: rect.minX + rect.maxX, y: 0).scaledBy(x: -1, y: 1))
     }
 }
-

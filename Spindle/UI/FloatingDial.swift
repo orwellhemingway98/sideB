@@ -73,13 +73,17 @@ private struct FloatingDialView: View {
     let onLibrary: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
-            DiscView(nowPlaying: nowPlaying)
+        VStack(spacing: 4) {
+            DiscView(nowPlaying: nowPlaying, host: .floating)
                 .padding(10)
                 .glassEffect(.regular, in: Circle())
-            GrabBar()
+            // A slim bar to look at, with a taller area to grab.
+            Capsule()
+                .fill(.clear)
                 .frame(width: 36, height: 6)
                 .glassEffect(.regular, in: Capsule())
+                .frame(width: 56, height: 18)
+                .overlay(GrabBar())
                 .help("Drag to move")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

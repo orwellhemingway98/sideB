@@ -30,7 +30,12 @@ struct DialPanelView: View {
                     header(display)
                     DiscView(nowPlaying: nowPlaying)
                     times(display)
-                    if display.kind == .music { musicPills } else { pills }
+                    if display.kind == .music {
+                        musicPills
+                        if let paused = nowPlaying.pausedEpisode { resumePill(paused) }
+                    } else {
+                        pills
+                    }
                     upNext
                 } else {
                     DiscView(nowPlaying: nowPlaying)
@@ -107,6 +112,26 @@ struct DialPanelView: View {
             pill("+30") { nowPlaying.skip(by: 30) }
                 .accessibilityLabel("Forward 30 seconds")
         }
+    }
+
+    /// While music has the dial, the waiting podcast is one click away.
+    private func resumePill(_ episode: Episode) -> some View {
+        Button { nowPlaying.resumePodcast() } label: {
+            HStack(spacing: 6) {
+                PlayPauseGlyph(isPlaying: false).fill(.primary).frame(width: 7, height: 8)
+                Text("Resume \(episode.title)")
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .contentShape(Capsule())
+            .glassEffect(.regular.interactive(), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Resume podcast: \(episode.title)")
     }
 
     /// Music: just previous and next; the dial does the scrubbing.

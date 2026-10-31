@@ -69,6 +69,18 @@ final class NowPlaying: ObservableObject {
 
     // MARK: Who's in control
 
+    /// The podcast waiting while music has the dial; the panel offers to resume it.
+    var pausedEpisode: Episode? {
+        mode == .music ? player.episode : nil
+    }
+
+    /// Plays the waiting podcast, which pauses the music and gives the dial back to the podcast.
+    func resumePodcast() {
+        guard mode == .music, player.episode != nil else { return }
+        flushScrub()
+        player.play()
+    }
+
     /// Music started (seen by polling): the podcast pauses, keeping its place, and the dial follows the music.
     private func musicStarted() {
         guard mode != .music || player.isPlaying else { return }
@@ -80,7 +92,9 @@ final class NowPlaying: ObservableObject {
 
     /// A podcast started: the music pauses and the dial follows the podcast again.
     private func podcastStarted() {
-        if music?.isPlaying == true { music?.pause() }
+        // Polling may not have seen the music start yet, so pause any music app we know about;
+        // pausing one that is already paused does nothing.
+        if music?.track != nil { music?.pause() }
         guard mode != .podcast else { return }
         dropScrub()
         mode = .podcast
@@ -111,11 +125,14 @@ final class NowPlaying: ObservableObject {
 
     /// The length of whatever the dial is steering.
     var displayDuration: TimeInterval? {
-        mode == .music ? music?.track?.duration : player.duration
+        guard mode == .music else { return player.duration }
+        // Radio and live streams report no length: there's nothing to scrub.
+        guard let duration = music?.track?.duration, duration > 0 else { return nil }
+        return duration
     }
 
     private var hasSomethingToSteer: Bool {
-        mode == .music ? music?.track != nil : player.episode != nil
+        mode == .music ? displayDuration != nil : player.episode != nil
     }
 
     var currentChapter: Chapter? {
