@@ -62,14 +62,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.panel = panel
         self.strip = strip
 
-        if let guid = library.lastEpisodeGUID,
-           let episode = library.shows.lazy.flatMap(\.episodes).first(where: { $0.guid == guid }) {
+        if let episode = library.lastEpisode {
             player.open(episode, autoplay: false)
         }
         Task { await library.refreshAll() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        nowPlaying?.flushScrub()
         player?.saveNow()
     }
 

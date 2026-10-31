@@ -125,12 +125,42 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertGreaterThan(count, before)
     }
 
-    func testLastEpisodeGUIDRoundTrips() {
-        let store = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
-        XCTAssertNil(store.lastEpisodeGUID)
-        store.lastEpisodeGUID = "lq-112"
-        XCTAssertEqual(store.lastEpisodeGUID, "lq-112")
-        let other = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
-        XCTAssertNil(other.lastEpisodeGUID)
+    func testLastEpisodeRoundTripsWithItsShow() async throws {
+        let otherURL = URL(string: "https://example.com/other-feed")!
+        let stub = StubFetcher(responses: [feedURL: .success(SampleFeeds.longQuiet),
+                                           otherURL: .success(SampleFeeds.longQuiet)])
+        let store = makeStore(stub)
+        let first = try await store.follow(feedURL: feedURL)
+        let second = try await store.follow(feedURL: otherURL)
+        XCTAssertNil(store.lastEpisode)
+        // Both shows carry an episode with guid lq-112.
+        let wanted = store.episodes(of: second)[0]
+        XCTAssertEqual(wanted.guid, store.episodes(of: first)[0].guid)
+        store.rememberLastEpisode(wanted)
+        XCTAssertTrue(store.lastEpisode === wanted)
+        let other = store.episodes(of: first)[0]
+        store.rememberLastEpisode(other)
+        XCTAssertTrue(store.lastEpisode === other)
+        let fresh = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
+        XCTAssertNil(fresh.lastEpisode)
+    }
+
+    func testFollowingWhileOfflineSaysOffline() async {
+        for code in [URLError.Code.notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotConnectToHost] {
+            let store = makeStore(StubFetcher(error: URLError(code)))
+            do {
+                _ = try await store.follow(feedURL: feedURL)
+                XCTFail("expected offline for \(code)")
+            } catch {
+                XCTAssertEqual(error as? LibraryError, .offline, "\(code)")
+            }
+        }
+        let store = makeStore(StubFetcher(error: URLError(.badServerResponse)))
+        do {
+            _ = try await store.follow(feedURL: feedURL)
+            XCTFail("expected invalidFeed")
+        } catch {
+            XCTAssertEqual(error as? LibraryError, .invalidFeed)
+        }
     }
 }

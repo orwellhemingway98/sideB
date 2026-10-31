@@ -64,4 +64,19 @@ final class LibraryViewModelTests: XCTestCase {
         XCTAssertTrue(library.shows.isEmpty)
         XCTAssertNil(model.selectedShow)
     }
+    func testAddByLinkWhileOfflineSaysOffline() async {
+        let (model, library) = makeModel(fetcher: StubFetcher(responses: [feed: .failure(URLError(.notConnectedToInternet))]))
+        await model.addByLink("https://example.com/feed")
+        XCTAssertEqual(model.linkMessage, "You're offline. Try again when you're connected.")
+        XCTAssertNil(model.searchMessage)
+        XCTAssertTrue(library.shows.isEmpty)
+    }
+
+    func testFollowFromResultsWhileOfflineSaysOffline() async {
+        let (model, _) = makeModel(fetcher: StubFetcher(responses: [feed: .failure(URLError(.timedOut))]))
+        let result = DirectoryResult(title: "The Long Quiet", author: "", artworkURL: nil, feedURL: feed)
+        await model.follow(result)
+        XCTAssertEqual(model.searchMessage, "You're offline. Try again when you're connected.")
+        XCTAssertNil(model.linkMessage)
+    }
 }

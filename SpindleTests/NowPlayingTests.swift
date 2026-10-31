@@ -166,4 +166,53 @@ final class NowPlayingTests: XCTestCase {
         XCTAssertEqual(haptics.performed, [.tick])
         XCTAssertGreaterThan(nowPlaying.scrubPosition!, 37)   // the dial remembers the first turn's speed
     }
+    // MARK: Final review fixes
+
+    func testTogglingCommitsAPendingScrub() {
+        open(at: 600)
+        nowPlaying.turn(degrees: 30)
+        XCTAssertEqual(nowPlaying.scrubPosition, 610)
+        let plays = engine.playCount
+        nowPlaying.toggle()
+        XCTAssertEqual(newSeeks, [610])
+        XCTAssertEqual(player.position, 610)
+        XCTAssertEqual(engine.playCount, plays + 1)
+        XCTAssertNil(nowPlaying.scrubPosition)
+        scheduled[0].run()
+        XCTAssertEqual(newSeeks, [610])
+    }
+
+    func testPlayingAnEpisodeCommitsAPendingScrubFirst() {
+        open(at: 600)
+        nowPlaying.turn(degrees: 30)
+        nowPlaying.play(episode)
+        XCTAssertEqual(newSeeks, [610])
+        XCTAssertEqual(episode.position, 610)
+        scheduled[0].run()
+        XCTAssertEqual(newSeeks, [610])
+    }
+
+    func testFlushScrubOnQuitSavesTheScrubbedPlace() {
+        open(at: 600)
+        nowPlaying.turn(degrees: 30)
+        nowPlaying.flushScrub()
+        player.saveNow()
+        XCTAssertEqual(episode.position, 610)
+        XCTAssertNil(nowPlaying.scrubPosition)
+        scheduled[0].run()
+        XCTAssertEqual(newSeeks, [610])
+    }
+
+    func testDurationIsRepublishedWhenTheStreamReportsIt() {
+        engine.duration = nil
+        episode.duration = nil
+        nowPlaying.play(episode)
+        XCTAssertNil(media.published.last??.duration)
+        engine.duration = 1800
+        engine.fireTime(1)
+        XCTAssertEqual(media.published.last??.duration, 1800)
+        let count = media.published.count
+        engine.fireTime(2)
+        XCTAssertEqual(media.published.count, count)   // only when it first becomes known
+    }
 }

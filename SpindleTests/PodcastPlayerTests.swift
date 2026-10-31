@@ -170,4 +170,96 @@ final class PodcastPlayerTests: XCTestCase {
         engine.fireTime(603)
         XCTAssertEqual(player.position, 603)
     }
+    // MARK: Final review fixes
+
+    func testPlayingAQueuedEpisodeRemovesItFromUpNext() {
+        library.enqueue(a); library.enqueue(b)
+        player.open(a, autoplay: true)
+        XCTAssertEqual(library.upNext.map(\.guid), [b.guid])
+        engine.fireEnd()
+        XCTAssertEqual(player.episode?.guid, b.guid)
+        XCTAssertTrue(library.upNext.isEmpty)
+    }
+
+    func testLoadingWithoutListeningKeepsTheSavedPlace() {
+        a.position = 600
+        player.open(a, autoplay: false)
+        engine.fireTime(597)   // the resume seek landing
+        player.saveNow()
+        XCTAssertEqual(a.position, 600)
+        player.open(b, autoplay: false)   // switching away doesn't save it either
+        XCTAssertEqual(a.position, 600)
+
+        player.open(a, autoplay: true)
+        engine.fireTime(597)
+        engine.fireTime(610)
+        player.saveNow()
+        XCTAssertEqual(a.position, 610)
+    }
+
+    func testAnExplicitSeekCountsAsProgress() {
+        a.position = 600
+        player.open(a, autoplay: false)
+        player.seek(to: 597)
+        XCTAssertEqual(a.position, 597)
+    }
+
+    func testLastThirtySecondsMarksPlayedButKeepsPlaying() {
+        engine.duration = 3600
+        library.enqueue(b)
+        player.open(a, autoplay: true)
+        let pauses = engine.pauseCount
+        engine.fireTime(3580)
+        XCTAssertTrue(a.played)
+        XCTAssertEqual(a.position, 0)
+        XCTAssertEqual(engine.pauseCount, pauses)
+        XCTAssertEqual(player.episode?.guid, a.guid)
+        XCTAssertTrue(player.isPlaying)
+        engine.fireTime(3590)
+        player.pause()   // pausing inside the window keeps it played, at 0
+        XCTAssertTrue(a.played)
+        XCTAssertEqual(a.position, 0)
+        player.play()
+        engine.fireEnd()
+        XCTAssertEqual(player.episode?.guid, b.guid)
+        XCTAssertTrue(library.upNext.isEmpty)
+    }
+
+    func testSwitchingInsideTheLastThirtySecondsKeepsItPlayed() {
+        engine.duration = 3600
+        player.open(a, autoplay: true)
+        engine.fireTime(3580)
+        player.open(b, autoplay: true)
+        XCTAssertTrue(a.played)
+        XCTAssertEqual(a.position, 0)
+    }
+
+    func testSeekingBackOutOfTheEndUnmarksPlayed() {
+        engine.duration = 3600
+        player.open(a, autoplay: true)
+        engine.fireTime(3580)
+        XCTAssertTrue(a.played)
+        player.seek(to: 3590)   // still inside the window
+        XCTAssertTrue(a.played)
+        XCTAssertEqual(a.position, 0)
+        player.seek(to: 3000)
+        XCTAssertFalse(a.played)
+        XCTAssertEqual(a.position, 3000)
+        engine.fireTime(3006)
+        XCTAssertEqual(a.position, 3006)   // normal saving again
+    }
+
+    func testEnqueuingThePlayingEpisodeIsIgnored() {
+        player.open(a, autoplay: true)
+        player.enqueue(a)
+        player.enqueue(b)
+        XCTAssertEqual(library.upNext.map(\.guid), [b.guid])
+        engine.fireEnd()
+        XCTAssertEqual(player.episode?.guid, b.guid)
+    }
+
+    func testOpeningRemembersShowAndEpisode() {
+        player.open(d, autoplay: false)
+        XCTAssertTrue(library.lastEpisode === d)
+    }
 }

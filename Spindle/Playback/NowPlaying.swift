@@ -38,6 +38,8 @@ final class NowPlaying: ObservableObject {
         player.$episode.dropFirst().sink { [weak self] in self?.episodeChanged($0) }.store(in: &cancellables)
         player.$isPlaying.dropFirst().sink { [weak self] in self?.publish(isPlaying: $0) }.store(in: &cancellables)
         player.$rate.dropFirst().sink { [weak self] in self?.publish(rate: $0) }.store(in: &cancellables)
+        // A stream without a feed duration learns its length after it starts; tell the media center then.
+        player.$engineDuration.compactMap { $0 }.sink { [weak self] _ in self?.publish() }.store(in: &cancellables)
         player.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }.store(in: &cancellables)
     }
 
@@ -85,7 +87,18 @@ final class NowPlaying: ObservableObject {
 
     // MARK: Transport
 
-    func toggle() { player.toggle() }
+    /// Commits a pending scrub now, so the next action (or quitting) starts from what the dial shows.
+    /// The scheduled commit then finds a newer generation and does nothing.
+    func flushScrub() {
+        guard scrubPosition != nil else { return }
+        generation += 1
+        commit()
+    }
+
+    func toggle() {
+        flushScrub()
+        player.toggle()
+    }
 
     /// Starts from what the dial shows and wins over any pending scrub commit.
     func skip(by seconds: TimeInterval) {
@@ -95,6 +108,7 @@ final class NowPlaying: ObservableObject {
     func cycleRate() { player.cycleRate() }
 
     func play(_ episode: Episode) {
+        flushScrub()
         player.open(episode, autoplay: true)
         publish()
     }
@@ -110,9 +124,9 @@ final class NowPlaying: ObservableObject {
 
     private func handle(_ command: MediaCommand) {
         switch command {
-        case .play: player.play()
-        case .pause: player.pause()
-        case .toggle: player.toggle()
+        case .play: flushScrub(); player.play()
+        case .pause: flushScrub(); player.pause()
+        case .toggle: toggle()
         case .skip(let seconds): skip(by: seconds)
         case .seek(let time): jump(to: time)
         case .rate(let rate): setRate(rate)

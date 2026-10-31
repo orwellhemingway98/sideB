@@ -7,6 +7,7 @@ final class LibraryViewModel: ObservableObject {
     static let searchFailed = "Search isn't available right now."
     static let notAFeed = "That link isn't a podcast feed."
     static let followFailed = "Couldn't follow that show."
+    static let offline = "You're offline. Try again when you're connected."
 
     let library: LibraryStore
     let nowPlaying: NowPlaying
@@ -37,7 +38,7 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func follow(_ result: DirectoryResult) async {
-        searchMessage = await follow(feedURL: result.feedURL) ? nil : Self.followFailed
+        searchMessage = await follow(feedURL: result.feedURL, otherwise: Self.followFailed)
     }
 
     func addByLink(_ text: String) async {
@@ -47,16 +48,19 @@ final class LibraryViewModel: ObservableObject {
             linkMessage = Self.notAFeed
             return
         }
-        linkMessage = await follow(feedURL: url) ? nil : Self.notAFeed
+        linkMessage = await follow(feedURL: url, otherwise: Self.notAFeed)
     }
 
-    /// Follows and selects the show; false if the feed couldn't be followed.
-    private func follow(feedURL: URL) async -> Bool {
+    /// Follows and selects the show. Returns the message for the field that asked: nil on success,
+    /// the offline note when there's no network, `otherwise` for any other failure.
+    private func follow(feedURL: URL, otherwise failure: String) async -> String? {
         do {
             selectedShow = try await library.follow(feedURL: feedURL)
-            return true
+            return nil
+        } catch LibraryError.offline {
+            return Self.offline
         } catch {
-            return false
+            return failure
         }
     }
 }
@@ -199,7 +203,7 @@ private struct EpisodeList: View {
                 }
                 Spacer(minLength: 8)
                 Button("Play") { nowPlaying.play(episode) }
-                Button("+ Up Next") { library.enqueue(episode) }
+                Button("+ Up Next") { nowPlaying.player.enqueue(episode) }
             }
             .padding(.vertical, 2)
         }

@@ -3,6 +3,7 @@ import SwiftData
 
 enum LibraryError: Error, Equatable {
     case invalidFeed
+    case offline
 }
 
 @MainActor
@@ -89,7 +90,7 @@ final class LibraryStore: ObservableObject {
         do {
             parsed = try FeedParser.parse(try await fetcher.data(from: feedURL))
         } catch {
-            throw LibraryError.invalidFeed
+            throw Connectivity.isOffline(error) ? LibraryError.offline : LibraryError.invalidFeed
         }
         // Another follow of the same feed may have finished while we were fetching.
         if let existing = existingShow(for: feedURL) { return existing }
@@ -195,10 +196,10 @@ final class LibraryStore: ObservableObject {
     }
 
     func remove(fromUpNext episode: Episode) {
+        let matching = entries.filter { $0.episode?.persistentModelID == episode.persistentModelID }
+        guard !matching.isEmpty else { return }
         objectWillChange.send()
-        for entry in entries where entry.episode?.persistentModelID == episode.persistentModelID {
-            context.delete(entry)
-        }
+        matching.forEach(context.delete)
         save()
     }
 
@@ -226,9 +227,29 @@ final class LibraryStore: ObservableObject {
         save()
     }
 
-    var lastEpisodeGUID: String? {
-        get { defaults.string(forKey: "lastEpisodeGUID") }
-        set { defaults.set(newValue, forKey: "lastEpisodeGUID") }
+    /// Seeking back out of the last 30 s: the episode isn't finished after all.
+    func markUnplayed(_ episode: Episode) {
+        objectWillChange.send()
+        episode.played = false
+        save()
+    }
+
+    private static let lastFeedKey = "lastEpisodeFeedURL"
+    private static let lastGUIDKey = "lastEpisodeGUID"
+
+    /// Remembers the episode by its show's feed and its guid: guids are only unique within a feed.
+    func rememberLastEpisode(_ episode: Episode) {
+        defaults.set(episode.show?.feedURL.absoluteString, forKey: Self.lastFeedKey)
+        defaults.set(episode.guid, forKey: Self.lastGUIDKey)
+    }
+
+    /// The episode last opened, if it is still in the library.
+    var lastEpisode: Episode? {
+        guard let feed = defaults.string(forKey: Self.lastFeedKey).flatMap(URL.init(string:)),
+              let guid = defaults.string(forKey: Self.lastGUIDKey) else { return nil }
+        let descriptor = FetchDescriptor<Episode>(predicate: #Predicate { $0.guid == guid })
+        let candidates = (try? context.fetch(descriptor)) ?? []
+        return candidates.first { $0.show?.feedURL == feed }
     }
 
     private func save() {

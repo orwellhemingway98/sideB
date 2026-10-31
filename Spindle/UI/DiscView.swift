@@ -58,6 +58,11 @@ struct DiscView: View {
         }
         // The monitor only acts on scrolls over the disc, so it can go in as soon as the panel shows.
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in installScroll() }
+        // A disc that appears while its panel is already up (the panel swaps in a new one when the first
+        // episode opens) gets no didShow. Its anchor joins the window after onAppear, so check on the next turn.
+        .onAppear {
+            DispatchQueue.main.async { if scroll.anchorIsOnScreen { installScroll() } }
+        }
         .onDisappear { scroll.remove() }
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in scroll.remove() }
         .accessibilityElement(children: .ignore)

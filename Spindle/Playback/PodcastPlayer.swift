@@ -11,9 +11,18 @@ final class PodcastPlayer: ObservableObject {
     @Published private(set) var rate: Float = 1
     /// "Offline" or "Unavailable".
     @Published private(set) var failure: String?
+    /// The engine's duration once the stream reports it (nil until then, and after each load), so the
+    /// media center can be told the length of an episode whose feed didn't give one.
+    @Published private(set) var engineDuration: TimeInterval?
 
     private var lastSaved: TimeInterval = 0
     private var finished = false
+    /// Where the current load started. Until playback moves away from it (or the user seeks), the place
+    /// is the saved one, not progress: the resume rewind must never be written back.
+    private var loadPoint: TimeInterval = 0
+    private var progressed = false
+    /// Inside the last 30 s: the episode is already marked played with its place reset, so nothing is saved.
+    private var inPlayedWindow = false
     private var needsReload = false
     /// Bumped on every load. A failure is handled at most once per generation; a failure in a new
     /// generation (the next episode opened after a dead link) is handled normally.
@@ -41,9 +50,10 @@ final class PodcastPlayer: ObservableObject {
         failure = nil
         finished = false
         needsReload = false
+        library.remove(fromUpNext: episode)
         load(episode)
         engine.rate = rate
-        library.lastEpisodeGUID = episode.guid
+        library.rememberLastEpisode(episode)
         if autoplay { play() } else { isPlaying = false }
     }
 
@@ -53,6 +63,10 @@ final class PodcastPlayer: ObservableObject {
         engine.load(episode.playableURL, at: start)
         position = start
         lastSaved = start
+        loadPoint = start
+        progressed = false
+        inPlayedWindow = false
+        engineDuration = nil
         awaitingResume = start > 0
     }
 
@@ -63,6 +77,8 @@ final class PodcastPlayer: ObservableObject {
         if finished {
             // Replaying after the end: start over, tracking and saving again.
             finished = false
+            inPlayedWindow = false
+            progressed = true
             engine.seek(to: 0)
             position = 0
             lastSaved = 0
@@ -90,9 +106,11 @@ final class PodcastPlayer: ObservableObject {
         guard episode != nil else { return }
         finished = false
         awaitingResume = false
+        progressed = true
         let target = clamp(time)
         engine.seek(to: target)
         position = target
+        updatePlayedWindow()
         saveNow()
     }
 
@@ -100,13 +118,20 @@ final class PodcastPlayer: ObservableObject {
         seek(to: position + seconds)
     }
 
+    /// Adds to Up Next, except the episode that is playing: it would only play again from the start.
+    func enqueue(_ episode: Episode) {
+        guard episode !== self.episode else { return }
+        library.enqueue(episode)
+    }
+
     func cycleRate() {
         rate = ResumePolicy.nextRate(after: rate)
         engine.rate = rate
     }
 
+    /// Saves the place, but only real progress: not the rewound resume point, not inside the last 30 s.
     func saveNow() {
-        guard let episode, !finished, !awaitingResume else { return }
+        guard let episode, !finished, !awaitingResume, progressed, !inPlayedWindow else { return }
         library.savePosition(position, of: episode)
         lastSaved = position
     }
@@ -121,6 +146,7 @@ final class PodcastPlayer: ObservableObject {
 
     private func handleTime(_ time: TimeInterval) {
         guard episode != nil, !finished else { return }
+        if engineDuration == nil, let known = engine.duration { engineDuration = known }
         if awaitingResume {
             // A tick far before the resume point comes from the item before its resume seek has landed.
             guard abs(time - position) <= ResumePolicy.saveInterval else { return }
@@ -128,18 +154,36 @@ final class PodcastPlayer: ObservableObject {
         }
         if failure == "Unavailable", !needsReload { failure = nil }
         position = time
-        if ResumePolicy.isFinished(position: time, duration: duration) {
-            finish()
-        } else if abs(time - lastSaved) >= ResumePolicy.saveInterval {
+        if abs(time - loadPoint) > Self.stillAtLoadPoint { progressed = true }
+        updatePlayedWindow()
+        if abs(time - lastSaved) >= ResumePolicy.saveInterval {
             saveNow()
         }
     }
 
-    /// Runs once per episode, whether the end arrives as a callback or as a time near the end.
+    /// Ticks this close to the load point are the resume seek landing, not listening.
+    private static let stillAtLoadPoint: TimeInterval = 0.25
+
+    /// Entering the last 30 s marks the episode played (once) and resets its place; playback carries on
+    /// to the real end. Leaving the window by seeking back un-marks it.
+    private func updatePlayedWindow() {
+        guard let episode else { return }
+        let inside = ResumePolicy.isFinished(position: position, duration: duration)
+        guard inside != inPlayedWindow else { return }
+        inPlayedWindow = inside
+        if inside {
+            library.markPlayed(episode)
+        } else {
+            library.markUnplayed(episode)
+        }
+    }
+
+    /// Runs once per episode, at the engine's end. Up Next advances only here.
     private func finish() {
         guard let episode, !finished else { return }
         finished = true
-        library.markPlayed(episode)
+        if !inPlayedWindow { library.markPlayed(episode) }
+        inPlayedWindow = false
         advance()
     }
 
@@ -158,7 +202,7 @@ final class PodcastPlayer: ObservableObject {
     private func handleFailure(_ error: Error) {
         guard episode != nil, !finished, failureHandledIn != generation else { return }
         failureHandledIn = generation
-        if Self.isOffline(error) {
+        if Connectivity.isOffline(error) {
             saveNow()
             engine.pause()
             isPlaying = false
@@ -168,14 +212,6 @@ final class PodcastPlayer: ObservableObject {
             saveNow()
             if !advance() { needsReload = true }
             failure = "Unavailable"
-        }
-    }
-
-    private static func isOffline(_ error: Error) -> Bool {
-        guard let urlError = error as? URLError else { return false }
-        switch urlError.code {
-        case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotConnectToHost: return true
-        default: return false
         }
     }
 }

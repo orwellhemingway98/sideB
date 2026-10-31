@@ -17,3 +17,14 @@ struct URLSessionFetcher: HTTPFetching {
         return data
     }
 }
+
+enum Connectivity {
+    /// The errors that mean "no network right now" rather than "that address is wrong".
+    static func isOffline(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotConnectToHost: return true
+        default: return false
+        }
+    }
+}

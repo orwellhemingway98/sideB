@@ -27,6 +27,9 @@ final class ScrollMonitor {
     weak var anchor: NSView?
     private var monitor: Any?
 
+    /// True when the disc is in a window that is showing.
+    var anchorIsOnScreen: Bool { anchor?.window?.isVisible == true }
+
     func install(_ turn: @escaping @MainActor (Double) -> Void) {
         remove()
         monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
