@@ -21,13 +21,13 @@ enum MediaCommand: Equatable {
 @MainActor
 protocol MediaCenterPublishing: AnyObject {
     func publish(_ info: NowPlayingInfo?)
-    var onCommand: ((MediaCommand) -> Void)? { get set }
+    var onCommand: (@MainActor (MediaCommand) -> Void)? { get set }
 }
 
 /// Control Center, the media keys and the Now Playing widget. A thin adapter; artwork waits for a later stage.
 @MainActor
 final class MediaCenter: MediaCenterPublishing {
-    var onCommand: ((MediaCommand) -> Void)?
+    var onCommand: (@MainActor (MediaCommand) -> Void)?
 
     private let center = MPNowPlayingInfoCenter.default()
 

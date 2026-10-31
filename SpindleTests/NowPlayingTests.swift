@@ -119,4 +119,51 @@ final class NowPlayingTests: XCTestCase {
         nowPlaying.toggle()
         XCTAssertEqual(media.published.last??.isPlaying, false)
     }
+
+    func testSkipDuringScrubWins() {
+        open(at: 600)
+        nowPlaying.turn(degrees: 30)
+        XCTAssertEqual(nowPlaying.scrubPosition, 610)
+        nowPlaying.skip(by: -15)
+        XCTAssertEqual(newSeeks, [595])
+        XCTAssertNil(nowPlaying.scrubPosition)
+        scheduled[0].run()
+        XCTAssertEqual(newSeeks, [595])
+    }
+
+    func testSkipStartsFromTheScrubPosition() {
+        open(at: 600)
+        nowPlaying.turn(degrees: 30)
+        nowPlaying.skip(by: 30)
+        XCTAssertEqual(newSeeks, [640])
+    }
+
+    func testNothingOpenPublishesNil() {
+        nowPlaying.play(episode)
+        nowPlaying.episodeChanged(nil)
+        guard case .some(let last) = media.published.last else { return XCTFail("nothing published") }
+        XCTAssertNil(last)
+    }
+
+    func testUnsupportedRateIsIgnored() {
+        open(at: 600)
+        let published = media.published.count
+        media.onCommand?(.rate(1.3))
+        XCTAssertEqual(player.rate, 1)
+        XCTAssertEqual(engine.rate, 1)
+        XCTAssertEqual(media.published.count, published)
+        media.onCommand?(.rate(1.5))
+        XCTAssertEqual(player.rate, 1.5)
+    }
+
+    func testHapticsAreRateLimitedAcrossTurns() {
+        open(at: 12)
+        time = 0
+        nowPlaying.turn(degrees: 15)   // 12 -> 17, crosses 15
+        XCTAssertEqual(haptics.performed, [.tick])
+        time = 0.02
+        nowPlaying.turn(degrees: 60)   // fast: still crosses ticks, but 20 ms is too soon
+        XCTAssertEqual(haptics.performed, [.tick])
+        XCTAssertGreaterThan(nowPlaying.scrubPosition!, 37)   // the dial remembers the first turn's speed
+    }
 }

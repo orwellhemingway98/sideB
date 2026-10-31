@@ -87,9 +87,9 @@ final class NowPlaying: ObservableObject {
 
     func toggle() { player.toggle() }
 
+    /// Starts from what the dial shows and wins over any pending scrub commit.
     func skip(by seconds: TimeInterval) {
-        player.skip(by: seconds)
-        publish()
+        jump(to: displayPosition + seconds)
     }
 
     func cycleRate() { player.cycleRate() }
@@ -100,6 +100,7 @@ final class NowPlaying: ObservableObject {
     }
 
     private func setRate(_ rate: Float) {
+        guard ResumePolicy.rates.contains(rate) else { return }
         var steps = 0
         while player.rate != rate, steps < ResumePolicy.rates.count {
             player.cycleRate()
@@ -120,17 +121,17 @@ final class NowPlaying: ObservableObject {
 
     // MARK: Chapters
 
-    private func episodeChanged(_ episode: Episode?) {
+    func episodeChanged(_ episode: Episode?) {
         chapterTask?.cancel()
         chapters = []
         scrubPosition = nil
         generation += 1
         dial.reset()
         guard let episode else {
-            publish(episode: nil)
+            media.publish(nil)
             return
         }
-        publish(episode: episode)
+        publish(episode: episode, position: 0)
         chapterTask = Task { [weak self, loadChapters] in
             let loaded = await loadChapters(episode)
             guard let self, !Task.isCancelled, self.player.episode === episode else { return }
@@ -140,18 +141,21 @@ final class NowPlaying: ObservableObject {
 
     // MARK: Publishing
 
-    private func publish(episode: Episode?? = nil, isPlaying: Bool? = nil, rate: Float? = nil) {
-        let current = episode ?? player.episode
-        guard let current else {
+    private func publish(isPlaying: Bool? = nil, rate: Float? = nil) {
+        guard let episode = player.episode else {
             media.publish(nil)
             return
         }
+        publish(episode: episode, position: player.position, isPlaying: isPlaying, rate: rate)
+    }
+
+    private func publish(episode: Episode, position: TimeInterval, isPlaying: Bool? = nil, rate: Float? = nil) {
         media.publish(NowPlayingInfo(
-            title: current.title,
-            subtitle: current.show?.title ?? "",
+            title: episode.title,
+            subtitle: episode.show?.title ?? "",
             artworkURL: nil,
             duration: player.duration,
-            position: episode == nil ? player.position : 0,
+            position: position,
             rate: rate ?? player.rate,
             isPlaying: isPlaying ?? player.isPlaying))
     }

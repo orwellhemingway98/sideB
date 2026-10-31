@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class FakeMediaCenter: MediaCenterPublishing {
     private(set) var published: [NowPlayingInfo?] = []
-    var onCommand: ((MediaCommand) -> Void)?
+    var onCommand: (@MainActor (MediaCommand) -> Void)?
 
     func publish(_ info: NowPlayingInfo?) { published.append(info) }
 }
