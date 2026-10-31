@@ -57,8 +57,9 @@ final class PodcastPlayer: ObservableObject {
         if autoplay { play() } else { isPlaying = false }
     }
 
-    private func load(_ episode: Episode) {
-        let start = ResumePolicy.startPosition(saved: episode.position)
+    /// Loads at `start`, or by default at the saved place less the resume rewind.
+    private func load(_ episode: Episode, at start: TimeInterval? = nil) {
+        let start = start ?? ResumePolicy.startPosition(saved: episode.position)
         generation += 1
         engine.load(episode.playableURL, at: start)
         position = start
@@ -86,7 +87,10 @@ final class PodcastPlayer: ObservableObject {
         if needsReload {
             needsReload = false
             failure = nil
-            load(episode)
+            // Inside the last 30 s the saved place is already 0 (played), so reload where you were.
+            let wasInWindow = inPlayedWindow
+            load(episode, at: wasInWindow ? position : nil)
+            inPlayedWindow = wasInWindow
         }
         engine.play()
         isPlaying = true
@@ -103,7 +107,8 @@ final class PodcastPlayer: ObservableObject {
     }
 
     func seek(to time: TimeInterval) {
-        guard episode != nil else { return }
+        guard let episode else { return }
+        let wasFinished = finished
         finished = false
         awaitingResume = false
         progressed = true
@@ -111,6 +116,10 @@ final class PodcastPlayer: ObservableObject {
         engine.seek(to: target)
         position = target
         updatePlayedWindow()
+        // After the real end the window is closed, so seeking well back has to un-mark it here.
+        if wasFinished, episode.played, !ResumePolicy.isFinished(position: target, duration: duration) {
+            library.markUnplayed(episode)
+        }
         saveNow()
     }
 

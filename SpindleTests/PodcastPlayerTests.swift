@@ -285,4 +285,27 @@ final class PodcastPlayerTests: XCTestCase {
         engine.fireFailure(URLError(.notConnectedToInternet))
         XCTAssertFalse(a.unavailable)
     }
+
+    // MARK: Stage 2: parked end-of-episode fixes
+
+    func testOfflineReloadInsideTheLastThirtySecondsResumesThere() {
+        engine.duration = 3600
+        player.open(a, autoplay: true)
+        engine.fireTime(3580)
+        engine.fireFailure(URLError(.notConnectedToInternet))
+        player.play()
+        XCTAssertEqual(engine.loads.last?.time, 3580, "the reload resumes where you were, not at the saved 0")
+    }
+
+    func testSeekingBackAfterTheEndUnmarksPlayed() {
+        engine.duration = 3600
+        player.open(a, autoplay: true)
+        engine.fireTime(3580)
+        engine.fireEnd()
+        XCTAssertTrue(a.played)
+        player.seek(to: 100)
+        XCTAssertFalse(a.played)
+        player.pause()
+        XCTAssertEqual(a.position, 100)
+    }
 }
