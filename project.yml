@@ -1,0 +1,48 @@
+name: Spindle
+options:
+  bundleIdPrefix: com.mfelouro
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+targets:
+  Spindle:
+    type: application
+    platform: macOS
+    sources: [Spindle]
+    info:
+      path: Spindle/App/Info.plist
+      properties:
+        CFBundleName: Spindle
+        CFBundleDisplayName: Spindle
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.music
+        LSUIElement: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mfelouro.Spindle
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        GENERATE_INFOPLIST_FILE: NO
+  SpindleTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [SpindleTests]
+    dependencies:
+      - target: Spindle
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Spindle:
+    build:
+      targets:
+        Spindle: all
+    test:
+      targets: [SpindleTests]
