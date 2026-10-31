@@ -23,5 +23,10 @@ final class FakeEngine: AudioEngine {
 
     func fireTime(_ time: TimeInterval) { currentTime = time; onTime?(time) }
     func fireEnd() { onEnd?() }
-    func fireFailure(_ error: Error) { onFailure?(error) }
+    /// Like the real engine, drops a callback from a load that has since been replaced.
+    /// `ofLoad` is the index into `loads` the callback belongs to; nil means the latest.
+    func fireFailure(_ error: Error, ofLoad index: Int? = nil) {
+        guard index == nil || index == loads.count - 1 else { return }
+        onFailure?(error)
+    }
 }

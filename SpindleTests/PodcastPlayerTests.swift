@@ -9,16 +9,20 @@ final class PodcastPlayerTests: XCTestCase {
     private var a: Episode!
     private var b: Episode!
     private var c: Episode!
+    private var d: Episode!
 
     override func setUp() async throws {
         let feed = URL(string: "https://example.com/feed")!
-        let fetcher = StubFetcher(responses: [feed: .success(SampleFeeds.longQuietThreeItems)])
+        let other = URL(string: "https://example.com/other")!
+        let fetcher = StubFetcher(responses: [feed: .success(SampleFeeds.longQuietThreeItems),
+                                              other: .success(SampleFeeds.withPSC)])
         library = LibraryStore.inMemory(fetcher: fetcher)
         let show = try await library.follow(feedURL: feed)
         let episodes = library.episodes(of: show)
         a = episodes[0]
         b = episodes[1]
         c = episodes[2]
+        d = library.episodes(of: try await library.follow(feedURL: other))[0]
         engine = FakeEngine()
         player = PodcastPlayer(engine: engine, library: library)
     }
@@ -102,8 +106,8 @@ final class PodcastPlayerTests: XCTestCase {
     func testDuplicateFailureSkipsOnlyOnce() {
         library.enqueue(b); library.enqueue(c)
         player.open(a, autoplay: true)
-        engine.fireFailure(URLError(.fileDoesNotExist))
-        engine.fireFailure(URLError(.fileDoesNotExist))
+        engine.fireFailure(URLError(.fileDoesNotExist), ofLoad: 0)
+        engine.fireFailure(URLError(.fileDoesNotExist), ofLoad: 0)  // the same dead item reporting twice
         XCTAssertEqual(player.episode?.guid, b.guid)
         XCTAssertEqual(library.upNext.count, 1)
     }
@@ -136,5 +140,22 @@ final class PodcastPlayerTests: XCTestCase {
         XCTAssertEqual(engine.loads.count, 2)
         XCTAssertNil(player.failure)
         XCTAssertTrue(player.isPlaying)
+    }
+
+    func testConsecutiveDeadLinksSkipEach() {
+        library.enqueue(b); library.enqueue(c); library.enqueue(d)
+        player.open(a, autoplay: true)
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        XCTAssertEqual(player.episode?.guid, c.guid)
+    }
+
+    func testRepeatOfflineFailureIsHandledOnce() {
+        player.open(a, autoplay: true)
+        engine.fireTime(700)
+        engine.fireFailure(URLError(.notConnectedToInternet))
+        engine.fireFailure(URLError(.notConnectedToInternet))
+        XCTAssertEqual(engine.pauseCount, 1)
+        XCTAssertEqual(player.failure, "Offline")
     }
 }

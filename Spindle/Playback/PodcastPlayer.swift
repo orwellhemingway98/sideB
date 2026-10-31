@@ -15,8 +15,10 @@ final class PodcastPlayer: ObservableObject {
     private var lastSaved: TimeInterval = 0
     private var finished = false
     private var needsReload = false
-    /// Set when a dead link skipped to the next episode; a repeat failure for the old item is ignored until that one plays.
-    private var skippedForFailure = false
+    /// Bumped on every load. A failure is handled at most once per generation; a failure in a new
+    /// generation (the next episode opened after a dead link) is handled normally.
+    private var generation = 0
+    private var failureHandledIn = -1
 
     init(engine: AudioEngine, library: LibraryStore) {
         self.engine = engine
@@ -36,7 +38,6 @@ final class PodcastPlayer: ObservableObject {
         failure = nil
         finished = false
         needsReload = false
-        skippedForFailure = false
         load(episode)
         engine.rate = rate
         library.lastEpisodeGUID = episode.guid
@@ -45,6 +46,7 @@ final class PodcastPlayer: ObservableObject {
 
     private func load(_ episode: Episode) {
         let start = ResumePolicy.startPosition(saved: episode.position)
+        generation += 1
         engine.load(episode.playableURL, at: start)
         position = start
         lastSaved = start
@@ -114,7 +116,6 @@ final class PodcastPlayer: ObservableObject {
 
     private func handleTime(_ time: TimeInterval) {
         guard episode != nil, !finished else { return }
-        skippedForFailure = false
         if failure == "Unavailable", !needsReload { failure = nil }
         position = time
         if ResumePolicy.isFinished(position: time, duration: duration) {
@@ -145,7 +146,8 @@ final class PodcastPlayer: ObservableObject {
     }
 
     private func handleFailure(_ error: Error) {
-        guard episode != nil, !finished, !skippedForFailure else { return }
+        guard episode != nil, !finished, failureHandledIn != generation else { return }
+        failureHandledIn = generation
         if Self.isOffline(error) {
             saveNow()
             engine.pause()
@@ -154,11 +156,7 @@ final class PodcastPlayer: ObservableObject {
             failure = "Offline"
         } else {
             saveNow()
-            if advance() {
-                skippedForFailure = true
-            } else {
-                needsReload = true
-            }
+            if !advance() { needsReload = true }
             failure = "Unavailable"
         }
     }
