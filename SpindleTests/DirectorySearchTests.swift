@@ -8,6 +8,12 @@ final class DirectorySearchTests: XCTestCase {
         XCTAssertTrue(url.absoluteString.contains("term=caf%C3%A9%20cr%C3%A8me"))
     }
 
+    func testReservedCharactersAreEscaped() {
+        let url = DirectorySearch.url(for: "C++ & a=b")
+        XCTAssertTrue(url.absoluteString.contains("term=C%2B%2B%20%26%20a%3Db"), url.absoluteString)
+        XCTAssertEqual(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "term" }?.value, "C++ & a=b")
+    }
+
     func testQueryItemsComeInOrder() {
         let url = DirectorySearch.url(for: "tide")
         XCTAssertEqual(url.absoluteString, "https://itunes.apple.com/search?media=podcast&entity=podcast&limit=25&term=tide")

@@ -11,11 +11,14 @@ struct DirectoryResult: Equatable, Identifiable {
 enum DirectorySearch {
     static func url(for term: String) -> URL {
         var components = URLComponents(string: "https://itunes.apple.com/search")!
-        components.queryItems = [
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "+&=?/#")
+        let escaped = term.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+        components.percentEncodedQueryItems = [
             URLQueryItem(name: "media", value: "podcast"),
             URLQueryItem(name: "entity", value: "podcast"),
             URLQueryItem(name: "limit", value: "25"),
-            URLQueryItem(name: "term", value: term),
+            URLQueryItem(name: "term", value: escaped),
         ]
         return components.url!
     }
