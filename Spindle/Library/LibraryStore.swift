@@ -258,6 +258,13 @@ final class LibraryStore: ObservableObject {
         save()
     }
 
+    /// Records where an episode's download lives (nil once it is removed).
+    func setLocalFile(_ file: URL?, for episode: Episode) {
+        objectWillChange.send()
+        episode.localFile = file
+        save()
+    }
+
     /// Seeking back out of the last 30 s: the episode isn't finished after all.
     func markUnplayed(_ episode: Episode) {
         objectWillChange.send()
