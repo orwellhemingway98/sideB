@@ -6,7 +6,7 @@ import Foundation
 final class NowPlaying: ObservableObject {
     static let commitDelay: TimeInterval = 0.15
 
-    private let player: PodcastPlayer
+    let player: PodcastPlayer
     private let media: MediaCenterPublishing
     private let haptics: HapticPerforming
     private let schedule: (TimeInterval, @escaping @MainActor () -> Void) -> Void
