@@ -79,4 +79,38 @@ final class LibraryViewModelTests: XCTestCase {
         XCTAssertEqual(model.searchMessage, "You're offline. Try again when you're connected.")
         XCTAssertNil(model.linkMessage)
     }
+
+    // MARK: Stage 2
+
+    func testImportSummaryText() {
+        XCTAssertEqual(LibraryViewModel.importSummaryText(ImportSummary(followed: 3, alreadyFollowed: 1, failed: 1)),
+                       "Followed 3 shows \u{00B7} 1 already followed \u{00B7} 1 couldn't be added")
+        XCTAssertEqual(LibraryViewModel.importSummaryText(ImportSummary(followed: 1)), "Followed 1 show")
+        XCTAssertEqual(LibraryViewModel.importSummaryText(ImportSummary(alreadyFollowed: 2)), "2 already followed")
+        XCTAssertEqual(LibraryViewModel.importSummaryText(ImportSummary()), "No shows found in that file.")
+    }
+
+    func testImportingNotOPMLSaysSo() async {
+        let (model, library) = makeModel(fetcher: StubFetcher(responses: [:]))
+        await model.importOPML(Data("<rss/>".utf8))
+        XCTAssertEqual(model.importMessage, "That file isn't an OPML list of podcasts.")
+        XCTAssertTrue(library.shows.isEmpty)
+    }
+
+    func testImportingFollowsShows() async {
+        let other = URL(string: "https://example.com/other")!
+        let fetcher = StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet), other: .success(SampleFeeds.withPSC)])
+        let (model, library) = makeModel(fetcher: fetcher)
+        let opml = #"<opml version="2.0"><body><outline xmlUrl="https://example.com/feed"/><outline xmlUrl="https://example.com/other"/></body></opml>"#
+        await model.importOPML(Data(opml.utf8))
+        XCTAssertEqual(library.shows.count, 2)
+        XCTAssertEqual(model.importMessage, "Followed 2 shows")
+    }
+
+    func testFollowingSelectsTheShowSection() async {
+        let (model, library) = makeModel(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
+        XCTAssertEqual(model.section, .newEpisodes)
+        await model.addByLink("https://example.com/feed")
+        XCTAssertEqual(model.section, .show(library.shows[0].persistentModelID))
+    }
 }
