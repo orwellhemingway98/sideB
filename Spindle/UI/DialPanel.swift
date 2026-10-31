@@ -22,11 +22,11 @@ struct DialPanelView: View {
     var body: some View {
         GlassEffectContainer(spacing: 8) {
             VStack(spacing: 14) {
-                if let episode = player.episode {
-                    header(episode)
+                if let display = nowPlaying.display {
+                    header(display)
                     DiscView(nowPlaying: nowPlaying)
-                    times
-                    pills
+                    times(display)
+                    if display.kind == .music { musicPills } else { pills }
                     upNext
                 } else {
                     DiscView(nowPlaying: nowPlaying)
@@ -45,16 +45,18 @@ struct DialPanelView: View {
 
     // MARK: Header
 
-    private func header(_ episode: Episode) -> some View {
+    private func header(_ display: NowPlayingDisplay) -> some View {
         HStack(spacing: 10) {
-            ArtworkView(cache: artwork, url: episode.show?.artworkURL, seed: episode.show?.title ?? episode.title,
-                        size: 44, cornerRadius: 12)
+            ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
+                        size: 44, cornerRadius: 12, image: nowPlaying.musicArtwork)
             VStack(alignment: .leading, spacing: 2) {
-                Text(episode.title)
+                Text(display.title)
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(2)
-                if let show = episode.show?.title {
-                    Text(show)
+                let subtitle = [display.subtitle, display.sourceLabel ?? ""].filter { !$0.isEmpty }
+                    .joined(separator: " \u{00B7} ")
+                if !subtitle.isEmpty {
+                    Text(subtitle)
                         .font(.system(size: 11))
                         .opacity(0.8)
                         .lineLimit(1)
@@ -67,8 +69,8 @@ struct DialPanelView: View {
 
     // MARK: Times
 
-    @ViewBuilder private var times: some View {
-        if let failure = player.failure {
+    @ViewBuilder private func times(_ display: NowPlayingDisplay) -> some View {
+        if display.kind == .podcast, let failure = player.failure {
             Text(failure)
                 .font(.system(size: 11, weight: .semibold))
                 .frame(maxWidth: .infinity)
@@ -76,7 +78,7 @@ struct DialPanelView: View {
             HStack {
                 Text(TimeFormat.clock(nowPlaying.displayPosition))
                 Spacer()
-                if let duration = player.duration {
+                if let duration = display.duration {
                     Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
                 }
             }
@@ -101,6 +103,30 @@ struct DialPanelView: View {
             pill("+30") { nowPlaying.skip(by: 30) }
                 .accessibilityLabel("Forward 30 seconds")
         }
+    }
+
+    /// Music: just previous and next; the dial does the scrubbing.
+    private var musicPills: some View {
+        HStack(spacing: 6) {
+            Spacer(minLength: 0)
+            glyphPill(TrackSkipGlyph(forward: false)) { nowPlaying.previous() }
+                .accessibilityLabel("Previous track")
+            glyphPill(TrackSkipGlyph(forward: true)) { nowPlaying.next() }
+                .accessibilityLabel("Next track")
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func glyphPill(_ glyph: TrackSkipGlyph, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            glyph.fill(.primary)
+                .frame(width: 14, height: 10)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .contentShape(Capsule())
+                .glassEffect(.regular.interactive(), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var chapterMenu: some View {

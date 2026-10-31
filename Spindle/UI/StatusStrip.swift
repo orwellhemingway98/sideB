@@ -21,16 +21,16 @@ struct StatusStripView: View {
     }
 
     private var progress: Double {
-        guard let duration = player.duration, duration > 0 else { return 0 }
+        guard let duration = nowPlaying.displayDuration, duration > 0 else { return 0 }
         return min(1, max(0, nowPlaying.displayPosition / duration))
     }
 
     var body: some View {
         Group {
-            if let episode = player.episode {
+            if let display = nowPlaying.display {
                 HStack(spacing: 5) {
-                    ArtworkView(cache: artwork, url: episode.show?.artworkURL,
-                                seed: episode.show?.title ?? episode.title, size: 13, cornerRadius: 3.5)
+                    ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
+                                size: 13, cornerRadius: 3.5, image: nowPlaying.musicArtwork)
                     ZStack(alignment: .leading) {
                         Capsule().fill(.primary.opacity(0.25))
                         Capsule().fill(.primary)
@@ -90,8 +90,11 @@ final class StatusStripController: NSObject {
         button.addSubview(scrollCatcher)
 
         // The hosted view has no intrinsic width, so a blank image of the right size sizes the item.
-        nowPlaying.player.$episode
-            .map { $0 != nil }
+        // objectWillChange fires before the change lands, so read the result on the next turn.
+        nowPlaying.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .map { [weak nowPlaying] in nowPlaying?.display != nil }
+            .prepend(nowPlaying.display != nil)
             .removeDuplicates()
             .sink { [weak button] open in
                 let width = open ? StatusStripView.stripWidth : StatusStripView.emptyWidth

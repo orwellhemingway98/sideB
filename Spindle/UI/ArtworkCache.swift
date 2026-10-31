@@ -39,11 +39,13 @@ struct ArtworkView: View {
     let seed: String
     let size: CGFloat
     let cornerRadius: CGFloat
+    /// An image already in hand (a song's artwork); takes precedence over `url`.
+    var image: NSImage? = nil
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         Group {
-            if let image = cache.image(for: url) {
+            if let image = image ?? cache.image(for: url) {
                 Image(nsImage: image).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
             } else {
                 Self.fallback(for: seed)

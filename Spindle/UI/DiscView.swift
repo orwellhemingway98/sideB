@@ -30,12 +30,12 @@ struct DiscView: View {
     private var center: CGPoint { CGPoint(x: Self.size / 2, y: Self.size / 2) }
 
     private var duration: TimeInterval? {
-        guard let duration = player.duration, duration > 0 else { return nil }
+        guard let duration = nowPlaying.displayDuration, duration > 0 else { return nil }
         return duration
     }
 
     private var progress: Double {
-        guard player.episode != nil, let duration else { return 0 }
+        guard nowPlaying.display != nil, let duration else { return 0 }
         return min(1, max(0, nowPlaying.displayPosition / duration))
     }
 
@@ -114,15 +114,15 @@ struct DiscView: View {
     }
 
     private var chapterAngles: [Double] {
-        guard player.episode != nil, let duration else { return [] }
+        guard nowPlaying.mode == .podcast, player.episode != nil, let duration else { return [] }
         return nowPlaying.chapters.map { min(1, max(0, $0.start / duration)) * 360 }
     }
 
     private var centreButton: some View {
-        PlayPauseGlyph(isPlaying: player.isPlaying)
+        PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
             .fill(.primary)
             .frame(width: 18, height: 20)
-            .opacity(player.episode == nil ? 0.35 : 1)
+            .opacity(nowPlaying.display == nil ? 0.35 : 1)
             .frame(width: Self.buttonSize, height: Self.buttonSize)
             .glassEffect(.regular.interactive(), in: Circle())
     }
@@ -214,3 +214,33 @@ struct PlayPauseGlyph: Shape {
         return path
     }
 }
+
+/// ⏮ / ⏭ drawn in code: two triangles and a bar.
+struct TrackSkipGlyph: Shape {
+    var forward: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let bar = rect.width * 0.14
+        let half = (rect.width - bar) / 2
+        var path = Path()
+        func triangle(from x: CGFloat) {
+            let tip = forward ? x + half : x
+            let base = forward ? x : x + half
+            path.move(to: CGPoint(x: base, y: rect.minY))
+            path.addLine(to: CGPoint(x: tip, y: rect.midY))
+            path.addLine(to: CGPoint(x: base, y: rect.maxY))
+            path.closeSubpath()
+        }
+        if forward {
+            triangle(from: rect.minX)
+            triangle(from: rect.minX + half * 0.55)
+            path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height))
+        } else {
+            path.addRect(CGRect(x: rect.minX, y: rect.minY, width: bar, height: rect.height))
+            triangle(from: rect.minX + bar + half * 0.45)
+            triangle(from: rect.minX + bar)
+        }
+        return path
+    }
+}
+
