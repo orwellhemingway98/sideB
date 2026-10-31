@@ -1,0 +1,97 @@
+import XCTest
+@testable import Spindle
+
+@MainActor
+final class PodcastPlayerTests: XCTestCase {
+    private var engine: FakeEngine!
+    private var library: LibraryStore!
+    private var player: PodcastPlayer!
+    private var a: Episode!
+    private var b: Episode!
+
+    override func setUp() async throws {
+        let feed = URL(string: "https://example.com/feed")!
+        let fetcher = StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)])
+        library = LibraryStore.inMemory(fetcher: fetcher)
+        let show = try await library.follow(feedURL: feed)
+        let episodes = library.episodes(of: show)
+        a = episodes[0]
+        b = episodes[1]
+        engine = FakeEngine()
+        player = PodcastPlayer(engine: engine, library: library)
+    }
+
+    func testOpenResumesThreeSecondsEarly() {
+        a.position = 600
+        player.open(a, autoplay: false)
+        XCTAssertEqual(engine.loads.last?.time, 597)
+        XCTAssertEqual(engine.loads.last?.url, a.playableURL)
+        XCTAssertEqual(engine.playCount, 0)
+    }
+
+    func testSavesEveryFiveSecondsWhilePlaying() {
+        player.open(a, autoplay: true)
+        engine.fireTime(1); engine.fireTime(3)
+        XCTAssertEqual(a.position, 0)
+        engine.fireTime(6)
+        XCTAssertEqual(a.position, 6)
+    }
+
+    func testPauseSavesImmediately() {
+        player.open(a, autoplay: true)
+        engine.fireTime(602)
+        player.pause()
+        XCTAssertEqual(a.position, 602)
+    }
+
+    func testSwitchingEpisodeSavesTheOldOne() {
+        player.open(a, autoplay: true)
+        engine.fireTime(900)
+        player.open(b, autoplay: true)
+        XCTAssertEqual(a.position, 900)
+        XCTAssertEqual(player.episode?.guid, b.guid)
+    }
+
+    func testFinishingMarksPlayedAndPlaysNext() {
+        library.enqueue(b)
+        player.open(a, autoplay: true)
+        let plays = engine.playCount
+        engine.fireEnd()
+        XCTAssertTrue(a.played)
+        XCTAssertEqual(a.position, 0)
+        XCTAssertEqual(player.episode?.guid, b.guid)
+        XCTAssertEqual(engine.playCount, plays + 1)
+    }
+
+    func testOfflineKeepsPlaceAndSaysSo() {
+        player.open(a, autoplay: true)
+        engine.fireFailure(URLError(.notConnectedToInternet))
+        XCTAssertEqual(player.failure, "Offline")
+        XCTAssertEqual(player.episode?.guid, a.guid)
+    }
+
+    func testDeadLinkSkipsToNext() {
+        library.enqueue(b)
+        player.open(a, autoplay: true)
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        XCTAssertEqual(player.failure, "Unavailable")
+        XCTAssertEqual(player.episode?.guid, b.guid)
+    }
+
+    func testPlayAfterOfflineReloadsAtTheSavedPlace() {
+        player.open(a, autoplay: true)
+        engine.fireTime(700)
+        engine.fireFailure(URLError(.notConnectedToInternet))
+        player.play()
+        XCTAssertEqual(engine.loads.last?.time, 697)
+        XCTAssertEqual(engine.loads.count, 2)
+        XCTAssertNil(player.failure)
+    }
+
+    func testCycleRateSetsEngineRate() {
+        player.open(a, autoplay: false)
+        player.cycleRate(); player.cycleRate()
+        XCTAssertEqual(engine.rate, 1.5)
+        XCTAssertEqual(player.rate, 1.5)
+    }
+}
