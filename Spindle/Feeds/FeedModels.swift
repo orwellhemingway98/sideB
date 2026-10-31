@@ -1,11 +1,11 @@
 import Foundation
 
-struct Chapter: Codable, Equatable {
+struct Chapter: Codable, Equatable, Sendable {
     let start: TimeInterval
     let title: String
 }
 
-struct ParsedFeed: Equatable {
+struct ParsedFeed: Equatable, Sendable {
     let title: String
     let author: String?
     let artworkURL: URL?
@@ -13,7 +13,7 @@ struct ParsedFeed: Equatable {
     let episodes: [ParsedEpisode]
 }
 
-struct ParsedEpisode: Equatable {
+struct ParsedEpisode: Equatable, Sendable {
     let guid: String
     let title: String
     let published: Date?

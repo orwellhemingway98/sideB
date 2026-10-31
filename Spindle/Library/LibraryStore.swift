@@ -87,9 +87,9 @@ final class LibraryStore: ObservableObject {
     func follow(feedURL: URL) async throws -> Show {
         if let existing = existingShow(for: feedURL) { return existing }
         let parsed: ParsedFeed
-        do {
-            parsed = try FeedParser.parse(try await fetcher.data(from: feedURL))
-        } catch {
+        switch await Self.fetchAndParse(feedURL, with: fetcher) {
+        case .success(let feed): parsed = feed
+        case .failure(let error):
             throw Connectivity.isOffline(error) ? LibraryError.offline : LibraryError.invalidFeed
         }
         // Another follow of the same feed may have finished while we were fetching.
@@ -106,20 +106,20 @@ final class LibraryStore: ObservableObject {
     // MARK: Refresh
 
     func refresh(_ show: Show) async {
-        let result = await Self.fetch(show.feedURL, with: fetcher)
+        let result = await Self.fetchAndParse(show.feedURL, with: fetcher)
         finish(show, with: result)
     }
 
     func refreshAll() async {
         let targets = shows.map { (show: $0, url: $0.feedURL) }
         let fetcher = self.fetcher
-        await withTaskGroup(of: (Int, Result<Data, Error>).self) { group in
+        await withTaskGroup(of: (Int, Result<ParsedFeed, Error>).self) { group in
             var next = 0
             func startNext() {
                 guard next < targets.count else { return }
                 let index = next, url = targets[next].url
                 next += 1
-                group.addTask { (index, await Self.fetch(url, with: fetcher)) }
+                group.addTask { (index, await Self.fetchAndParse(url, with: fetcher)) }
             }
             for _ in 0..<2 { startNext() }
             while let (index, result) = await group.next() {
@@ -129,14 +129,16 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    private nonisolated static func fetch(_ url: URL, with fetcher: HTTPFetching) async -> Result<Data, Error> {
-        do { return .success(try await fetcher.data(from: url)) } catch { return .failure(error) }
+    /// Fetches and parses away from the main actor, so a big feed never stalls the UI.
+    private nonisolated static func fetchAndParse(_ url: URL, with fetcher: HTTPFetching) async -> Result<ParsedFeed, Error> {
+        do { return .success(try FeedParser.parse(try await fetcher.data(from: url))) } catch { return .failure(error) }
     }
 
-    private func finish(_ show: Show, with result: Result<Data, Error>) {
+    /// Applies a refresh result on the main actor.
+    private func finish(_ show: Show, with result: Result<ParsedFeed, Error>) {
         objectWillChange.send()
         do {
-            let parsed = try FeedParser.parse(try result.get())
+            let parsed = try result.get()
             apply(parsed, to: show)
             show.lastError = nil
             show.errorSince = nil

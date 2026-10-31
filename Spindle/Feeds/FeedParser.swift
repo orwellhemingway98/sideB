@@ -1,7 +1,11 @@
 import Foundation
 
 enum FeedParser {
+    /// Tests only: told whether each parse ran on the main thread.
+    nonisolated(unsafe) static var parseObserver: ((Bool) -> Void)?
+
     static func parse(_ data: Data) throws -> ParsedFeed {
+        parseObserver?(Thread.isMainThread)
         let parser = XMLParser(data: strippingLeadingNoise(data))
         parser.shouldProcessNamespaces = true
         let delegate = FeedXMLDelegate()
