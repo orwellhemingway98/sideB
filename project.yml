@@ -21,8 +21,13 @@ targets:
         CFBundleVersion: "2"
         LSApplicationCategoryType: public.app-category.music
         LSUIElement: true
+        NSAppleEventsUsageDescription: "Spindle controls Apple Music and Spotify so it can show what's playing and play, pause, skip or scrub it."
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsForMedia: true
+    entitlements:
+      path: Spindle/App/Spindle.entitlements
+      properties:
+        com.apple.security.automation.apple-events: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mfelouro.Spindle

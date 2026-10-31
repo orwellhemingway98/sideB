@@ -29,5 +29,7 @@
 		<key>NSAllowsArbitraryLoadsForMedia</key>
 		<true/>
 	</dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Spindle controls Apple Music and Spotify so it can show what's playing and play, pause, skip or scrub it.</string>
 </dict>
 </plist>
