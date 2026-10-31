@@ -1,12 +1,19 @@
 import Combine
 import Foundation
 
-/// The one object the dial, the windows and the media keys talk to.
+/// Who the dial is steering: the podcast, or whatever Apple Music or Spotify is playing.
+enum PlaybackMode: Equatable {
+    case podcast, music
+}
+
+/// The one object the dial, the windows and the media keys talk to. Podcasts and music take turns:
+/// whichever was started most recently is in control.
 @MainActor
 final class NowPlaying: ObservableObject {
     static let commitDelay: TimeInterval = 0.15
 
     let player: PodcastPlayer
+    let music: MusicRemote?
     private let media: MediaCenterPublishing
     private let haptics: HapticPerforming
     private let schedule: (TimeInterval, @escaping @MainActor () -> Void) -> Void
@@ -21,11 +28,14 @@ final class NowPlaying: ObservableObject {
 
     @Published private(set) var chapters: [Chapter] = []
     @Published private(set) var scrubPosition: TimeInterval?
+    @Published private(set) var mode: PlaybackMode = .podcast
 
     init(player: PodcastPlayer, media: MediaCenterPublishing, haptics: HapticPerforming,
          schedule: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> Void,
-         now: @escaping () -> TimeInterval, loadChapters: @escaping (Episode) async -> [Chapter]) {
+         now: @escaping () -> TimeInterval, loadChapters: @escaping (Episode) async -> [Chapter],
+         music: MusicRemote? = nil) {
         self.player = player
+        self.music = music
         self.media = media
         self.haptics = haptics
         self.schedule = schedule
@@ -36,14 +46,77 @@ final class NowPlaying: ObservableObject {
 
         // Published values arrive before they are stored, so each sink passes its own new value along.
         player.$episode.dropFirst().sink { [weak self] in self?.episodeChanged($0) }.store(in: &cancellables)
-        player.$isPlaying.dropFirst().sink { [weak self] in self?.publish(isPlaying: $0) }.store(in: &cancellables)
+        player.$isPlaying.dropFirst().sink { [weak self] playing in
+            if playing { self?.podcastStarted() }
+            self?.publish(isPlaying: playing)
+        }.store(in: &cancellables)
         player.$rate.dropFirst().sink { [weak self] in self?.publish(rate: $0) }.store(in: &cancellables)
         // A stream without a feed duration learns its length after it starts; tell the media center then.
         player.$engineDuration.compactMap { $0 }.sink { [weak self] _ in self?.publish() }.store(in: &cancellables)
         player.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }.store(in: &cancellables)
+
+        if let music {
+            music.$isPlaying.dropFirst().removeDuplicates().sink { [weak self] playing in
+                if playing { self?.musicStarted() }
+            }.store(in: &cancellables)
+            music.$track.map { $0?.trackID }.removeDuplicates().dropFirst().sink { [weak self] id in
+                self?.musicTrackChanged(to: id)
+            }.store(in: &cancellables)
+            music.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }.store(in: &cancellables)
+            if music.isPlaying, !player.isPlaying { mode = .music }
+        }
     }
 
-    var displayPosition: TimeInterval { scrubPosition ?? player.position }
+    // MARK: Who's in control
+
+    /// Music started (seen by polling): the podcast pauses, keeping its place, and the dial follows the music.
+    private func musicStarted() {
+        guard mode != .music || player.isPlaying else { return }
+        dropScrub()
+        mode = .music
+        if player.isPlaying { player.pause() }
+        media.publish(nil)  // the music app publishes its own Now Playing
+    }
+
+    /// A podcast started: the music pauses and the dial follows the podcast again.
+    private func podcastStarted() {
+        if music?.isPlaying == true { music?.pause() }
+        guard mode != .podcast else { return }
+        dropScrub()
+        mode = .podcast
+        publish()
+    }
+
+    private func musicTrackChanged(to id: String?) {
+        guard mode == .music else { return }
+        dropScrub()
+        if id == nil {
+            // The music went away (app quit, nothing loaded): back to the podcast, still paused.
+            mode = .podcast
+            publish()
+        }
+    }
+
+    /// Forgets a pending scrub: it belonged to what was playing before.
+    private func dropScrub() {
+        generation += 1
+        scrubPosition = nil
+        dial.reset()
+    }
+
+    var displayPosition: TimeInterval {
+        if let scrubPosition { return scrubPosition }
+        return mode == .music ? music?.track?.position ?? 0 : player.position
+    }
+
+    /// The length of whatever the dial is steering.
+    var displayDuration: TimeInterval? {
+        mode == .music ? music?.track?.duration : player.duration
+    }
+
+    private var hasSomethingToSteer: Bool {
+        mode == .music ? music?.track != nil : player.episode != nil
+    }
 
     var currentChapter: Chapter? {
         let position = displayPosition
@@ -53,11 +126,11 @@ final class NowPlaying: ObservableObject {
     // MARK: Dial
 
     func turn(degrees: Double) {
-        guard player.episode != nil else { return }
+        guard hasSomethingToSteer else { return }
         let time = now()
         let position = displayPosition
-        let step = dial.turn(degrees: degrees, at: time, position: position,
-                             duration: player.duration, chapters: chapters.map(\.start))
+        let step = dial.turn(degrees: degrees, at: time, position: position, duration: displayDuration,
+                             chapters: mode == .music ? [] : chapters.map(\.start))
         if let kind = limiter.next(for: step.detents, at: time) { haptics.perform(kind) }
         scrubPosition = position + step.seek
         generation += 1
@@ -69,20 +142,24 @@ final class NowPlaying: ObservableObject {
     }
 
     func jump(to time: TimeInterval) {
-        guard player.episode != nil else { return }
+        guard hasSomethingToSteer else { return }
         generation += 1
         var target = max(0, time)
-        if let duration = player.duration { target = min(target, duration) }
-        player.seek(to: target)
+        if let duration = displayDuration { target = min(target, duration) }
+        seek(to: target)
         scrubPosition = nil
         publish()
     }
 
     private func commit() {
         guard let target = scrubPosition else { return }
-        player.seek(to: target)
+        seek(to: target)
         scrubPosition = nil
         publish()
+    }
+
+    private func seek(to target: TimeInterval) {
+        if mode == .music { music?.setPosition(target) } else { player.seek(to: target) }
     }
 
     // MARK: Transport
@@ -97,7 +174,20 @@ final class NowPlaying: ObservableObject {
 
     func toggle() {
         flushScrub()
-        player.toggle()
+        if mode == .music { music?.playPause() } else { player.toggle() }
+    }
+
+    /// The music's previous and next tracks (podcasts have no such thing).
+    func next() {
+        guard mode == .music else { return }
+        dropScrub()
+        music?.next()
+    }
+
+    func previous() {
+        guard mode == .music else { return }
+        dropScrub()
+        music?.previous()
     }
 
     /// Starts from what the dial shows and wins over any pending scrub commit.
@@ -109,7 +199,11 @@ final class NowPlaying: ObservableObject {
 
     func play(_ episode: Episode) {
         flushScrub()
+        // Opening starts playback, which hands control to the podcast; if it was already playing,
+        // isPlaying doesn't change, so hand control over here.
+        let wasPlaying = player.isPlaying
         player.open(episode, autoplay: true)
+        if wasPlaying { podcastStarted() }
         publish()
     }
 
@@ -123,6 +217,8 @@ final class NowPlaying: ObservableObject {
     }
 
     private func handle(_ command: MediaCommand) {
+        // In music mode Spindle publishes nothing, so these belong to the podcast only.
+        guard mode == .podcast else { return }
         switch command {
         case .play: flushScrub(); player.play()
         case .pause: flushScrub(); player.pause()
@@ -145,7 +241,7 @@ final class NowPlaying: ObservableObject {
             media.publish(nil)
             return
         }
-        publish(episode: episode, position: 0)
+        if mode == .podcast { publish(episode: episode, position: 0) }
         chapterTask = Task { [weak self, loadChapters] in
             let loaded = await loadChapters(episode)
             guard let self, !Task.isCancelled, self.player.episode === episode else { return }
@@ -156,6 +252,7 @@ final class NowPlaying: ObservableObject {
     // MARK: Publishing
 
     private func publish(isPlaying: Bool? = nil, rate: Float? = nil) {
+        guard mode == .podcast else { return }
         guard let episode = player.episode else {
             media.publish(nil)
             return
