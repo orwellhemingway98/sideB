@@ -61,9 +61,12 @@ final class StatusStripController: NSObject {
     private let nowPlaying: NowPlaying
     private let panel: DialPanelController
     private let onLibrary: () -> Void
+    private let floatingDial: FloatingDialController?
     private var cancellables: Set<AnyCancellable> = []
 
-    init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void) {
+    init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void,
+         floatingDial: FloatingDialController? = nil) {
+        self.floatingDial = floatingDial
         self.nowPlaying = nowPlaying
         self.panel = panel
         self.onLibrary = onLibrary
@@ -116,6 +119,12 @@ final class StatusStripController: NSObject {
         let library = NSMenuItem(title: "Open Library\u{2026}", action: #selector(openLibrary), keyEquivalent: "")
         library.target = self
         menu.addItem(library)
+        if let floatingDial {
+            let title = floatingDial.isShown ? "Put Dial Back" : "Show Floating Dial"
+            let dial = NSMenuItem(title: title, action: #selector(toggleFloatingDial), keyEquivalent: "")
+            dial.target = self
+            menu.addItem(dial)
+        }
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Spindle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
@@ -126,6 +135,11 @@ final class StatusStripController: NSObject {
     }
 
     @objc private func openLibrary() { onLibrary() }
+
+    @objc private func toggleFloatingDial() {
+        guard let floatingDial else { return }
+        if floatingDial.isShown { floatingDial.putBack() } else { floatingDial.show() }
+    }
 }
 
 /// Draws, but never takes the mouse: clicks fall through to the status button.

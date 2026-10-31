@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var artwork: ArtworkCache?
     private var downloads: DownloadManager?
     private var scheduler: RefreshScheduler?
+    private var music: MusicRemote?
+    private var floatingDial: FloatingDialController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.isRunningTests { return }
@@ -37,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let player = PodcastPlayer(engine: engine, library: library)
         let media = MediaCenter()
         let haptics = Haptics()
+        let music = MusicRemote(sources: [AppleMusicSource(), SpotifySource()])
         let nowPlaying = NowPlaying(
             player: player, media: media, haptics: haptics,
             schedule: { delay, work in
@@ -51,12 +54,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return await ChapterLoader.load(chaptersURL: chaptersURL, inline: inline,
                                                 audioChapters: { await AudioFileChapters.read(from: audioURL) },
                                                 fetcher: fetcher)
-            })
+            },
+            music: music)
         let artwork = ArtworkCache()
+        let placement = DialPlacement()
+        let floatingDial = FloatingDialController(nowPlaying: nowPlaying, placement: placement,
+                                                  onPutBack: {}, onLibrary: { [weak self] in self?.showLibrary() })
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,
-                                        onLibrary: { [weak self] in self?.showLibrary() })
+                                        onLibrary: { [weak self] in self?.showLibrary() },
+                                        onPopOut: { [weak self] in self?.popOutDial() })
         let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
-                                          onLibrary: { [weak self] in self?.showLibrary() })
+                                          onLibrary: { [weak self] in self?.showLibrary() },
+                                          floatingDial: floatingDial)
 
         // Downloads live beside the library store, in Application Support/Spindle/Episodes.
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -71,6 +80,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             cleanUp()
         })
 
+        self.music = music
+        self.floatingDial = floatingDial
         self.fetcher = fetcher
         self.artwork = artwork
         self.downloads = downloads
@@ -86,11 +97,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         cleanUp()
         scheduler.start()
+        // The first poll of a running music app makes macOS ask for Automation permission, once.
+        music.start()
+        if placement.isPoppedOut { floatingDial.show() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying?.flushScrub()
         player?.saveNow()
+    }
+
+    private func popOutDial() {
+        panel?.close()
+        floatingDial?.show()
     }
 
     /// Opens (creating once) the Library window and brings Spindle forward.

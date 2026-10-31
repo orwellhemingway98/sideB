@@ -36,3 +36,19 @@ Open the Library from the dial's **Library** pill, or right-click the menu bar s
 - **Import OPML…:** brings in the shows you follow in another podcast app. Export an OPML
   file from that app first (often under Settings or Library › Export).
 
+## Music (stage 3)
+
+Spindle is also a remote for **Apple Music** and **Spotify**. When one of them is playing, the dial shows the
+song, artist and artwork, turning it scrubs through the song, and the panel offers previous and next.
+The first time Spindle sees Music or Spotify running, macOS asks whether Spindle may control it: choose
+**Allow** (System Settings › Privacy & Security › Automation lets you change it later).
+
+Whichever you started last is in control: starting music pauses your podcast and keeps its place, and
+starting a podcast pauses the music.
+
+## Floating dial
+
+Choose **Pop out ↗** in the dial panel (or **Show Floating Dial** from the menu bar strip's right-click
+menu) to float the disc anywhere on screen. Drag it by the bar beneath the disc; it remembers where you
+left it. Right-click it and choose **Put Back** to return it to the menu bar.
+
