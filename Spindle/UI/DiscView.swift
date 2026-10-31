@@ -52,16 +52,16 @@ struct DiscView: View {
         .contentShape(Circle())
         .gesture(dragGesture.exclusively(before: tapGesture))
         .simultaneousGesture(rotateGesture)
+        .background(ScrollAnchor(monitor: scroll))
         .onHover { inside in
             if inside {
-                scroll.install { [nowPlaying] event in
-                    nowPlaying.turn(degrees: ScrollTurning.degrees(for: event))
-                }
+                scroll.install { [nowPlaying] degrees in nowPlaying.turn(degrees: degrees) }
             } else {
                 scroll.remove()
             }
         }
         .onDisappear { scroll.remove() }
+        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in scroll.remove() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Dial")
         .accessibilityAddTraits(.isButton)
@@ -122,19 +122,24 @@ struct DiscView: View {
 
     // MARK: Gestures
 
-    /// Two fingers turning on the trackpad. SwiftUI's rotation grows counter-clockwise, so it is negated
-    /// to make clockwise positive, and only the change since the last event is fed in.
+    /// The sign that makes a clockwise twist turn clockwise. A positive SwiftUI `Angle` is clockwise on screen
+    /// (Apple's example feeds `RotateGesture`'s rotation straight into `rotationEffect`), so it should be 1;
+    /// the Task 11 hand check confirms it.
+    static let rotateSign: Double = 1
+
+    /// Two fingers turning on the trackpad. Only the change since the last event is fed in.
     private var rotateGesture: some Gesture {
         RotateGesture()
             .onChanged { value in
                 let previous = lastRotation ?? .zero
                 lastRotation = value.rotation
-                nowPlaying.turn(degrees: -(value.rotation - previous).degrees)
+                nowPlaying.turn(degrees: Self.rotateSign * (value.rotation - previous).degrees)
             }
             .onEnded { _ in lastRotation = nil }
     }
 
-    /// Dragging round the ring. Drags that start off the ring band (on the centre button, say) don't turn.
+    /// Dragging round the ring. Drags that start off the ring band (on the centre button, say) don't turn;
+    /// one that starts and ends on the centre button is a press that drifted, so it still plays or pauses.
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
@@ -150,7 +155,11 @@ struct DiscView: View {
                 dragAngle = current
                 nowPlaying.turn(degrees: DialGeometry.delta(from: previous, to: current))
             }
-            .onEnded { _ in
+            .onEnded { value in
+                if dragAngle == nil, distance(of: value.startLocation) <= Self.centreRadius,
+                   distance(of: value.location) <= Self.centreRadius {
+                    nowPlaying.toggle()
+                }
                 dragAngle = nil
                 dragIgnored = false
             }
@@ -196,33 +205,5 @@ struct PlayPauseGlyph: Shape {
             path.closeSubpath()
         }
         return path
-    }
-}
-
-/// Converts a scroll into degrees of turn: scrolling down turns clockwise.
-enum ScrollTurning {
-    static func degrees(for event: NSEvent) -> Double {
-        let points = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.deltaY * 10
-        return -Double(points) * DialGeometry.scrollDegreesPerPoint
-    }
-}
-
-/// A local scroll-wheel monitor that runs while the pointer is over the disc and swallows the events,
-/// so the panel never scrolls instead.
-@MainActor
-final class ScrollMonitor {
-    private var monitor: Any?
-
-    func install(_ handler: @escaping @MainActor (NSEvent) -> Void) {
-        remove()
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-            MainActor.assumeIsolated { handler(event) }
-            return nil
-        }
-    }
-
-    func remove() {
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        monitor = nil
     }
 }

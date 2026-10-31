@@ -77,7 +77,7 @@ struct DialPanelView: View {
                 Text(TimeFormat.clock(nowPlaying.displayPosition))
                 Spacer()
                 if let duration = player.duration {
-                    Text(TimeFormat.remaining(duration - nowPlaying.displayPosition))
+                    Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
                 }
             }
             .font(.system(size: 11).monospacedDigit())
@@ -206,6 +206,9 @@ private final class DialPanelWindow: NSPanel {
 /// Owns the dial panel: shows it under the status button, closes it on an outside click or Escape.
 @MainActor
 final class DialPanelController {
+    /// Posted when the panel closes, so the disc drops its scroll monitor even with the pointer still over it.
+    static let didClose = Notification.Name("DialPanelController.didClose")
+
     private let panel: DialPanelWindow
     private var outsideClickMonitor: Any?
     private var escapeMonitor: Any?
@@ -253,6 +256,11 @@ final class DialPanelController {
     func close() {
         removeMonitors()
         panel.orderOut(nil)
+        NotificationCenter.default.post(name: Self.didClose, object: self)
+    }
+
+    isolated deinit {
+        removeMonitors()
     }
 
     private func installMonitors() {

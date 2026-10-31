@@ -73,6 +73,7 @@ final class StatusStripController: NSObject {
         button.setAccessibilityLabel("Spindle")
 
         let hosting = PassThroughHostingView(rootView: StatusStripView(nowPlaying: nowPlaying, artwork: artwork))
+        hosting.sizingOptions = []
         hosting.frame = button.bounds
         hosting.autoresizingMask = [.width, .height]
         button.addSubview(hosting)
