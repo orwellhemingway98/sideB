@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import Spindle
 
@@ -98,5 +99,38 @@ final class LibraryStoreTests: XCTestCase {
         store.markPlayed(ep)
         XCTAssertTrue(ep.played)
         XCTAssertEqual(ep.position, 0)
+    }
+
+    func testMutationsNotifyObservers() async throws {
+        let store = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
+        var count = 0
+        let subscription = store.objectWillChange.sink { count += 1 }
+        defer { subscription.cancel() }
+
+        var before = count
+        let show = try await store.follow(feedURL: feedURL)
+        XCTAssertGreaterThan(count, before)
+
+        let ep = try XCTUnwrap(store.episodes(of: show).first)
+        before = count
+        store.enqueue(ep)
+        XCTAssertGreaterThan(count, before)
+
+        before = count
+        _ = store.popNext()
+        XCTAssertGreaterThan(count, before)
+
+        before = count
+        store.savePosition(10, of: ep)
+        XCTAssertGreaterThan(count, before)
+    }
+
+    func testLastEpisodeGUIDRoundTrips() {
+        let store = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
+        XCTAssertNil(store.lastEpisodeGUID)
+        store.lastEpisodeGUID = "lq-112"
+        XCTAssertEqual(store.lastEpisodeGUID, "lq-112")
+        let other = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
+        XCTAssertNil(other.lastEpisodeGUID)
     }
 }

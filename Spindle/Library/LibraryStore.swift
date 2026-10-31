@@ -11,10 +11,12 @@ final class LibraryStore: ObservableObject {
     private let fetcher: HTTPFetching
     private let defaults: UserDefaults
     private let now: () -> Date
+    private let ephemeralSuite: String?
     private var context: ModelContext { container.mainContext }
 
     init(container: ModelContainer, fetcher: HTTPFetching, defaults: UserDefaults = .standard,
-         now: @escaping () -> Date = Date.init) {
+         now: @escaping () -> Date = Date.init, ephemeralSuite: String? = nil) {
+        self.ephemeralSuite = ephemeralSuite
         self.container = container
         self.fetcher = fetcher
         self.defaults = defaults
@@ -30,7 +32,11 @@ final class LibraryStore: ObservableObject {
         let container = try! makeContainer(ModelConfiguration(isStoredInMemoryOnly: true))
         let suite = "spindle.tests.\(UUID().uuidString)"
         return LibraryStore(container: container, fetcher: fetcher,
-                            defaults: UserDefaults(suiteName: suite)!, now: now)
+                            defaults: UserDefaults(suiteName: suite)!, now: now, ephemeralSuite: suite)
+    }
+
+    deinit {
+        if let suite = ephemeralSuite { UserDefaults.standard.removePersistentDomain(forName: suite) }
     }
 
     /// The app's store: Application Support/Spindle/Library.store.
@@ -87,6 +93,7 @@ final class LibraryStore: ObservableObject {
         }
         // Another follow of the same feed may have finished while we were fetching.
         if let existing = existingShow(for: feedURL) { return existing }
+        objectWillChange.send()
         let show = Show(feedURL: feedURL, title: parsed.title)
         context.insert(show)
         apply(parsed, to: show)
@@ -126,6 +133,7 @@ final class LibraryStore: ObservableObject {
     }
 
     private func finish(_ show: Show, with result: Result<Data, Error>) {
+        objectWillChange.send()
         do {
             let parsed = try FeedParser.parse(try result.get())
             apply(parsed, to: show)
@@ -133,7 +141,7 @@ final class LibraryStore: ObservableObject {
             show.errorSince = nil
             show.lastUpdated = now()
         } catch {
-            show.lastError = String(describing: error)
+            show.lastError = error.localizedDescription
             if show.errorSince == nil { show.errorSince = now() }
         }
         save()
@@ -181,11 +189,13 @@ final class LibraryStore: ObservableObject {
     func enqueue(_ episode: Episode) {
         let current = entries
         guard !current.contains(where: { $0.episode?.persistentModelID == episode.persistentModelID }) else { return }
+        objectWillChange.send()
         context.insert(UpNextEntry(episode: episode, order: (current.last?.order ?? 0) + 1))
         save()
     }
 
     func remove(fromUpNext episode: Episode) {
+        objectWillChange.send()
         for entry in entries where entry.episode?.persistentModelID == episode.persistentModelID {
             context.delete(entry)
         }
@@ -194,6 +204,7 @@ final class LibraryStore: ObservableObject {
 
     func popNext() -> Episode? {
         guard let first = entries.first else { return nil }
+        objectWillChange.send()
         let episode = first.episode
         context.delete(first)
         save()
@@ -203,11 +214,13 @@ final class LibraryStore: ObservableObject {
     // MARK: Playback state
 
     func savePosition(_ position: TimeInterval, of episode: Episode) {
+        objectWillChange.send()
         episode.position = position
         save()
     }
 
     func markPlayed(_ episode: Episode) {
+        objectWillChange.send()
         episode.played = true
         episode.position = 0
         save()
