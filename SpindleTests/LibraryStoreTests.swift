@@ -167,12 +167,12 @@ final class LibraryStoreTests: XCTestCase {
     func testParsingHappensOffTheMainActor() async throws {
         let lock = NSLock()
         var onMain: [Bool] = []
-        FeedParser.parseObserver = { value in lock.lock(); onMain.append(value); lock.unlock() }
+        FeedParser.parseObserver = { value in lock.withLock { onMain.append(value) } }
         defer { FeedParser.parseObserver = nil }
         let store = makeStore(StubFetcher(json: SampleFeeds.longQuiet))
         _ = try await store.follow(feedURL: feedURL)
         await store.refreshAll()
-        lock.lock(); let seen = onMain; lock.unlock()
+        let seen = lock.withLock { onMain }
         XCTAssertEqual(seen.count, 2, "follow and refresh each parse once")
         XCTAssertEqual(seen, [false, false], "feeds are parsed off the main thread")
     }
