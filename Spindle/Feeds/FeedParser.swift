@@ -16,7 +16,7 @@ enum FeedParser {
 }
 
 /// Drops a UTF-8 BOM and leading whitespace, which XMLParser rejects before the XML declaration.
-private func strippingLeadingNoise(_ data: Data) -> Data {
+func strippingLeadingNoise(_ data: Data) -> Data {
     var rest = data[...]
     if rest.starts(with: [0xEF, 0xBB, 0xBF]) { rest = rest.dropFirst(3) }
     rest = rest.drop { [0x20, 0x09, 0x0A, 0x0D].contains($0) }

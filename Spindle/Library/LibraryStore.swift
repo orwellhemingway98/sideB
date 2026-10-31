@@ -122,6 +122,30 @@ final class LibraryStore: ObservableObject {
         return show
     }
 
+    /// Follows every feed, two at a time; shows already followed are counted, not fetched again.
+    func importFeeds(_ urls: [URL]) async -> ImportSummary {
+        var summary = ImportSummary()
+        let fresh = urls.filter { url in
+            if existingShow(for: url) != nil { summary.alreadyFollowed += 1; return false }
+            return true
+        }
+        await withTaskGroup(of: Bool.self) { group in
+            var next = 0
+            func startNext() {
+                guard next < fresh.count else { return }
+                let url = fresh[next]
+                next += 1
+                group.addTask { @MainActor in (try? await self.follow(feedURL: url)) != nil }
+            }
+            for _ in 0..<2 { startNext() }
+            while let followed = await group.next() {
+                if followed { summary.followed += 1 } else { summary.failed += 1 }
+                startNext()
+            }
+        }
+        return summary
+    }
+
     // MARK: Refresh
 
     func refresh(_ show: Show) async {
