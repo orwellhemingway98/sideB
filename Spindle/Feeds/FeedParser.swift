@@ -2,13 +2,21 @@ import Foundation
 
 enum FeedParser {
     static func parse(_ data: Data) throws -> ParsedFeed {
-        let parser = XMLParser(data: data)
+        let parser = XMLParser(data: strippingLeadingNoise(data))
         parser.shouldProcessNamespaces = true
         let delegate = FeedXMLDelegate()
         parser.delegate = delegate
         guard parser.parse(), delegate.sawRSS else { throw FeedError.notAFeed }
         return delegate.feed()
     }
+}
+
+/// Drops a UTF-8 BOM and leading whitespace, which XMLParser rejects before the XML declaration.
+private func strippingLeadingNoise(_ data: Data) -> Data {
+    var rest = data[...]
+    if rest.starts(with: [0xEF, 0xBB, 0xBF]) { rest = rest.dropFirst(3) }
+    rest = rest.drop { [0x20, 0x09, 0x0A, 0x0D].contains($0) }
+    return Data(rest)
 }
 
 private final class FeedXMLDelegate: NSObject, XMLParserDelegate {
@@ -42,12 +50,26 @@ private final class FeedXMLDelegate: NSObject, XMLParserDelegate {
     private var item: ItemDraft?
     private var episodes: [ParsedEpisode] = []
 
-    private static let dateFormatter: DateFormatter = {
+    private static let dateFormatters: [DateFormatter] = [
+        "EEE, dd MMM yyyy HH:mm:ss Z", "dd MMM yyyy HH:mm:ss Z",
+        "EEE, dd MMM yyyy HH:mm Z", "dd MMM yyyy HH:mm Z",
+        "EEE, dd MMM yyyy HH:mm:ss zzz", "dd MMM yyyy HH:mm:ss zzz",
+        "EEE, dd MMM yyyy HH:mm zzz", "dd MMM yyyy HH:mm zzz",
+    ].map {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        f.dateFormat = $0
         return f
-    }()
+    }
+
+    private static func date(_ text: String) -> Date? {
+        for f in dateFormatters { if let d = f.date(from: text) { return d } }
+        return nil
+    }
+
+    private func url(_ attribute: String?) -> URL? {
+        attribute.flatMap { URL(string: $0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
 
     func feed() -> ParsedFeed {
         ParsedFeed(title: title, author: nonEmpty(author), artworkURL: itunesImage ?? imageURL,
@@ -66,18 +88,18 @@ private final class FeedXMLDelegate: NSObject, XMLParserDelegate {
         case ("", "item") where path.count == 3:
             item = ItemDraft()
         case ("", "enclosure") where inItem:
-            if let url = attributes["url"].flatMap({ URL(string: $0) }) {
+            if let url = url(attributes["url"]) {
                 item?.enclosureURL = url
                 item?.enclosureType = attributes["type"]
             }
         case (Self.podcast, "chapters") where inItem:
-            item?.chaptersURL = attributes["url"].flatMap { URL(string: $0) }
+            item?.chaptersURL = url(attributes["url"])
         case (Self.psc, "chapter") where inItem:
             if let start = attributes["start"].flatMap(DurationParser.seconds) {
                 item?.chapters.append(Chapter(start: start, title: attributes["title"] ?? ""))
             }
         case (Self.itunes, "image") where !inItem && path.count == 3:
-            itunesImage = attributes["href"].flatMap { URL(string: $0) }
+            if let href = url(attributes["href"]) { itunesImage = href }
         default:
             break
         }
@@ -117,7 +139,7 @@ private final class FeedXMLDelegate: NSObject, XMLParserDelegate {
             switch (ns, name) {
             case ("", "title"): item?.title = value
             case ("", "guid"): item?.guid = value
-            case ("", "pubDate"): item?.published = Self.dateFormatter.date(from: value)
+            case ("", "pubDate"): item?.published = Self.date(value)
             case ("", "description"): item?.description = value
             case (Self.itunes, "summary"): item?.itunesSummary = value
             case (Self.itunes, "duration"): item?.duration = DurationParser.seconds(value)
