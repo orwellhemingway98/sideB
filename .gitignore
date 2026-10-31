@@ -1,0 +1,5 @@
+*.xcodeproj/
+build.noindex/
+.DS_Store
+xcuserdata/
+.superpowers/
