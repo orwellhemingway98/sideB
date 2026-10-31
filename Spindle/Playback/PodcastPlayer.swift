@@ -15,6 +15,8 @@ final class PodcastPlayer: ObservableObject {
     private var lastSaved: TimeInterval = 0
     private var finished = false
     private var needsReload = false
+    /// Set when a dead link skipped to the next episode; a repeat failure for the old item is ignored until that one plays.
+    private var skippedForFailure = false
 
     init(engine: AudioEngine, library: LibraryStore) {
         self.engine = engine
@@ -34,6 +36,7 @@ final class PodcastPlayer: ObservableObject {
         failure = nil
         finished = false
         needsReload = false
+        skippedForFailure = false
         load(episode)
         engine.rate = rate
         library.lastEpisodeGUID = episode.guid
@@ -41,7 +44,7 @@ final class PodcastPlayer: ObservableObject {
     }
 
     private func load(_ episode: Episode) {
-        let start = episode.played ? 0 : ResumePolicy.startPosition(saved: episode.position)
+        let start = ResumePolicy.startPosition(saved: episode.position)
         engine.load(episode.playableURL, at: start)
         position = start
         lastSaved = start
@@ -51,6 +54,13 @@ final class PodcastPlayer: ObservableObject {
 
     func play() {
         guard let episode else { return }
+        if finished {
+            // Replaying after the end: start over, tracking and saving again.
+            finished = false
+            engine.seek(to: 0)
+            position = 0
+            lastSaved = 0
+        }
         if needsReload {
             needsReload = false
             failure = nil
@@ -72,6 +82,7 @@ final class PodcastPlayer: ObservableObject {
 
     func seek(to time: TimeInterval) {
         guard episode != nil else { return }
+        finished = false
         let target = clamp(time)
         engine.seek(to: target)
         position = target
@@ -103,6 +114,8 @@ final class PodcastPlayer: ObservableObject {
 
     private func handleTime(_ time: TimeInterval) {
         guard episode != nil, !finished else { return }
+        skippedForFailure = false
+        if failure == "Unavailable", !needsReload { failure = nil }
         position = time
         if ResumePolicy.isFinished(position: time, duration: duration) {
             finish()
@@ -119,17 +132,20 @@ final class PodcastPlayer: ObservableObject {
         advance()
     }
 
-    private func advance() {
+    /// Opens the next Up Next item; returns false (stopped, paused) when nothing is queued.
+    @discardableResult
+    private func advance() -> Bool {
         if let next = library.popNext() {
             open(next, autoplay: true)
-        } else {
-            engine.pause()
-            isPlaying = false
+            return true
         }
+        engine.pause()
+        isPlaying = false
+        return false
     }
 
     private func handleFailure(_ error: Error) {
-        guard episode != nil else { return }
+        guard episode != nil, !finished, !skippedForFailure else { return }
         if Self.isOffline(error) {
             saveNow()
             engine.pause()
@@ -137,9 +153,12 @@ final class PodcastPlayer: ObservableObject {
             needsReload = true
             failure = "Offline"
         } else {
-            let hadNext = library.upNext.first != nil
-            if let episode, !hadNext { library.savePosition(position, of: episode) }
-            advance()
+            saveNow()
+            if advance() {
+                skippedForFailure = true
+            } else {
+                needsReload = true
+            }
             failure = "Unavailable"
         }
     }

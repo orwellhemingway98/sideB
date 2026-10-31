@@ -8,15 +8,17 @@ final class PodcastPlayerTests: XCTestCase {
     private var player: PodcastPlayer!
     private var a: Episode!
     private var b: Episode!
+    private var c: Episode!
 
     override func setUp() async throws {
         let feed = URL(string: "https://example.com/feed")!
-        let fetcher = StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)])
+        let fetcher = StubFetcher(responses: [feed: .success(SampleFeeds.longQuietThreeItems)])
         library = LibraryStore.inMemory(fetcher: fetcher)
         let show = try await library.follow(feedURL: feed)
         let episodes = library.episodes(of: show)
         a = episodes[0]
         b = episodes[1]
+        c = episodes[2]
         engine = FakeEngine()
         player = PodcastPlayer(engine: engine, library: library)
     }
@@ -76,6 +78,8 @@ final class PodcastPlayerTests: XCTestCase {
         engine.fireFailure(URLError(.fileDoesNotExist))
         XCTAssertEqual(player.failure, "Unavailable")
         XCTAssertEqual(player.episode?.guid, b.guid)
+        engine.fireTime(1)
+        XCTAssertNil(player.failure)
     }
 
     func testPlayAfterOfflineReloadsAtTheSavedPlace() {
@@ -93,5 +97,44 @@ final class PodcastPlayerTests: XCTestCase {
         player.cycleRate(); player.cycleRate()
         XCTAssertEqual(engine.rate, 1.5)
         XCTAssertEqual(player.rate, 1.5)
+    }
+
+    func testDuplicateFailureSkipsOnlyOnce() {
+        library.enqueue(b); library.enqueue(c)
+        player.open(a, autoplay: true)
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        XCTAssertEqual(player.episode?.guid, b.guid)
+        XCTAssertEqual(library.upNext.count, 1)
+    }
+
+    func testReplayAfterFinishingTracksAndSaves() {
+        player.open(a, autoplay: true)
+        engine.fireEnd()
+        player.play()
+        engine.fireTime(10)
+        XCTAssertEqual(player.position, 10)
+        player.pause()
+        XCTAssertEqual(a.position, 10)
+    }
+
+    func testReplayedEpisodeResumesWhereItWasPaused() {
+        a.played = true
+        a.position = 1200
+        player.open(a, autoplay: false)
+        XCTAssertEqual(engine.loads.last?.time, 1197)
+    }
+
+    func testUnavailableWithNothingQueuedRetriesOnPlay() {
+        player.open(a, autoplay: true)
+        engine.fireTime(700)
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        XCTAssertEqual(player.failure, "Unavailable")
+        XCTAssertFalse(player.isPlaying)
+        player.play()
+        XCTAssertEqual(engine.loads.last?.time, 697)
+        XCTAssertEqual(engine.loads.count, 2)
+        XCTAssertNil(player.failure)
+        XCTAssertTrue(player.isPlaying)
     }
 }

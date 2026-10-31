@@ -8,6 +8,7 @@ final class AVPlayerEngine: AudioEngine {
     private var observers: [NSObjectProtocol] = []
     private var timeObserver: Any?
     private var isPlaying = false
+    private var pendingStart: TimeInterval = 0
 
     var onTime: ((TimeInterval) -> Void)?
     var onEnd: (() -> Void)?
@@ -34,6 +35,7 @@ final class AVPlayerEngine: AudioEngine {
 
     deinit {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
+        observers.forEach(NotificationCenter.default.removeObserver)
     }
 
     var currentTime: TimeInterval {
@@ -52,23 +54,31 @@ final class AVPlayerEngine: AudioEngine {
         let item = AVPlayerItem(url: url)
         item.audioTimePitchAlgorithm = .timeDomain
         self.item = item
+        pendingStart = time
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            guard item.status == .failed else { return }
+            let status = item.status
             let error = item.error ?? URLError(.unknown)
-            Task { @MainActor in self?.onFailure?(error) }
+            Task { @MainActor in
+                // Drop callbacks from an item that has since been replaced.
+                guard let self, self.item === item else { return }
+                switch status {
+                case .readyToPlay: self.seekToPendingStart()
+                case .failed: self.onFailure?(error)
+                default: break
+                }
+            }
         }
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification,
                                             object: item, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.onEnd?() }
+            MainActor.assumeIsolated { if self?.item === item { self?.onEnd?() } }
         })
         observers.append(center.addObserver(forName: AVPlayerItem.failedToPlayToEndTimeNotification,
                                             object: item, queue: .main) { [weak self] note in
             let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error ?? URLError(.unknown)
-            MainActor.assumeIsolated { self?.onFailure?(error) }
+            MainActor.assumeIsolated { if self?.item === item { self?.onFailure?(error) } }
         })
         player.replaceCurrentItem(with: item)
-        if time > 0 { player.seek(to: CMTime(seconds: time, preferredTimescale: 600)) }
     }
 
     func play() {
@@ -83,7 +93,16 @@ final class AVPlayerEngine: AudioEngine {
     }
 
     func seek(to time: TimeInterval) {
+        pendingStart = 0
         player.seek(to: CMTime(seconds: max(0, time), preferredTimescale: 600))
+    }
+
+    /// The resume point is applied once the item is ready; seeking earlier is lost on some remote MP3s.
+    private func seekToPendingStart() {
+        let time = pendingStart
+        pendingStart = 0
+        guard time > 0 else { return }
+        player.seek(to: CMTime(seconds: time, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     private func tearDownItem() {
