@@ -19,6 +19,8 @@ final class Episode {
     var played = false
     /// When it was marked played; downloads are cleaned up a week after.
     var playedAt: Date?
+    /// Its audio link was dead the last time it was tried.
+    var unavailable = false
     var localFile: URL?
 
     init(guid: String, title: String, enclosureURL: URL) {

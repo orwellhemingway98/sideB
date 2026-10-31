@@ -262,4 +262,27 @@ final class PodcastPlayerTests: XCTestCase {
         player.open(d, autoplay: false)
         XCTAssertTrue(library.lastEpisode === d)
     }
+
+    // MARK: Stage 2: Unavailable mark
+
+    func testDeadLinkMarksTheEpisodeUnavailable() {
+        library.enqueue(b)
+        player.open(a, autoplay: true)
+        engine.fireFailure(URLError(.fileDoesNotExist))
+        XCTAssertTrue(a.unavailable)
+        XCTAssertFalse(b.unavailable)
+    }
+
+    func testPlayingItLaterClearsTheMark() {
+        a.unavailable = true
+        player.open(a, autoplay: true)
+        engine.fireTime(1)
+        XCTAssertFalse(a.unavailable)
+    }
+
+    func testOfflineDoesNotMarkUnavailable() {
+        player.open(a, autoplay: true)
+        engine.fireFailure(URLError(.notConnectedToInternet))
+        XCTAssertFalse(a.unavailable)
+    }
 }

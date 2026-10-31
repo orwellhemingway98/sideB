@@ -153,6 +153,7 @@ final class PodcastPlayer: ObservableObject {
             awaitingResume = false
         }
         if failure == "Unavailable", !needsReload { failure = nil }
+        if let episode, episode.unavailable { library.setUnavailable(false, for: episode) }
         position = time
         if abs(time - loadPoint) > Self.stillAtLoadPoint { progressed = true }
         updatePlayedWindow()
@@ -210,6 +211,7 @@ final class PodcastPlayer: ObservableObject {
             failure = "Offline"
         } else {
             saveNow()
+            if let dead = episode { library.setUnavailable(true, for: dead) }
             if !advance() { needsReload = true }
             failure = "Unavailable"
         }

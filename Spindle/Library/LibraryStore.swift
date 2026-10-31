@@ -282,6 +282,13 @@ final class LibraryStore: ObservableObject {
         save()
     }
 
+    func setUnavailable(_ value: Bool, for episode: Episode) {
+        guard episode.unavailable != value else { return }
+        objectWillChange.send()
+        episode.unavailable = value
+        save()
+    }
+
     /// Records where an episode's download lives (nil once it is removed).
     func setLocalFile(_ file: URL?, for episode: Episode) {
         objectWillChange.send()
