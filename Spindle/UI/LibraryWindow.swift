@@ -6,6 +6,7 @@ import SwiftUI
 final class LibraryViewModel: ObservableObject {
     static let searchFailed = "Search isn't available right now."
     static let notAFeed = "That link isn't a podcast feed."
+    static let followFailed = "Couldn't follow that show."
 
     let library: LibraryStore
     let nowPlaying: NowPlaying
@@ -13,7 +14,10 @@ final class LibraryViewModel: ObservableObject {
 
     @Published var query = ""
     @Published private(set) var results: [DirectoryResult] = []
-    @Published private(set) var message: String?
+    /// Shown under the search field: search and follow-from-results failures.
+    @Published private(set) var searchMessage: String?
+    /// Shown under the Add by link field.
+    @Published private(set) var linkMessage: String?
     @Published var selectedShow: Show?
 
     init(library: LibraryStore, fetcher: HTTPFetching, nowPlaying: NowPlaying) {
@@ -25,33 +29,34 @@ final class LibraryViewModel: ObservableObject {
     func search() async {
         do {
             results = try await DirectorySearch.search(query, fetcher: fetcher)
-            message = nil
+            searchMessage = nil
         } catch {
             results = []
-            message = Self.searchFailed
+            searchMessage = Self.searchFailed
         }
     }
 
     func follow(_ result: DirectoryResult) async {
-        await follow(feedURL: result.feedURL)
+        searchMessage = await follow(feedURL: result.feedURL) ? nil : Self.followFailed
     }
 
     func addByLink(_ text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https", url.host?.isEmpty == false else {
-            message = Self.notAFeed
+            linkMessage = Self.notAFeed
             return
         }
-        await follow(feedURL: url)
+        linkMessage = await follow(feedURL: url) ? nil : Self.notAFeed
     }
 
-    private func follow(feedURL: URL) async {
+    /// Follows and selects the show; false if the feed couldn't be followed.
+    private func follow(feedURL: URL) async -> Bool {
         do {
             selectedShow = try await library.follow(feedURL: feedURL)
-            message = nil
+            return true
         } catch {
-            message = Self.notAFeed
+            return false
         }
     }
 }
@@ -96,6 +101,11 @@ private struct LibrarySidebar: View {
                 TextField("Search podcasts", text: $model.query)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { Task { await model.search() } }
+                if let message = model.searchMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 ForEach(model.results) { result in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -120,7 +130,7 @@ private struct LibrarySidebar: View {
                         .onSubmit(addLink)
                     Button("Add", action: addLink)
                 }
-                if let message = model.message {
+                if let message = model.linkMessage {
                     Text(message)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -162,13 +172,13 @@ private struct LibrarySidebar: View {
         let text = link
         Task {
             await model.addByLink(text)
-            if model.message == nil { link = "" }
+            if model.linkMessage == nil { link = "" }
         }
     }
 
     /// "Couldn't update · last worked 12 Oct 2026".
     static func brokenNote(for show: Show) -> String {
-        guard let date = show.lastUpdated ?? show.errorSince else { return "Couldn't update" }
+        guard let date = show.lastUpdated else { return "Couldn't update" }
         return "Couldn't update \u{00B7} last worked \(date.formatted(date: .abbreviated, time: .omitted))"
     }
 }
@@ -233,7 +243,9 @@ final class LibraryWindowController {
     }
 
     func show() {
+        // The Library pill lives in a non-activating panel, so Spindle is never the active app here and the
+        // cooperative `activate()` is refused: the window would open behind other apps with no keyboard.
+        NSApp.forceActivate()
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate()
     }
 }

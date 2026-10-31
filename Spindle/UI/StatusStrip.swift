@@ -53,17 +53,20 @@ struct StatusStripView: View {
     }
 }
 
-/// The menu bar item. A click toggles the dial panel; scrolling over it scrubs without opening anything.
+/// The menu bar item. A click toggles the dial panel; a right-click shows "Open Library…" and "Quit Spindle";
+/// scrolling over it scrubs without opening anything.
 @MainActor
 final class StatusStripController: NSObject {
     private let statusItem: NSStatusItem
     private let nowPlaying: NowPlaying
     private let panel: DialPanelController
+    private let onLibrary: () -> Void
     private var cancellables: Set<AnyCancellable> = []
 
-    init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController) {
+    init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void) {
         self.nowPlaying = nowPlaying
         self.panel = panel
+        self.onLibrary = onLibrary
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -83,6 +86,7 @@ final class StatusStripController: NSObject {
         scrollCatcher.onScroll = { [weak nowPlaying] event in
             nowPlaying?.turn(degrees: ScrollTurning.degrees(for: event))
         }
+        scrollCatcher.onRightClick = { [weak self] in self?.showMenu() }
         button.addSubview(scrollCatcher)
 
         // The hosted view has no intrinsic width, so a blank image of the right size sizes the item.
@@ -100,6 +104,25 @@ final class StatusStripController: NSObject {
         guard let button = statusItem.button else { return }
         panel.toggle(below: button)
     }
+
+    /// The menu is attached only for this click, so a left click keeps toggling the panel.
+    private func showMenu() {
+        guard let button = statusItem.button else { return }
+        panel.close()
+        let menu = NSMenu()
+        let library = NSMenuItem(title: "Open Library\u{2026}", action: #selector(openLibrary), keyEquivalent: "")
+        library.target = self
+        menu.addItem(library)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit Spindle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        menu.addItem(quit)
+        statusItem.menu = menu
+        button.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    @objc private func openLibrary() { onLibrary() }
 }
 
 /// Draws, but never takes the mouse: clicks fall through to the status button.
@@ -110,8 +133,9 @@ private final class PassThroughHostingView<Content: View>: NSHostingView<Content
 /// Sits over the status button to catch scrolls; every click goes on to the button.
 private final class StripScrollView: NSView {
     var onScroll: ((NSEvent) -> Void)?
+    var onRightClick: (() -> Void)?
 
     override func scrollWheel(with event: NSEvent) { onScroll?(event) }
     override func mouseDown(with event: NSEvent) { superview?.mouseDown(with: event) }
-    override func rightMouseDown(with event: NSEvent) { superview?.rightMouseDown(with: event) }
+    override func rightMouseDown(with event: NSEvent) { onRightClick?() }
 }

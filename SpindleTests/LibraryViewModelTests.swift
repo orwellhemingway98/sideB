@@ -16,7 +16,8 @@ final class LibraryViewModelTests: XCTestCase {
     func testAddByLinkRejectsNonsense() async {
         let (model, library) = makeModel(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
         await model.addByLink("not a url")
-        XCTAssertEqual(model.message, "That link isn't a podcast feed.")
+        XCTAssertEqual(model.linkMessage, "That link isn't a podcast feed.")
+        XCTAssertNil(model.searchMessage)
         XCTAssertTrue(library.shows.isEmpty)
     }
 
@@ -24,16 +25,25 @@ final class LibraryViewModelTests: XCTestCase {
         let (model, library) = makeModel(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
         await model.addByLink("  https://example.com/feed \n")
         XCTAssertEqual(library.shows.count, 1)
-        XCTAssertNil(model.message)
+        XCTAssertNil(model.linkMessage)
         XCTAssertEqual(model.selectedShow?.title, "The Long Quiet")
     }
 
     func testSearchFailureShowsMessage() async {
-        let (model, _) = makeModel(fetcher: StubFetcher(error: URLError(.notConnectedToInternet)))
+        let searchURL = DirectorySearch.url(for: "quiet")
+        let json = #"{"results":[{"collectionName":"The Long Quiet","artistName":"A","feedUrl":"https://example.com/feed"}]}"#
+        let fetcher = StubFetcher(responses: [searchURL: .success(json)])
+        let (model, _) = makeModel(fetcher: fetcher)
         model.query = "quiet"
         await model.search()
-        XCTAssertEqual(model.message, "Search isn't available right now.")
+        XCTAssertEqual(model.results.count, 1)
+        XCTAssertNil(model.searchMessage)
+
+        fetcher.set(searchURL, .failure(URLError(.notConnectedToInternet)))
+        await model.search()
+        XCTAssertEqual(model.searchMessage, "Search isn't available right now.")
         XCTAssertEqual(model.results, [])
+        XCTAssertNil(model.linkMessage)
     }
 
     func testFollowFromResults() async {
@@ -41,7 +51,17 @@ final class LibraryViewModelTests: XCTestCase {
         let result = DirectoryResult(title: "The Long Quiet", author: "", artworkURL: nil, feedURL: feed)
         await model.follow(result)
         XCTAssertEqual(library.shows.count, 1)
-        XCTAssertNil(model.message)
+        XCTAssertNil(model.searchMessage)
         XCTAssertEqual(model.selectedShow?.title, "The Long Quiet")
+    }
+
+    func testFollowFromResultsFailureSaysSo() async {
+        let (model, library) = makeModel(fetcher: StubFetcher(responses: [feed: .failure(URLError(.badServerResponse))]))
+        let result = DirectoryResult(title: "The Long Quiet", author: "", artworkURL: nil, feedURL: feed)
+        await model.follow(result)
+        XCTAssertEqual(model.searchMessage, "Couldn't follow that show.")
+        XCTAssertNil(model.linkMessage)
+        XCTAssertTrue(library.shows.isEmpty)
+        XCTAssertNil(model.selectedShow)
     }
 }

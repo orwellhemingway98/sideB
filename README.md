@@ -17,6 +17,7 @@ open Spindle.xcodeproj     # then Product › Run (⌘R)
 ```
 
 Spindle lives in the menu bar (no Dock icon). Click its glass disc for the
-dial; "Library" in the dial panel opens the Library window.
+dial; "Library" in the dial panel opens the Library window. Right-click the
+disc for "Open Library…" and "Quit Spindle".
 
 Run the tests with `./scripts/test.sh` (full log in `build.noindex/test.log`).

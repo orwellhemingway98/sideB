@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: DialPanelController?
     private var strip: StatusStripController?
     private var libraryWindow: LibraryWindowController?
+    private var fetcher: HTTPFetching?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.isRunningTests { return }
@@ -24,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let alert = NSAlert()
             alert.messageText = "Spindle couldn't open its library."
             alert.informativeText = error.localizedDescription
+            NSApp.forceActivate()  // A menu bar app is not active at launch; the alert would open behind.
             alert.runModal()
             NSApp.terminate(nil)
             return
@@ -50,8 +52,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let artwork = ArtworkCache()
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,
                                         onLibrary: { [weak self] in self?.showLibrary() })
-        let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel)
+        let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
+                                          onLibrary: { [weak self] in self?.showLibrary() })
 
+        self.fetcher = fetcher
         self.library = library
         self.player = player
         self.nowPlaying = nowPlaying
@@ -71,12 +75,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Opens (creating once) the Library window and brings Spindle forward.
     private func showLibrary() {
-        guard let library, let nowPlaying else { return }
+        guard let library, let nowPlaying, let fetcher else { return }
         if libraryWindow == nil {
-            let model = LibraryViewModel(library: library, fetcher: URLSessionFetcher(), nowPlaying: nowPlaying)
+            let model = LibraryViewModel(library: library, fetcher: fetcher, nowPlaying: nowPlaying)
             libraryWindow = LibraryWindowController(model: model)
         }
         panel?.close()
         libraryWindow?.show()
+    }
+}
+
+extension NSApplication {
+    /// Brings Spindle to the front even when the user acted in a non-activating panel or the menu bar,
+    /// where the cooperative `activate()` is refused. The one call site of the deprecated API, on purpose.
+    func forceActivate() {
+        activate(ignoringOtherApps: true)
     }
 }
