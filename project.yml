@@ -21,6 +21,8 @@ targets:
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.music
         LSUIElement: true
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsForMedia: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mfelouro.Spindle

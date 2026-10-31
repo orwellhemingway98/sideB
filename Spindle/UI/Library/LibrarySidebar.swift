@@ -61,7 +61,8 @@ struct LibrarySidebar: View {
             }
             if let message = model.linkMessage { Note(text: message) }
             HStack {
-                Button("Import OPML…", action: importOPML)
+                Button(model.isImporting ? "Importing…" : "Import OPML…", action: importOPML)
+                    .disabled(model.isImporting)
                 Spacer()
                 if let scheduler = model.scheduler { RefreshButton(scheduler: scheduler) }
             }

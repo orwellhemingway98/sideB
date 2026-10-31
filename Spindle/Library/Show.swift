@@ -11,6 +11,9 @@ final class Show {
     var lastUpdated: Date?
     var lastError: String?
     var errorSince: Date?
+    /// The feed's ETag and Last-Modified from its last full download.
+    var etag: String?
+    var lastModified: String?
     @Relationship(deleteRule: .cascade, inverse: \Episode.show) var episodes: [Episode] = []
 
     init(feedURL: URL, title: String, author: String? = nil, artworkURL: URL? = nil, summary: String? = nil) {

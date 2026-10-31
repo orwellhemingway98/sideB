@@ -113,4 +113,42 @@ final class LibraryViewModelTests: XCTestCase {
         await model.addByLink("https://example.com/feed")
         XCTAssertEqual(model.section, .show(library.shows[0].persistentModelID))
     }
+
+    func testImportShowsProgressAndIgnoresASecondRequest() async {
+        let gate = GateFetcher()
+        let library = LibraryStore.inMemory(fetcher: gate)
+        let player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
+        let model = LibraryViewModel(library: library, fetcher: gate, nowPlaying: nowPlaying)
+        let opml = Data(#"<opml><body><outline xmlUrl="https://example.com/feed"/></body></opml>"#.utf8)
+        let first = Task { await model.importOPML(opml) }
+        while !gate.isWaiting { await Task.yield() }
+        XCTAssertTrue(model.isImporting)
+        await model.importOPML(opml)            // ignored while the first runs
+        XCTAssertEqual(gate.requestCount, 1)
+        gate.release(with: SampleFeeds.longQuiet)
+        await first.value
+        XCTAssertFalse(model.isImporting)
+        XCTAssertEqual(model.importMessage, "Followed 1 show")
+    }
+}
+
+/// Holds the first request until the test releases it.
+private final class GateFetcher: HTTPFetching, @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Data, Never>?
+    private var count = 0
+    var isWaiting: Bool { lock.withLock { continuation != nil } }
+    var requestCount: Int { lock.withLock { count } }
+
+    func data(from url: URL) async throws -> Data {
+        await withCheckedContinuation { continuation in
+            lock.withLock { count += 1; self.continuation = continuation }
+        }
+    }
+
+    func release(with text: String) {
+        lock.withLock { continuation }?.resume(returning: Data(text.utf8))
+    }
 }

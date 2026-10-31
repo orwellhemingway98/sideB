@@ -27,6 +27,8 @@ struct EpisodeRow: View {
     let episode: Episode
     @ObservedObject var model: LibraryViewModel
     let showsShow: Bool
+    /// Up Next's own rows don't offer "+ Up Next".
+    var offersEnqueue = true
 
     var body: some View {
         HStack(spacing: 12) {
@@ -44,7 +46,7 @@ struct EpisodeRow: View {
                 PlayPauseGlyph(isPlaying: false).frame(width: 10, height: 12)
             }
             .help("Play")
-            Button("+ Up Next") { model.nowPlaying.player.enqueue(episode) }
+            if offersEnqueue { Button("+ Up Next") { model.nowPlaying.player.enqueue(episode) } }
             if let downloads = model.downloads { DownloadButton(episode: episode, downloads: downloads) }
         }
         .padding(.vertical, 2)

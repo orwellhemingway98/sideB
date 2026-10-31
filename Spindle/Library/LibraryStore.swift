@@ -72,16 +72,21 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    private var allEpisodes: [Episode] { (try? context.fetch(FetchDescriptor<Episode>())) ?? [] }
-
-    /// Unplayed episodes from every show, newest first.
+    /// Unplayed episodes from every show, newest first. The store filters, sorts and limits, so a big
+    /// library costs one small query, not a pass over every episode on each redraw.
     func newEpisodes(limit: Int = 100) -> [Episode] {
-        Array(allEpisodes.filter { !$0.played }.sorted(by: Self.newestFirst).prefix(limit))
+        var descriptor = FetchDescriptor<Episode>(
+            predicate: #Predicate { !$0.played },
+            sortBy: [SortDescriptor(\.published, order: .reverse), SortDescriptor(\.feedOrder)])
+        descriptor.fetchLimit = limit
+        // The store sorts undated episodes by its own rule; re-sort the small page to keep them last.
+        return ((try? context.fetch(descriptor)) ?? []).sorted(by: Self.newestFirst)
     }
 
     /// Episodes whose downloaded file is on disk, newest first.
     var downloaded: [Episode] {
-        allEpisodes.filter { episode in
+        let descriptor = FetchDescriptor<Episode>(predicate: #Predicate { $0.localFile != nil })
+        return ((try? context.fetch(descriptor)) ?? []).filter { episode in
             guard let file = episode.localFile else { return false }
             return FileManager.default.fileExists(atPath: file.path)
         }.sorted(by: Self.newestFirst)
@@ -105,18 +110,32 @@ final class LibraryStore: ObservableObject {
 
     func follow(feedURL: URL) async throws -> Show {
         if let existing = existingShow(for: feedURL) { return existing }
-        let parsed: ParsedFeed
-        switch await Self.fetchAndParse(feedURL, with: fetcher) {
-        case .success(let feed): parsed = feed
-        case .failure(let error):
-            throw Connectivity.isOffline(error) ? LibraryError.offline : LibraryError.invalidFeed
+        // An http feed is tried as https first: macOS blocks plain http, and most such feeds serve both.
+        let candidates = [feedURL.httpsUpgraded, feedURL].compactMap { $0 }
+        var outcome: (url: URL, feed: ParsedFeed, validators: Validators)?
+        var lastError: Error = LibraryError.invalidFeed
+        for candidate in candidates {
+            switch await Self.fetchAndParse(candidate, validators: Validators(), with: fetcher) {
+            case .success(.fresh(let feed, let validators)):
+                outcome = (candidate, feed, validators)
+            case .success(.notModified):
+                continue
+            case .failure(let error):
+                lastError = error
+            }
+            if outcome != nil { break }
+        }
+        guard let (workingURL, parsed, validators) = outcome else {
+            throw Connectivity.isOffline(lastError) ? LibraryError.offline : LibraryError.invalidFeed
         }
         // Another follow of the same feed may have finished while we were fetching.
         if let existing = existingShow(for: feedURL) { return existing }
         objectWillChange.send()
-        let show = Show(feedURL: feedURL, title: parsed.title)
+        let show = Show(feedURL: workingURL, title: parsed.title)
         context.insert(show)
         apply(parsed, to: show)
+        show.etag = validators.etag
+        show.lastModified = validators.lastModified
         show.lastUpdated = now()
         save()
         return show
@@ -149,20 +168,20 @@ final class LibraryStore: ObservableObject {
     // MARK: Refresh
 
     func refresh(_ show: Show) async {
-        let result = await Self.fetchAndParse(show.feedURL, with: fetcher)
+        let result = await Self.fetchAndParse(show.feedURL, validators: Self.validators(of: show), with: fetcher)
         finish(show, with: result)
     }
 
     func refreshAll() async {
-        let targets = shows.map { (show: $0, url: $0.feedURL) }
+        let targets = shows.map { (show: $0, url: $0.feedURL, validators: Self.validators(of: $0)) }
         let fetcher = self.fetcher
-        await withTaskGroup(of: (Int, Result<ParsedFeed, Error>).self) { group in
+        await withTaskGroup(of: (Int, Result<FeedUpdate, Error>).self) { group in
             var next = 0
             func startNext() {
                 guard next < targets.count else { return }
-                let index = next, url = targets[next].url
+                let index = next, url = targets[next].url, validators = targets[next].validators
                 next += 1
-                group.addTask { (index, await Self.fetchAndParse(url, with: fetcher)) }
+                group.addTask { (index, await Self.fetchAndParse(url, validators: validators, with: fetcher)) }
             }
             for _ in 0..<2 { startNext() }
             while let (index, result) = await group.next() {
@@ -172,25 +191,53 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    /// Fetches and parses away from the main actor, so a big feed never stalls the UI.
-    private nonisolated static func fetchAndParse(_ url: URL, with fetcher: HTTPFetching) async -> Result<ParsedFeed, Error> {
-        do { return .success(try FeedParser.parse(try await fetcher.data(from: url))) } catch { return .failure(error) }
+    /// A refresh result: the parsed feed with its new validators, or "unchanged since last time".
+    private enum FeedUpdate: Sendable {
+        case fresh(ParsedFeed, Validators)
+        case notModified
     }
 
-    /// Applies a refresh result on the main actor.
-    private func finish(_ show: Show, with result: Result<ParsedFeed, Error>) {
-        objectWillChange.send()
+    private static func validators(of show: Show) -> Validators {
+        Validators(etag: show.etag, lastModified: show.lastModified)
+    }
+
+    /// Fetches (conditionally) and parses away from the main actor, so a big feed never stalls the UI.
+    private nonisolated static func fetchAndParse(_ url: URL, validators: Validators,
+                                                  with fetcher: HTTPFetching) async -> Result<FeedUpdate, Error> {
         do {
-            let parsed = try result.get()
-            apply(parsed, to: show)
-            show.lastError = nil
-            show.errorSince = nil
-            show.lastUpdated = now()
+            switch try await fetcher.fetch(url, validators: validators) {
+            case .notModified: return .success(.notModified)
+            case .fresh(let data, let newValidators): return .success(.fresh(try FeedParser.parse(data), newValidators))
+            }
         } catch {
+            return .failure(error)
+        }
+    }
+
+    /// Applies a refresh result on the main actor. Being offline isn't the feed's fault: it is
+    /// left alone and tried again at the next check.
+    private func finish(_ show: Show, with result: Result<FeedUpdate, Error>) {
+        if case .failure(let error) = result, Connectivity.isOffline(error) { return }
+        objectWillChange.send()
+        switch result {
+        case .success(.fresh(let parsed, let validators)):
+            apply(parsed, to: show)
+            show.etag = validators.etag
+            show.lastModified = validators.lastModified
+            markUpdated(show)
+        case .success(.notModified):
+            markUpdated(show)
+        case .failure(let error):
             show.lastError = error.localizedDescription
             if show.errorSince == nil { show.errorSince = now() }
         }
         save()
+    }
+
+    private func markUpdated(_ show: Show) {
+        show.lastError = nil
+        show.errorSince = nil
+        show.lastUpdated = now()
     }
 
     /// Updates show metadata and upserts episodes by guid. Episodes missing from the feed are kept.

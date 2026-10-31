@@ -48,10 +48,12 @@ final class DownloadManager: ObservableObject {
         }
         let id = episode.persistentModelID
         failures[id] = nil
-        let handle = session.download(episode.enclosureURL,
+        // http media is fetched over https: macOS blocks plain http downloads.
+        let handle = session.download(episode.enclosureURL.httpsUpgraded ?? episode.enclosureURL,
                                       progress: { [weak self] fraction in self?.progressed(id, fraction) },
-                                      completion: { [weak self, weak episode] result in
-                                          guard let episode else { return }
+                                      completion: { [weak self] result in
+                                          // The episode is held until the download ends, so the file is
+                                          // always moved into place (or cleaned up), never stranded.
                                           self?.finished(episode, id: id, result: result)
                                       })
         active[id] = Active(handle: handle, progress: 0)

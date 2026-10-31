@@ -13,7 +13,7 @@ struct UpNextList: View {
                 List {
                     ForEach(library.upNext) { episode in
                         HStack {
-                            EpisodeRow(episode: episode, model: model, showsShow: true)
+                            EpisodeRow(episode: episode, model: model, showsShow: true, offersEnqueue: false)
                             Button("Remove") { library.remove(fromUpNext: episode) }
                         }
                     }

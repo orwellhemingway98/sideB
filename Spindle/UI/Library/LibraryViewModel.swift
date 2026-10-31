@@ -32,6 +32,7 @@ final class LibraryViewModel: ObservableObject {
     @Published private(set) var linkMessage: String?
     /// Shown under Import OPML….
     @Published private(set) var importMessage: String?
+    @Published private(set) var isImporting = false
     @Published var section: LibrarySection = .newEpisodes
 
     init(library: LibraryStore, fetcher: HTTPFetching, nowPlaying: NowPlaying,
@@ -77,13 +78,21 @@ final class LibraryViewModel: ObservableObject {
         linkMessage = await follow(feedURL: url, otherwise: Self.notAFeed)
     }
 
+    /// Imports at most one file at a time; a second request while one runs is ignored.
     func importOPML(_ data: Data) async {
+        guard !isImporting else { return }
+        let urls: [URL]
         do {
-            let urls = try OPMLImporter.feedURLs(from: data)
-            importMessage = Self.importSummaryText(await library.importFeeds(urls))
+            urls = try OPMLImporter.feedURLs(from: data)
         } catch {
             importMessage = Self.notOPML
+            return
         }
+        isImporting = true
+        importMessage = "Importing \(urls.count) show\(urls.count == 1 ? "" : "s")…"
+        let summary = await library.importFeeds(urls)
+        isImporting = false
+        importMessage = Self.importSummaryText(summary)
     }
 
     /// "Followed 3 shows · 1 already followed · 1 couldn't be added", leaving out the zeros.

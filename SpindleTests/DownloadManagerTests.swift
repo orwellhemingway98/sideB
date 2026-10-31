@@ -102,4 +102,10 @@ final class DownloadManagerTests: XCTestCase {
         let other = library.episodes(of: episode.show!)[1]
         XCTAssertNotEqual(first, EpisodeFiles.destination(for: other, root: root))
     }
+
+    func testHttpEnclosuresDownloadOverHttps() {
+        episode.enclosureURL = URL(string: "http://media.example.com/112.mp3")!
+        manager().download(episode)
+        XCTAssertEqual(session.requests.first?.url, URL(string: "https://media.example.com/112.mp3")!)
+    }
 }

@@ -60,7 +60,7 @@ final class LibraryStoreTests: XCTestCase {
         let store = makeStore(stub, now: { clock })
         let show = try await store.follow(feedURL: feedURL)
 
-        stub.set(feedURL, .failure(URLError(.notConnectedToInternet)))
+        stub.set(feedURL, .failure(URLError(.badServerResponse)))
         await store.refresh(show)
         XCTAssertNotNil(show.lastError)
         let since = try XCTUnwrap(show.errorSince)
@@ -234,5 +234,43 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(store.upNext.map(\.guid), [e[2].guid, e[0].guid, e[1].guid])
         store.moveUpNext(from: IndexSet(integer: 0), to: 3)
         XCTAssertEqual(store.upNext.map(\.guid), [e[0].guid, e[1].guid, e[2].guid])
+    }
+
+    // MARK: Stage 2 review fixes
+
+    func testOfflineRefreshLeavesShowsAlone() async throws {
+        let stub = StubFetcher(responses: [feedURL: .success(SampleFeeds.longQuiet)])
+        let store = makeStore(stub)
+        let show = try await store.follow(feedURL: feedURL)
+        stub.set(feedURL, .failure(URLError(.notConnectedToInternet)))
+        await store.refreshAll()
+        XCTAssertNil(show.lastError, "offline checks fail quietly")
+        XCTAssertNil(show.errorSince)
+    }
+
+    func testRefreshSendsValidatorsAndSkipsUnchangedFeeds() async throws {
+        let stub = StubFetcher(responses: [feedURL: .success(SampleFeeds.longQuiet)])
+        stub.setValidators(feedURL, Validators(etag: "\"v1\"", lastModified: "Thu, 29 Oct 2026 08:00:00 GMT"))
+        let clock = Date(timeIntervalSince1970: 1_800_000_000)
+        var now = clock
+        let store = makeStore(stub, now: { now })
+        let show = try await store.follow(feedURL: feedURL)
+        XCTAssertEqual(show.etag, "\"v1\"")
+        stub.markNotModified(feedURL)
+        stub.set(feedURL, .success(SampleFeeds.longQuietThreeItems))  // would add an episode if fetched in full
+        now = clock.addingTimeInterval(3600)
+        await store.refreshAll()
+        XCTAssertEqual(stub.validatorsSeen.last, Validators(etag: "\"v1\"", lastModified: "Thu, 29 Oct 2026 08:00:00 GMT"))
+        XCTAssertEqual(store.episodes(of: show).count, 2, "a 304 leaves the episodes as they were")
+        XCTAssertEqual(show.lastUpdated, now)
+        XCTAssertNil(show.lastError)
+    }
+
+    func testHttpFeedTriesHttpsFirst() async throws {
+        let https = URL(string: "https://legacy.example.com/rss")!
+        let stub = StubFetcher(responses: [https: .success(SampleFeeds.longQuiet)])
+        let store = makeStore(stub)
+        let show = try await store.follow(feedURL: URL(string: "http://legacy.example.com/rss")!)
+        XCTAssertEqual(show.feedURL, https)
     }
 }
