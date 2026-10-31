@@ -54,12 +54,10 @@ struct DiscView: View {
         .simultaneousGesture(rotateGesture)
         .background(ScrollAnchor(monitor: scroll))
         .onHover { inside in
-            if inside {
-                scroll.install { [nowPlaying] degrees in nowPlaying.turn(degrees: degrees) }
-            } else {
-                scroll.remove()
-            }
+            if inside { installScroll() } else { scroll.remove() }
         }
+        // The monitor only acts on scrolls over the disc, so it can go in as soon as the panel shows.
+        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in installScroll() }
         .onDisappear { scroll.remove() }
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in scroll.remove() }
         .accessibilityElement(children: .ignore)
@@ -73,6 +71,10 @@ struct DiscView: View {
             @unknown default: break
             }
         }
+    }
+
+    private func installScroll() {
+        scroll.install { [nowPlaying] degrees in nowPlaying.turn(degrees: degrees) }
     }
 
     // MARK: Drawing

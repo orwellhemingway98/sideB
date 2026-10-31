@@ -208,9 +208,14 @@ private final class DialPanelWindow: NSPanel {
 final class DialPanelController {
     /// Posted when the panel closes, so the disc drops its scroll monitor even with the pointer still over it.
     static let didClose = Notification.Name("DialPanelController.didClose")
+    /// Posted when the panel shows, so the disc can take scrolls from a pointer already over it.
+    static let didShow = Notification.Name("DialPanelController.didShow")
 
     private let panel: DialPanelWindow
     private var outsideClickMonitor: Any?
+    private var ownWindowClickMonitor: Any?
+    /// The status bar window the panel hangs from: its clicks toggle through the button instead.
+    private weak var anchorWindow: NSWindow?
     private var escapeMonitor: Any?
 
     var isShown: Bool { panel.isVisible }
@@ -247,10 +252,12 @@ final class DialPanelController {
         x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
         let top = min(buttonFrame.minY - 6, visible.maxY)
 
+        anchorWindow = buttonWindow
         panel.anchoredTop = top
         panel.setFrame(NSRect(x: x, y: top - size.height, width: size.width, height: size.height), display: true)
         panel.makeKeyAndOrderFront(nil)
         installMonitors()
+        NotificationCenter.default.post(name: Self.didShow, object: self)
     }
 
     func close() {
@@ -269,6 +276,15 @@ final class DialPanelController {
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             MainActor.assumeIsolated { self?.close() }
         }
+        // A local monitor catches clicks in Spindle's other windows, such as the Library.
+        ownWindowClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            let window = event.window
+            MainActor.assumeIsolated {
+                guard let self, window !== self.panel, window !== self.anchorWindow else { return }
+                self.close()
+            }
+            return event
+        }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard event.keyCode == 53 else { return event }
             let window = event.window
@@ -283,8 +299,10 @@ final class DialPanelController {
 
     private func removeMonitors() {
         if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
+        if let ownWindowClickMonitor { NSEvent.removeMonitor(ownWindowClickMonitor) }
         if let escapeMonitor { NSEvent.removeMonitor(escapeMonitor) }
         outsideClickMonitor = nil
+        ownWindowClickMonitor = nil
         escapeMonitor = nil
     }
 }
