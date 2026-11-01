@@ -57,10 +57,10 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
     static let playlistName = "Spindle"
     private static let playlistIDKey = "spindlePlaylistID"
 
-    private static let contextScript = """
-        with timeout of 10 seconds
-        set fs to character id 31
-        set rs to character id 30
+    /// Works out the current song's list: one of your playlists, or its album. The album's artist falls back to
+    /// the song's artist when the album artist is empty, so untagged albums of the same name don't merge.
+    /// Sets `usePlaylist`, `pl`, `alb`, `aa` and `useAlbumArtist`.
+    private static let contextPrologue = """
         try
             set t to current track
         on error
@@ -71,23 +71,59 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
             set pl to current playlist
             if (class of pl is user playlist) and (special kind of pl is none) and (name of pl is not \(quoted(playlistName))) then set usePlaylist to true
         end try
-        if usePlaylist then
-            set src to every track of pl
-            set head to "playlist" & fs & "playlist:" & (persistent ID of pl) & fs & (name of pl)
-        else
-            set alb to album of t
-            if alb is "" then return ""
-            set aa to album artist of t
-            set src to every track of library playlist 1 whose album is alb and album artist is aa
-            set head to "album" & fs & "album:" & alb & "|" & aa & fs & alb
+        set alb to album of t
+        set aa to album artist of t
+        set useAlbumArtist to true
+        if aa is "" then
+            set aa to artist of t
+            set useAlbumArtist to false
         end if
-        set total to count of src
-        set out to {head & fs & (total as string)}
-        set n to total
-        if n > \(MusicContextParser.cap) then set n to \(MusicContextParser.cap)
+        """
+
+    private static let contextKeyScript = """
+        with timeout of 5 seconds
+        \(contextPrologue)
+        if usePlaylist then return "playlist:" & (persistent ID of pl)
+        if alb is "" then return ""
+        return "album:" & alb & "|" & aa
+        end timeout
+        """
+
+    /// Reads the list's songs a property at a time (a few Apple events, not one per field per song).
+    private static let contextScript = """
+        with timeout of 10 seconds
+        set fs to character id 31
+        set rs to character id 30
+        \(contextPrologue)
+        if usePlaylist then
+            set total to count of tracks of pl
+            set head to "playlist" & fs & "playlist:" & (persistent ID of pl) & fs & (name of pl) & fs & (total as string)
+            if total is 0 then return head
+            set n to total
+            if n > \(MusicContextParser.cap) then set n to \(MusicContextParser.cap)
+            set trs to a reference to (tracks 1 thru n of pl)
+        else
+            if alb is "" then return ""
+            if useAlbumArtist then
+                set trs to a reference to (every track of library playlist 1 whose album is alb and album artist is aa)
+            else
+                set trs to a reference to (every track of library playlist 1 whose album is alb and artist is aa)
+            end if
+            set total to count of trs
+            set head to "album" & fs & "album:" & alb & "|" & aa & fs & alb & fs & (total as string)
+            if total is 0 then return head
+            set n to total
+            if n > \(MusicContextParser.cap) then set n to \(MusicContextParser.cap)
+        end if
+        set ids to persistent ID of trs
+        set discs to disc number of trs
+        set nums to track number of trs
+        set names to name of trs
+        set artists to artist of trs
+        set durs to duration of trs
+        set out to {head}
         repeat with i from 1 to n
-            set x to item i of src
-            set end of out to (persistent ID of x) & fs & ((disc number of x) as string) & fs & ((track number of x) as string) & fs & (name of x) & fs & (artist of x) & fs & ((duration of x) as string)
+            set end of out to (item i of ids) & fs & ((item i of discs) as string) & fs & ((item i of nums) as string) & fs & (item i of names) & fs & (item i of artists) & fs & ((item i of durs) as string)
         end repeat
         set AppleScript's text item delimiters to rs
         set res to out as string
@@ -95,6 +131,11 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
         return res
         end timeout
         """
+
+    func contextKey() throws -> String? {
+        let key = try tell(Self.contextKeyScript).stringValue ?? ""
+        return key.isEmpty ? nil : key
+    }
 
     func context() throws -> MusicContext? {
         MusicContextParser.parse(try tell(Self.contextScript).stringValue ?? "")

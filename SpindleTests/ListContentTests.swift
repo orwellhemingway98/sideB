@@ -5,6 +5,7 @@ import XCTest
 final class ListContentTests: XCTestCase {
     private var library: LibraryStore!
     private var player: PodcastPlayer!
+    private var engine: FakeEngine!
     private var music: FakeMusicSource!
     private var spotify: FakeMusicSource!
     private var remote: MusicRemote!
@@ -22,7 +23,8 @@ final class ListContentTests: XCTestCase {
         let feed = URL(string: "https://example.com/feed")!
         library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuietThreeItems)]))
         show = try await library.follow(feedURL: feed)
-        player = PodcastPlayer(engine: FakeEngine(), library: library)
+        engine = FakeEngine()
+        player = PodcastPlayer(engine: engine, library: library)
         music = FakeMusicSource(.appleMusic)
         spotify = FakeMusicSource(.spotify)
         music.stop()
@@ -32,7 +34,7 @@ final class ListContentTests: XCTestCase {
                                 schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] }, music: remote)
     }
 
-    private func model(loadContext: ((MusicTrack) async -> MusicContext?)? = nil) -> ListModel {
+    private func model(loadContext: ((MusicTrack, Bool) async -> MusicContext?)? = nil) -> ListModel {
         ListModel(nowPlaying: nowPlaying, library: library, loadContext: loadContext)
     }
 
@@ -53,6 +55,7 @@ final class ListContentTests: XCTestCase {
 
     func testIdentityIsStableWithinOneAlbumAndChangesAcrossAlbums() async {
         music.contextResult = .success(album("A", ["t1", "t2"]))
+        music.contextKeyValue = "album:A|Northern Static"
         music.play("t1", id: "t1")
         await remote.refresh()
         let list = model()
@@ -64,6 +67,7 @@ final class ListContentTests: XCTestCase {
         await list.reload()
         XCTAssertEqual(list.content.identity, first, "the next song on the same album keeps the list")
         music.contextResult = .success(album("B", ["t3"]))
+        music.contextKeyValue = "album:B|Northern Static"
         music.play("t3", id: "t3")
         await remote.refresh()
         await list.reload()
@@ -107,7 +111,7 @@ final class ListContentTests: XCTestCase {
         music.play("t1", id: "t1")
         await remote.refresh()
         var release: CheckedContinuation<Void, Never>?
-        let list = model(loadContext: { [unowned self] track in
+        let list = model(loadContext: { [unowned self] track, _ in
             if track.trackID == "t1" {
                 await withCheckedContinuation { release = $0 }
                 return album("A", ["t1"])
@@ -145,5 +149,29 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(ListContent.plainText(fromHTML: "Line one<br>Line   two"), "Line one Line two")
         XCTAssertEqual(ListContent.plainText(fromHTML: nil), "No description.")
         XCTAssertEqual(ListContent.plainText(fromHTML: "  "), "No description.")
+    }
+
+    // MARK: Review fixes
+
+    func testReloadIsNeededOnlyWhenWhatIsPlayingChanges() async {
+        let episodes = library.episodes(of: show)
+        player.open(episodes[0], autoplay: false)
+        let list = model()
+        await list.reload()
+        XCTAssertFalse(list.needsReload)
+        engine.fireTime(30)
+        XCTAssertFalse(list.needsReload, "position ticks don't rebuild the list")
+        player.open(episodes[1], autoplay: false)
+        XCTAssertTrue(list.needsReload)
+    }
+
+    func testCloseRule() {
+        typealias Rule = ListCloseRule
+        XCTAssertEqual(Rule.decide(last: nil, identity: "loading:t1", isLoading: true), .keep(nil))
+        XCTAssertEqual(Rule.decide(last: nil, identity: "album:A", isLoading: false), .keep("album:A"))
+        XCTAssertEqual(Rule.decide(last: "album:A", identity: "loading:t9", isLoading: true), .keep("album:A"))
+        XCTAssertEqual(Rule.decide(last: "album:A", identity: "album:A", isLoading: false), .keep("album:A"))
+        XCTAssertEqual(Rule.decide(last: "album:A", identity: "album:B", isLoading: false), .close)
+        XCTAssertEqual(Rule.decide(last: "album:A", identity: nil, isLoading: false), .close)
     }
 }

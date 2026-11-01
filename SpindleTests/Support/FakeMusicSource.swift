@@ -18,6 +18,8 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     private var _artworkCalls = 0
     private var _contextResult: Result<MusicContext?, MusicSourceError> = .success(nil)
     private var _contextCalls = 0
+    private var _contextKey: String?
+    private var _contextKeyCalls = 0
     private var _playedInContext: [(trackID: String, contextID: String)] = []
 
     init(_ id: MusicSourceID) { self.id = id }
@@ -33,6 +35,9 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
         get { lock.withLock { _contextResult } } set { lock.withLock { _contextResult = newValue } }
     }
     var contextCalls: Int { lock.withLock { _contextCalls } }
+    /// What contextKey() answers: which album or playlist the current song plays from.
+    var contextKeyValue: String? { get { lock.withLock { _contextKey } } set { lock.withLock { _contextKey = newValue } } }
+    var contextKeyCalls: Int { lock.withLock { _contextKeyCalls } }
     var playedInContext: [(trackID: String, contextID: String)] { lock.withLock { _playedInContext } }
 
     /// Reports a track in the given state.
@@ -66,6 +71,10 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
             _contextCalls += 1
             return try _contextResult.get()
         }
+    }
+
+    func contextKey() throws -> String? {
+        lock.withLock { _contextKeyCalls += 1; return _contextKey }
     }
 
     func play(trackID: String, in context: MusicContext) throws {

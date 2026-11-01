@@ -8,10 +8,13 @@ enum ListPlacement {
     static let width: CGFloat = 272
     static let maxHeight: CGFloat = 360
 
+    /// Decided for the tallest list (`maxHeight`), so a list that grows as it loads doesn't jump from
+    /// below the panel to beside it.
     static func frame(panel: NSRect, height: CGFloat, visible: NSRect) -> NSRect {
         let h = min(height, maxHeight)
-        let below = NSRect(x: panel.minX, y: panel.minY - gap - h, width: width, height: h)
-        if below.minY >= visible.minY { return below }
+        if panel.minY - gap - maxHeight >= visible.minY {
+            return NSRect(x: panel.minX, y: panel.minY - gap - h, width: width, height: h)
+        }
         let left = panel.minX - gap - width
         if left >= visible.minX { return NSRect(x: left, y: panel.maxY - h, width: width, height: h) }
         return NSRect(x: panel.maxX + gap, y: panel.maxY - h, width: width, height: h)
@@ -19,7 +22,8 @@ enum ListPlacement {
 
     /// Rows plus the title bar, capped.
     static func height(rows: Int) -> CGFloat {
-        min(maxHeight, 56 + CGFloat(max(rows, 1)) * 30 + 12)
+        guard rows < 1_000 else { return maxHeight }
+        return min(maxHeight, 56 + CGFloat(max(rows, 1)) * 30 + 12)
     }
 }
 
@@ -73,13 +77,17 @@ final class ListWindowController {
         model.$content.sink { [weak self] content in
             DispatchQueue.main.async { self?.contentChanged(content) }
         }.store(in: &cancellables)
-        // Keep the list current while it is open; NowPlaying changes often, so wait for a quiet moment.
+        // Keep the list current while it is open, but only when what it shows has changed (not on every
+        // position tick); NowPlaying changes often, so wait for a quiet moment first.
         nowPlaying.objectWillChange
             .debounce(for: .seconds(0.3), scheduler: DispatchQueue.main)
             .sink { [weak self] in
-                guard let self, self.isShown else { return }
+                guard let self, self.isShown, self.model.needsReload else { return }
                 Task { await self.model.reload() }
             }.store(in: &cancellables)
+        model.$tab.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.place() }
+        }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: DialPanelController.didClose)
             .sink { [weak self] _ in self?.close(animated: false) }
             .store(in: &cancellables)
@@ -94,9 +102,10 @@ final class ListWindowController {
     func show(below parent: NSWindow) {
         self.parent = parent
         lastIdentity = nil
+        window.level = parent.level
+        window.collectionBehavior = parent.collectionBehavior
         Task {
-            await model.reload()
-            lastIdentity = model.content.identity
+            await model.reload(force: true)
             place()
         }
         place()
@@ -109,7 +118,6 @@ final class ListWindowController {
     }
 
     func close(animated: Bool) {
-        guard window.isVisible else { return }
         guard animated else {
             finishClosing()
             return
@@ -140,13 +148,13 @@ final class ListWindowController {
             close(animated: true)
             return
         }
-        guard !content.isLoading, let identity = content.identity else { return }
-        if let lastIdentity, lastIdentity != identity {
+        switch ListCloseRule.decide(last: lastIdentity, identity: content.identity, isLoading: content.isLoading) {
+        case .close:
             close(animated: true)
-            return
+        case .keep(let identity):
+            lastIdentity = identity
+            place()
         }
-        lastIdentity = identity
-        place()
     }
 
     /// Sizes the window for its rows and puts it below (or beside) the panel. Below the panel, the window also
@@ -168,7 +176,8 @@ final class ListWindowController {
             return model.tab == .episodes ? episodes.count : max(chapters.count, 4)
         case .music(let context, _): return context.tracks.count + (context.totalCount > context.tracks.count ? 1 : 0)
         case .spotify: return 5
-        case .musicLoading, .musicMessage: return 2
+        case .musicLoading: return .max     // size for the tallest list while it loads
+        case .musicMessage: return 2
         case .nothing: return 1
         }
     }

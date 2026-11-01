@@ -61,6 +61,9 @@ protocol MusicSource: AnyObject {
     func next() throws
     func previous() throws
     func setPosition(_ seconds: Double) throws
+    /// Which album or playlist the current song plays from ("playlist:<id>" / "album:<album>|<artist>"),
+    /// cheaply, without reading its songs; nil when the app can't say.
+    func contextKey() throws -> String?
     /// The album or playlist the current song plays from; nil when the app can't say.
     func context() throws -> MusicContext?
     /// Plays one song of a context, continuing through that context.
@@ -69,6 +72,7 @@ protocol MusicSource: AnyObject {
 
 extension MusicSource {
     // Spotify's scripting can't list albums or playlists (that needs its Web API).
+    func contextKey() throws -> String? { nil }
     func context() throws -> MusicContext? { nil }
     func play(trackID: String, in context: MusicContext) throws {}
 }

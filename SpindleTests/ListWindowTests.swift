@@ -40,4 +40,18 @@ final class ListWindowTests: XCTestCase {
         XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: nil, panel: panel, anchor: statusBar, children: []))
         XCTAssertTrue(PanelClickPolicy.closesPanel(clickWindow: library, panel: panel, anchor: statusBar, children: [list]))
     }
+
+    func testPlacementIsDecidedForTheTallestList() {
+        // 300 pt would fit below, but the list may grow to 360 once it loads: put it beside from the start.
+        let frame = ListPlacement.frame(panel: NSRect(x: 600, y: 350, width: 272, height: 560), height: 300, visible: screen)
+        XCTAssertEqual(frame.origin.x, 600 - 12 - 272)
+    }
+
+    func testAlbumRowsQueueTheWholeAlbumFromTheClickedSong() {
+        let script = AppleMusicSource.queueScript(trackIDs: ["a\"1", "b2"], startID: "b2", knownPlaylistID: "PL")
+        XCTAssertTrue(script.contains(#"{"a\"1", "b2"}"#), "every id is quoted")
+        XCTAssertTrue(script.contains(#"play (first track of q whose persistent ID is "b2")"#))
+        XCTAssertTrue(script.contains(#"first user playlist whose persistent ID is "PL""#))
+        XCTAssertTrue(script.contains("delete every track of q"), "refilled, never duplicated")
+    }
 }

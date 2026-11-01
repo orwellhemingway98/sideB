@@ -16,6 +16,14 @@ final class MusicRemote: ObservableObject {
     @Published private(set) var artwork: NSImage?
     /// The last album or playlist read failed (permission, Music quit, timeout).
     @Published private(set) var contextFailed = false
+    /// Which album or playlist the current song plays from (worked out once per song, cheaply).
+    @Published private(set) var contextKey: String?
+
+    /// Album or playlist, for the cover's hint.
+    var contextKind: MusicContext.Kind? {
+        guard let contextKey else { return nil }
+        return contextKey.hasPrefix("playlist:") ? .playlist : .album
+    }
 
     /// The most recent command, so callers (and tests) can await it.
     private(set) var lastCommand: Task<Void, Never>?
@@ -28,10 +36,13 @@ final class MusicRemote: ObservableObject {
     private var declined: Set<MusicSourceID> = []
     private var pendingSeek: (trackID: String, seconds: Double, pollsLeft: Int)?
     private var artworkTrackID: String?
-    /// Albums and playlists already read, by context id, and which context each song belongs to.
+    /// Albums and playlists already read, by context id ("playlist:…" / "album:…").
     private var contexts: [String: MusicContext] = [:]
-    private var contextOfTrack: [String: String] = [:]
     private var contextSource: MusicSourceID?
+    /// Reads in progress, shared by everyone who asks for the same list.
+    private var contextReads: [String: Task<Result<MusicContext?, MusicSourceError>, Never>] = [:]
+    /// Which list the current song plays from, and for which song that was worked out.
+    private var keyTrackID: String?
 
     init(sources: [MusicSource],
          every: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> AnyObject = RefreshScheduler.repeatingTimer) {
@@ -66,6 +77,11 @@ final class MusicRemote: ObservableObject {
             }
         }.value
         apply(results)
+        // A new song: work out which list it plays from (for the cover's hint), once per song.
+        if let song = track, song.trackID != keyTrackID,
+           let source = sources.first(where: { $0.id == song.source }) {
+            await updateContextKey(for: song, source: source)
+        }
     }
 
     func playPause() { command { try $0.playPause() } }
@@ -86,36 +102,63 @@ final class MusicRemote: ObservableObject {
 
     /// The album or playlist `track` plays from. Read once off the main actor and cached, so the next song on
     /// the same album costs nothing. Nil when the app can't say; `contextFailed` tells a read error apart.
-    func context(for track: MusicTrack) async -> MusicContext? {
+    /// The album or playlist `track` plays from. Cached by that list's id (a song on two lists shows the one it
+    /// is playing from); `refresh` reads Music again, so opening the list picks up playlist edits. Overlapping
+    /// requests share one read. Nil when the app can't say; `contextFailed` tells a read error apart.
+    func context(for track: MusicTrack, refresh: Bool = false) async -> MusicContext? {
         if contextSource != track.source {
             contexts = [:]
-            contextOfTrack = [:]
+            contextReads = [:]
             contextSource = track.source
         }
-        if let id = contextOfTrack[track.trackID], let cached = contexts[id] {
-            contextFailed = false
+        guard let source = sources.first(where: { $0.id == track.source }) else { return nil }
+        // Cheap, and asked every time: the same song may now be playing from a different list.
+        await updateContextKey(for: track, source: source)
+        let key = contextKey ?? "song:" + track.trackID
+        if !refresh, let cached = contexts[key] {
+            setContextFailed(false)
             return cached
         }
-        guard let source = sources.first(where: { $0.id == track.source }) else { return nil }
-        let result = await Task.detached { () -> Result<MusicContext?, MusicSourceError> in
-            do { return .success(try source.context()) }
-            catch let error as MusicSourceError { return .failure(error) }
-            catch { return .failure(.scriptFailed(error.localizedDescription)) }
-        }.value
+        let read: Task<Result<MusicContext?, MusicSourceError>, Never>
+        if let running = contextReads[key] {
+            read = running
+        } else {
+            read = Task.detached {
+                do { return .success(try source.context()) }
+                catch let error as MusicSourceError { return .failure(error) }
+                catch { return .failure(.scriptFailed(error.localizedDescription)) }
+            }
+            contextReads[key] = read
+        }
+        let result = await read.value
+        contextReads[key] = nil
         switch result {
         case .success(let context?):
-            contexts[context.id] = context
-            for song in context.tracks { contextOfTrack[song.id] = context.id }
-            contextOfTrack[track.trackID] = context.id
-            contextFailed = false
+            contexts[key] = context
+            setContextFailed(false)
             return context
         case .success(nil):
-            contextFailed = false
+            setContextFailed(false)
             return nil
         case .failure:
-            contextFailed = true
+            setContextFailed(true)
             return nil
         }
+    }
+
+    /// Only announce a change when there is one: every announcement wakes the list.
+    private func setContextFailed(_ value: Bool) {
+        if contextFailed != value { contextFailed = value }
+    }
+
+    /// Asks the app which list the song plays from (a quick script, once per song).
+    private func updateContextKey(for track: MusicTrack, source: MusicSource) async {
+        let trackID = track.trackID
+        let key = await Task.detached { try? source.contextKey() }.value ?? nil
+        // A late answer for a song that has since changed is dropped.
+        guard self.track?.trackID == trackID else { return }
+        keyTrackID = trackID
+        if contextKey != key { contextKey = key }
     }
 
     /// Plays a song from the list, carrying on through its album or playlist.
@@ -164,6 +207,10 @@ final class MusicRemote: ObservableObject {
             pendingSeek = nil
         }
         if track != newTrack { track = newTrack }
+        if newTrack == nil, contextKey != nil {
+            contextKey = nil
+            keyTrackID = nil
+        }
         let nowPlaying = snapshot?.state == .playing && newTrack != nil
         if isPlaying != nowPlaying { isPlaying = nowPlaying }
         loadArtworkIfNeeded()

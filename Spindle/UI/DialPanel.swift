@@ -83,9 +83,8 @@ struct DialPanelView: View {
     }
 
     private var coverHint: String {
-        var kind: MusicContext.Kind?
-        if case .music(let context, _) = list?.content { kind = context.kind }
-        return ListContent.hint(mode: nowPlaying.mode, source: nowPlaying.music?.source, contextKind: kind)
+        ListContent.hint(mode: nowPlaying.mode, source: nowPlaying.music?.source,
+                         contextKind: nowPlaying.music?.contextKind)
     }
 
     // MARK: Times
@@ -341,8 +340,10 @@ final class DialPanelController {
 
     func close() {
         removeMonitors()
-        panel.orderOut(nil)
+        // Tell the list first: AppKit hides child windows with the panel, and the list must detach while
+        // it can still see itself, or it would come back with the panel next time.
         NotificationCenter.default.post(name: Self.didClose, object: self)
+        panel.orderOut(nil)
     }
 
     isolated deinit {
@@ -400,7 +401,8 @@ private struct CoverButton: View {
     let hint: String
     let action: (() -> Void)?
     @State private var hovering = false
-    @State private var pressed = false
+    /// Resets itself if the press is interrupted (the panel closes mid-press).
+    @GestureState private var pressed = false
 
     var body: some View {
         ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
@@ -421,9 +423,8 @@ private struct CoverButton: View {
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: pressed)
             .onHover { hovering = $0 }
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
+                .updating($pressed) { _, state, _ in state = true }
                 .onEnded { value in
-                    pressed = false
                     let inside = CGRect(x: 0, y: 0, width: Self.size, height: Self.size).contains(value.location)
                     if inside { action?() }
                 })
