@@ -12,10 +12,16 @@ struct DialPanelView: View {
     let onLibrary: () -> Void
     /// Pops the disc out into the floating dial; nil hides the pill.
     let onPopOut: (() -> Void)?
+    /// Clicking the cover opens or closes the list window.
+    let onCover: (() -> Void)?
+    /// Tells the cover's hint whether a Music song plays from an album or a playlist.
+    let list: ListModel?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil) {
+         onPopOut: (() -> Void)? = nil, onCover: (() -> Void)? = nil, list: ListModel? = nil) {
         self.onPopOut = onPopOut
+        self.onCover = onCover
+        self.list = list
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.library = library
@@ -55,12 +61,12 @@ struct DialPanelView: View {
     // MARK: Header
 
     private func header(_ display: NowPlayingDisplay) -> some View {
-        HStack(spacing: 10) {
-            ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
-                        size: 44, cornerRadius: 12, image: nowPlaying.musicArtwork)
+        VStack(alignment: .leading, spacing: 10) {
+            CoverButton(artwork: artwork, display: display, image: nowPlaying.musicArtwork,
+                        hint: coverHint, action: onCover)
             VStack(alignment: .leading, spacing: 2) {
                 Text(display.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(2)
                 let subtitle = [display.subtitle, display.sourceLabel ?? ""].filter { !$0.isEmpty }
                     .joined(separator: " \u{00B7} ")
@@ -71,9 +77,15 @@ struct DialPanelView: View {
                         .lineLimit(1)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .foregroundStyle(.primary)
+    }
+
+    private var coverHint: String {
+        var kind: MusicContext.Kind?
+        if case .music(let context, _) = list?.content { kind = context.kind }
+        return ListContent.hint(mode: nowPlaying.mode, source: nowPlaying.music?.source, contextKind: kind)
     }
 
     // MARK: Times
@@ -367,3 +379,49 @@ final class DialPanelController {
         escapeMonitor = nil
     }
 }
+
+/// The big cover: gives a little under the pointer and when pressed; clicking it opens the list window.
+private struct CoverButton: View {
+    static let size: CGFloat = 240
+
+    @ObservedObject var artwork: ArtworkCache
+    let display: NowPlayingDisplay
+    let image: NSImage?
+    let hint: String
+    let action: (() -> Void)?
+    @State private var hovering = false
+    @State private var pressed = false
+
+    var body: some View {
+        ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
+                    size: Self.size, cornerRadius: 18, image: image)
+            .shadow(color: .black.opacity(0.35), radius: 15, y: 10)
+            .overlay(alignment: .bottomTrailing) {
+                if action != nil {
+                    Text(hint)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .glassEffect(.regular, in: Capsule())
+                        .padding(10)
+                }
+            }
+            .scaleEffect(pressed ? 0.97 : (hovering ? 1.015 : 1))
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: hovering)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: pressed)
+            .onHover { hovering = $0 }
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressed = true }
+                .onEnded { value in
+                    pressed = false
+                    let inside = CGRect(x: 0, y: 0, width: Self.size, height: Self.size).contains(value.location)
+                    if inside { action?() }
+                })
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Cover. \(hint)")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { action?() }
+    }
+}
+
