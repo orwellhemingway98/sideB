@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var scheduler: RefreshScheduler?
     private var music: MusicRemote?
     private var floatingDial: FloatingDialController?
+    private var listWindow: ListWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.isRunningTests { return }
@@ -60,9 +61,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let placement = DialPlacement()
         let floatingDial = FloatingDialController(nowPlaying: nowPlaying, placement: placement,
                                                   onPutBack: {}, onLibrary: { [weak self] in self?.showLibrary() })
+        let listModel = ListModel(nowPlaying: nowPlaying, library: library)
+        let listWindow = ListWindowController(model: listModel, nowPlaying: nowPlaying)
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,
                                         onLibrary: { [weak self] in self?.showLibrary() },
-                                        onPopOut: { [weak self] in self?.popOutDial() })
+                                        onPopOut: { [weak self] in self?.popOutDial() },
+                                        onCover: { [weak self] in self?.toggleList() },
+                                        list: listModel)
+        panel.escapeHandler = { [weak listWindow] in listWindow?.handleEscape() ?? false }
+        self.listWindow = listWindow
         let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
                                           onLibrary: { [weak self] in self?.showLibrary() },
                                           floatingDial: floatingDial)
@@ -105,6 +112,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying?.flushScrub()
         player?.saveNow()
+    }
+
+    /// The cover opens (or closes) the list window under the panel.
+    private func toggleList() {
+        guard let panel, let listWindow else { return }
+        listWindow.toggle(below: panel.window)
     }
 
     private func popOutDial() {

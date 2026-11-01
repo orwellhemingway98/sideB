@@ -52,3 +52,15 @@ Choose **Pop out ↗** in the dial panel (or **Show Floating Dial** from the men
 menu) to float the disc anywhere on screen. Drag it by the bar beneath the disc; it remembers where you
 left it. Right-click it and choose **Put Back** to return it to the menu bar.
 
+## Big cover
+
+With something playing, the dial panel shows a big cover. Click it and a glass drop falls from the panel and
+spreads into a list:
+
+- **A podcast:** the show's episodes, or this episode's chapters (switch at the top).
+- **Apple Music:** the album or playlist you're playing from. Click a song to play it there.
+- **Spotify:** the song's details for now; listing Spotify albums and playlists needs Spotify sign-in, which
+  is a later addition.
+
+Click the cover again, press Escape or click elsewhere to put the list away.
+
