@@ -1,0 +1,328 @@
+import AppKit
+import Combine
+import SwiftUI
+
+/// Where the list window goes: below the panel when it fits, else beside it (left, then right), top-aligned.
+enum ListPlacement {
+    static let gap: CGFloat = 12
+    static let width: CGFloat = 272
+    static let maxHeight: CGFloat = 360
+
+    static func frame(panel: NSRect, height: CGFloat, visible: NSRect) -> NSRect {
+        let h = min(height, maxHeight)
+        let below = NSRect(x: panel.minX, y: panel.minY - gap - h, width: width, height: h)
+        if below.minY >= visible.minY { return below }
+        let left = panel.minX - gap - width
+        if left >= visible.minX { return NSRect(x: left, y: panel.maxY - h, width: width, height: h) }
+        return NSRect(x: panel.maxX + gap, y: panel.maxY - h, width: width, height: h)
+    }
+
+    /// Rows plus the title bar, capped.
+    static func height(rows: Int) -> CGFloat {
+        min(maxHeight, 56 + CGFloat(max(rows, 1)) * 30 + 12)
+    }
+}
+
+/// Which clicks close the dial panel: those in another Spindle window, but not in the panel, its menu bar
+/// item or the panel's own child windows (the list).
+enum PanelClickPolicy {
+    static func closesPanel(clickWindow: NSWindow?, panel: NSWindow, anchor: NSWindow?, children: [NSWindow]) -> Bool {
+        guard let clickWindow else { return false }
+        if clickWindow === panel || clickWindow === anchor { return false }
+        return !children.contains { $0 === clickWindow }
+    }
+}
+
+/// Whether the droplet has spread into the window.
+@MainActor
+final class DropletState: ObservableObject {
+    @Published var open = false
+}
+
+/// The list window under the dial panel. It opens as a glass drop that falls from the panel and spreads into
+/// the window, and closes the same way in reverse.
+@MainActor
+final class ListWindowController {
+    static let spring = Animation.spring(response: 0.6, dampingFraction: 0.78)
+    private static let closeDelay: TimeInterval = 0.4
+
+    private let window: NSPanel
+    private let model: ListModel
+    private let nowPlaying: NowPlaying
+    private let state = DropletState()
+    private weak var parent: NSWindow?
+    private var cancellables: Set<AnyCancellable> = []
+    private var lastIdentity: String?
+    private var placedBelow = true
+
+    init(model: ListModel, nowPlaying: NowPlaying) {
+        self.model = model
+        self.nowPlaying = nowPlaying
+        window = NSPanel(contentRect: NSRect(x: 0, y: 0, width: ListPlacement.width, height: ListPlacement.maxHeight),
+                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
+        window.hidesOnDeactivate = false
+        window.isReleasedWhenClosed = false
+        let hosting = NSHostingView(rootView: ListDropletView(state: state, model: model, nowPlaying: nowPlaying))
+        hosting.sizingOptions = []
+        window.contentView = hosting
+
+        // Close when what the list is about changes (a new show, album or playlist); follow songs within it.
+        model.$content.sink { [weak self] content in
+            DispatchQueue.main.async { self?.contentChanged(content) }
+        }.store(in: &cancellables)
+        // Keep the list current while it is open; NowPlaying changes often, so wait for a quiet moment.
+        nowPlaying.objectWillChange
+            .debounce(for: .seconds(0.3), scheduler: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self, self.isShown else { return }
+                Task { await self.model.reload() }
+            }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: DialPanelController.didClose)
+            .sink { [weak self] _ in self?.close(animated: false) }
+            .store(in: &cancellables)
+    }
+
+    var isShown: Bool { window.isVisible && state.open }
+
+    func toggle(below parent: NSWindow) {
+        if isShown { close(animated: true) } else { show(below: parent) }
+    }
+
+    func show(below parent: NSWindow) {
+        self.parent = parent
+        lastIdentity = nil
+        Task {
+            await model.reload()
+            lastIdentity = model.content.identity
+            place()
+        }
+        place()
+        parent.addChildWindow(window, ordered: .above)
+        window.orderFront(nil)
+        state.open = false
+        DispatchQueue.main.async {
+            withAnimation(Self.spring) { self.state.open = true }
+        }
+    }
+
+    func close(animated: Bool) {
+        guard window.isVisible else { return }
+        guard animated else {
+            finishClosing()
+            return
+        }
+        withAnimation(Self.spring) { state.open = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeDelay) { [weak self] in
+            guard let self, !self.state.open else { return }
+            self.finishClosing()
+        }
+    }
+
+    /// Escape: closes the list if it is open, and says so (so the panel stays).
+    func handleEscape() -> Bool {
+        guard isShown else { return false }
+        close(animated: true)
+        return true
+    }
+
+    private func finishClosing() {
+        state.open = false
+        parent?.removeChildWindow(window)
+        window.orderOut(nil)
+    }
+
+    private func contentChanged(_ content: ListContent) {
+        guard window.isVisible, state.open else { return }
+        if case .nothing = content {
+            close(animated: true)
+            return
+        }
+        guard !content.isLoading, let identity = content.identity else { return }
+        if let lastIdentity, lastIdentity != identity {
+            close(animated: true)
+            return
+        }
+        lastIdentity = identity
+        place()
+    }
+
+    /// Sizes the window for its rows and puts it below (or beside) the panel. Below the panel, the window also
+    /// covers the gap, so the drop can be seen leaving the panel.
+    private func place() {
+        guard let parent else { return }
+        let visible = parent.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+        var frame = ListPlacement.frame(panel: parent.frame, height: ListPlacement.height(rows: rowCount), visible: visible)
+        placedBelow = frame.maxY <= parent.frame.minY
+        if placedBelow { frame.size.height += ListPlacement.gap }
+        window.setFrame(frame, display: true)
+        (window.contentView as? NSHostingView<ListDropletView>)?.rootView =
+            ListDropletView(state: state, model: model, nowPlaying: nowPlaying, topInset: placedBelow ? ListPlacement.gap : 0)
+    }
+
+    private var rowCount: Int {
+        switch model.content {
+        case .podcast(let episodes, _, let chapters, _, _):
+            return model.tab == .episodes ? episodes.count : max(chapters.count, 4)
+        case .music(let context, _): return context.tracks.count + (context.totalCount > context.tracks.count ? 1 : 0)
+        case .spotify: return 5
+        case .musicLoading, .musicMessage: return 2
+        case .nothing: return 1
+        }
+    }
+}
+
+// MARK: - The droplet
+
+struct ListDropletView: View {
+    @ObservedObject var state: DropletState
+    @ObservedObject var model: ListModel
+    let nowPlaying: NowPlaying
+    var topInset: CGFloat = ListPlacement.gap
+    @Namespace private var glass
+
+    var body: some View {
+        GlassEffectContainer(spacing: 24) {
+            ZStack(alignment: .top) {
+                if state.open {
+                    ListBody(model: model, nowPlaying: nowPlaying)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .glassEffectID("list", in: glass)
+                } else {
+                    // The drop, about to fall from the panel's bottom edge.
+                    Color.clear
+                        .frame(width: 34, height: 34)
+                        .glassEffect(.regular, in: Circle())
+                        .glassEffectID("list", in: glass)
+                        .offset(y: -26)
+                }
+            }
+            .padding(.top, topInset)
+        }
+    }
+}
+
+private struct ListBody: View {
+    @ObservedObject var model: ListModel
+    let nowPlaying: NowPlaying
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            switch model.content {
+            case .podcast(let episodes, let current, let chapters, let currentChapter, let description):
+                Picker("", selection: $model.tab) {
+                    Text("Episodes").tag(PodcastTab.episodes)
+                    Text("Chapters").tag(PodcastTab.chapters)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                if model.tab == .episodes {
+                    rows(episodes, isCurrent: { $0 === current }) { episode in
+                        row(title: episode.title, detail: Self.episodeDetail(episode)) { nowPlaying.play(episode) }
+                    }
+                } else if chapters.isEmpty {
+                    ScrollView { Text(description).font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading) }
+                } else {
+                    rows(chapters, id: \.start, isCurrent: { $0 == currentChapter }) { chapter in
+                        row(title: chapter.title, detail: TimeFormat.clock(chapter.start)) { nowPlaying.jump(to: chapter.start) }
+                    }
+                }
+            case .music(let context, let currentTrackID):
+                title("\(context.title) \u{00B7} \(context.totalCount) song\(context.totalCount == 1 ? "" : "s")")
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(context.tracks) { song in
+                            row(title: song.title, detail: TimeFormat.clock(song.duration),
+                                number: context.kind == .album ? song.number : nil,
+                                current: song.id == currentTrackID) {
+                                nowPlaying.music?.play(contextTrack: song, in: context)
+                            }
+                        }
+                        if context.totalCount > context.tracks.count {
+                            Text("and \(context.totalCount - context.tracks.count) more")
+                                .font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 6)
+                        }
+                    }
+                }
+            case .musicLoading:
+                note("Reading Music\u{2026}")
+            case .musicMessage(_, let text):
+                note(text)
+            case .spotify(let track):
+                title(track.title)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(track.artist)
+                    Text(track.album)
+                    if track.duration > 0 { Text(TimeFormat.clock(track.duration)) }
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                note("Sign in to Spotify to see the album and playlist.")
+            case .nothing:
+                EmptyView()
+            }
+        }
+        .padding(14)
+    }
+
+    private func title(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(1)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text).font(.system(size: 12)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func rows<Item, ID: Hashable, Row: View>(_ items: [Item], id: KeyPath<Item, ID>, isCurrent: @escaping (Item) -> Bool,
+                                                    @ViewBuilder row: @escaping (Item) -> Row) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(items, id: id) { item in
+                    row(item).background(isCurrent(item) ? Color.white.opacity(0.18) : .clear,
+                                         in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+    }
+
+    private func rows<Row: View>(_ episodes: [Episode], isCurrent: @escaping (Episode) -> Bool,
+                                 @ViewBuilder row: @escaping (Episode) -> Row) -> some View {
+        rows(episodes, id: \.persistentModelID, isCurrent: isCurrent, row: row)
+    }
+
+    private func row(title: String, detail: String, number: Int? = nil, current: Bool = false,
+                     action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let number { Text("\(number)").foregroundStyle(.secondary).frame(width: 18, alignment: .trailing) }
+                Text(title).lineLimit(1).fontWeight(current ? .semibold : .regular)
+                Spacer(minLength: 6)
+                Text(detail).foregroundStyle(.secondary).monospacedDigit()
+            }
+            .font(.system(size: 12))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .background(current ? Color.white.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private static func episodeDetail(_ episode: Episode) -> String {
+        var parts: [String] = []
+        if let published = episode.published { parts.append(published.formatted(date: .abbreviated, time: .omitted)) }
+        if let duration = episode.duration {
+            parts.append(!episode.played && episode.position > 0
+                         ? "\(TimeFormat.clock(max(0, duration - episode.position))) left" : TimeFormat.clock(duration))
+        }
+        return parts.joined(separator: " \u{00B7} ")
+    }
+}

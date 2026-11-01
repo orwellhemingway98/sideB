@@ -292,7 +292,7 @@ final class DialPanelController {
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil) {
+         onPopOut: (() -> Void)? = nil, onCover: (() -> Void)? = nil, list: ListModel? = nil) {
         panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
@@ -304,7 +304,7 @@ final class DialPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
-                                 onPopOut: onPopOut)
+                                 onPopOut: onPopOut, onCover: onCover, list: list)
         let hosting = NSHostingView(rootView: root)
         panel.contentView = hosting
     }
@@ -333,6 +333,12 @@ final class DialPanelController {
         NotificationCenter.default.post(name: Self.didShow, object: self)
     }
 
+    /// The panel's window, for windows that attach below it (the list).
+    var window: NSWindow { panel }
+
+    /// Asked first when Escape is pressed in the panel; returns true if it handled it.
+    var escapeHandler: (() -> Bool)?
+
     func close() {
         removeMonitors()
         panel.orderOut(nil)
@@ -353,7 +359,9 @@ final class DialPanelController {
         ownWindowClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             let window = event.window
             MainActor.assumeIsolated {
-                guard let self, window !== self.panel, window !== self.anchorWindow else { return }
+                guard let self, PanelClickPolicy.closesPanel(clickWindow: window, panel: self.panel,
+                                                             anchor: self.anchorWindow,
+                                                             children: self.panel.childWindows ?? []) else { return }
                 self.close()
             }
             return event
@@ -363,6 +371,8 @@ final class DialPanelController {
             let window = event.window
             let closed = MainActor.assumeIsolated { () -> Bool in
                 guard let self, window === self.panel else { return false }
+                // An open list window closes first; the panel stays.
+                if self.escapeHandler?() == true { return true }
                 self.close()
                 return true
             }

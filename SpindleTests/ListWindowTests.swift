@@ -1,0 +1,43 @@
+import AppKit
+import XCTest
+@testable import Spindle
+
+@MainActor
+final class ListWindowTests: XCTestCase {
+    private let screen = NSRect(x: 0, y: 0, width: 1440, height: 1000)
+
+    func testListGoesBelowThePanel() {
+        let frame = ListPlacement.frame(panel: NSRect(x: 100, y: 400, width: 272, height: 560), height: 300, visible: screen)
+        XCTAssertEqual(frame, NSRect(x: 100, y: 400 - 12 - 300, width: 272, height: 300))
+    }
+
+    func testListMovesBesideThePanelWhenThereIsNoRoomBelow() {
+        let frame = ListPlacement.frame(panel: NSRect(x: 500, y: 50, width: 272, height: 560), height: 300,
+                                        visible: NSRect(x: 0, y: 0, width: 1440, height: 900))
+        XCTAssertEqual(frame, NSRect(x: 500 - 12 - 272, y: 50 + 560 - 300, width: 272, height: 300))
+    }
+
+    func testListGoesRightWhenLeftHasNoRoom() {
+        let frame = ListPlacement.frame(panel: NSRect(x: 10, y: 50, width: 272, height: 560), height: 300,
+                                        visible: NSRect(x: 0, y: 0, width: 1440, height: 900))
+        XCTAssertEqual(frame.origin.x, 10 + 272 + 12)
+        XCTAssertEqual(frame.maxY, 50 + 560)
+    }
+
+    func testHeightIsCappedAt360() {
+        let frame = ListPlacement.frame(panel: NSRect(x: 100, y: 500, width: 272, height: 400), height: 900, visible: screen)
+        XCTAssertEqual(frame.height, 360)
+    }
+
+    func testClicksInTheListDoNotCloseThePanel() {
+        func window() -> NSWindow {
+            NSWindow(contentRect: .init(x: 0, y: 0, width: 10, height: 10), styleMask: [.borderless], backing: .buffered, defer: true)
+        }
+        let panel = window(), list = window(), statusBar = window(), library = window()
+        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: list, panel: panel, anchor: statusBar, children: [list]))
+        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: panel, panel: panel, anchor: statusBar, children: [list]))
+        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: statusBar, panel: panel, anchor: statusBar, children: []))
+        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: nil, panel: panel, anchor: statusBar, children: []))
+        XCTAssertTrue(PanelClickPolicy.closesPanel(clickWindow: library, panel: panel, anchor: statusBar, children: [list]))
+    }
+}
