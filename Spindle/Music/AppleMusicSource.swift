@@ -50,4 +50,111 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
     func next() throws { try tell("next track") }
     func previous() throws { try tell("previous track") }
     func setPosition(_ seconds: Double) throws { try tell("set player position to \(String(format: "%.2f", max(0, seconds)))") }
+
+    // MARK: Album or playlist
+
+    /// Spindle's own playlist, refilled to play an album from a chosen song (ClickWheel's approach).
+    static let playlistName = "Spindle"
+    private static let playlistIDKey = "spindlePlaylistID"
+
+    private static let contextScript = """
+        with timeout of 10 seconds
+        set fs to character id 31
+        set rs to character id 30
+        try
+            set t to current track
+        on error
+            return ""
+        end try
+        set usePlaylist to false
+        try
+            set pl to current playlist
+            if (class of pl is user playlist) and (special kind of pl is none) and (name of pl is not \(quoted(playlistName))) then set usePlaylist to true
+        end try
+        if usePlaylist then
+            set src to every track of pl
+            set head to "playlist" & fs & "playlist:" & (persistent ID of pl) & fs & (name of pl)
+        else
+            set alb to album of t
+            if alb is "" then return ""
+            set aa to album artist of t
+            set src to every track of library playlist 1 whose album is alb and album artist is aa
+            set head to "album" & fs & "album:" & alb & "|" & aa & fs & alb
+        end if
+        set total to count of src
+        set out to {head & fs & (total as string)}
+        set n to total
+        if n > \(MusicContextParser.cap) then set n to \(MusicContextParser.cap)
+        repeat with i from 1 to n
+            set x to item i of src
+            set end of out to (persistent ID of x) & fs & ((disc number of x) as string) & fs & ((track number of x) as string) & fs & (name of x) & fs & (artist of x) & fs & ((duration of x) as string)
+        end repeat
+        set AppleScript's text item delimiters to rs
+        set res to out as string
+        set AppleScript's text item delimiters to ""
+        return res
+        end timeout
+        """
+
+    func context() throws -> MusicContext? {
+        MusicContextParser.parse(try tell(Self.contextScript).stringValue ?? "")
+    }
+
+    func play(trackID: String, in context: MusicContext) throws {
+        switch context.kind {
+        case .playlist:
+            let playlistID = String(context.id.dropFirst("playlist:".count))
+            try tell("""
+                with timeout of 10 seconds
+                play (first track of (first user playlist whose persistent ID is \(Self.quoted(playlistID))) whose persistent ID is \(Self.quoted(trackID)))
+                end timeout
+                """)
+        case .album:
+            let defaults = UserDefaults.standard
+            let script = Self.queueScript(trackIDs: context.tracks.map(\.id), startID: trackID,
+                                          knownPlaylistID: defaults.string(forKey: Self.playlistIDKey))
+            if let id = try tell(script).stringValue, !id.isEmpty {
+                defaults.set(id, forKey: Self.playlistIDKey)
+            }
+        }
+    }
+
+    /// Refills the "Spindle" playlist with the album and plays it from `startID`, so the album carries on
+    /// after it (and ⏮ reaches the songs before). Copied from ClickWheel's AppleMusicScripts.queue.
+    static func queueScript(trackIDs: [String], startID: String, knownPlaylistID: String?) -> String {
+        let findKnown = knownPlaylistID.map {
+            "try\nset q to first user playlist whose persistent ID is \(quoted($0))\nend try"
+        } ?? ""
+        let ids = "{" + trackIDs.map(quoted).joined(separator: ", ") + "}"
+        return """
+            with timeout of 10 seconds
+            set q to missing value
+            \(findKnown)
+            if q is missing value then
+                try
+                    set q to first user playlist whose name is \(quoted(playlistName))
+                end try
+            end if
+            if q is missing value then set q to make new user playlist with properties {name:\(quoted(playlistName))}
+            if (count of tracks of q) > 0 then delete every track of q
+            set src to library playlist 1
+            repeat with tid in \(ids)
+                try
+                    duplicate (first track of src whose persistent ID is (contents of tid)) to q
+                end try
+            end repeat
+            try
+                play (first track of q whose persistent ID is \(quoted(startID)))
+            on error
+                play track 1 of q
+            end try
+            return persistent ID of q
+            end timeout
+            """
+    }
+
+    /// An AppleScript string literal (ClickWheel's AppleMusicScripts.quoted).
+    static func quoted(_ s: String) -> String {
+        "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+    }
 }

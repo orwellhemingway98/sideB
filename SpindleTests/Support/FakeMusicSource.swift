@@ -16,6 +16,9 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     private var _commands: [Command] = []
     private var _snapshotCalls = 0
     private var _artworkCalls = 0
+    private var _contextResult: Result<MusicContext?, MusicSourceError> = .success(nil)
+    private var _contextCalls = 0
+    private var _playedInContext: [(trackID: String, contextID: String)] = []
 
     init(_ id: MusicSourceID) { self.id = id }
 
@@ -25,6 +28,12 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     var commands: [Command] { lock.withLock { _commands } }
     var snapshotCalls: Int { lock.withLock { _snapshotCalls } }
     var artworkCalls: Int { lock.withLock { _artworkCalls } }
+    /// What context() answers (nil by default, like Spotify).
+    var contextResult: Result<MusicContext?, MusicSourceError> {
+        get { lock.withLock { _contextResult } } set { lock.withLock { _contextResult = newValue } }
+    }
+    var contextCalls: Int { lock.withLock { _contextCalls } }
+    var playedInContext: [(trackID: String, contextID: String)] { lock.withLock { _playedInContext } }
 
     /// Reports a track in the given state.
     func play(_ title: String, id trackID: String = "t1", state: MusicPlayerState = .playing,
@@ -50,6 +59,17 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
 
     func artwork() throws -> ArtworkRef {
         lock.withLock { _artworkCalls += 1; return _artwork }
+    }
+
+    func context() throws -> MusicContext? {
+        try lock.withLock {
+            _contextCalls += 1
+            return try _contextResult.get()
+        }
+    }
+
+    func play(trackID: String, in context: MusicContext) throws {
+        lock.withLock { _playedInContext.append((trackID, context.id)) }
     }
 
     private func record(_ command: Command) { lock.withLock { _commands.append(command) } }
