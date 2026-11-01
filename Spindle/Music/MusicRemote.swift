@@ -14,6 +14,8 @@ final class MusicRemote: ObservableObject {
     @Published private(set) var track: MusicTrack?
     @Published private(set) var isPlaying = false
     @Published private(set) var artwork: NSImage?
+    /// The last album or playlist read failed (permission, Music quit, timeout).
+    @Published private(set) var contextFailed = false
 
     /// The most recent command, so callers (and tests) can await it.
     private(set) var lastCommand: Task<Void, Never>?
@@ -26,6 +28,10 @@ final class MusicRemote: ObservableObject {
     private var declined: Set<MusicSourceID> = []
     private var pendingSeek: (trackID: String, seconds: Double, pollsLeft: Int)?
     private var artworkTrackID: String?
+    /// Albums and playlists already read, by context id, and which context each song belongs to.
+    private var contexts: [String: MusicContext] = [:]
+    private var contextOfTrack: [String: String] = [:]
+    private var contextSource: MusicSourceID?
 
     init(sources: [MusicSource],
          every: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> AnyObject = RefreshScheduler.repeatingTimer) {
@@ -74,6 +80,47 @@ final class MusicRemote: ObservableObject {
         current.position = target
         track = current
         command { try $0.setPosition(target) }
+    }
+
+    // MARK: - Album or playlist
+
+    /// The album or playlist `track` plays from. Read once off the main actor and cached, so the next song on
+    /// the same album costs nothing. Nil when the app can't say; `contextFailed` tells a read error apart.
+    func context(for track: MusicTrack) async -> MusicContext? {
+        if contextSource != track.source {
+            contexts = [:]
+            contextOfTrack = [:]
+            contextSource = track.source
+        }
+        if let id = contextOfTrack[track.trackID], let cached = contexts[id] {
+            contextFailed = false
+            return cached
+        }
+        guard let source = sources.first(where: { $0.id == track.source }) else { return nil }
+        let result = await Task.detached { () -> Result<MusicContext?, MusicSourceError> in
+            do { return .success(try source.context()) }
+            catch let error as MusicSourceError { return .failure(error) }
+            catch { return .failure(.scriptFailed(error.localizedDescription)) }
+        }.value
+        switch result {
+        case .success(let context?):
+            contexts[context.id] = context
+            for song in context.tracks { contextOfTrack[song.id] = context.id }
+            contextOfTrack[track.trackID] = context.id
+            contextFailed = false
+            return context
+        case .success(nil):
+            contextFailed = false
+            return nil
+        case .failure:
+            contextFailed = true
+            return nil
+        }
+    }
+
+    /// Plays a song from the list, carrying on through its album or playlist.
+    func play(contextTrack: ContextTrack, in context: MusicContext) {
+        command { try $0.play(trackID: contextTrack.id, in: context) }
     }
 
     // MARK: - Private
