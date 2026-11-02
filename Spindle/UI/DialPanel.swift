@@ -170,7 +170,11 @@ struct DialPanelView: View {
                                contextKind: nowPlaying.music?.contextKind)
     }
 
-    /// Library and Pop out, in the cover's top corners while the pointer is over the panel.
+    /// Library and Pop out sit faintly in the cover's top corners, and come up fully under the pointer.
+    static func cornerOpacity(hovering: Bool) -> Double {
+        hovering ? 1 : 0.35
+    }
+
     private var coverCorners: some View {
         HStack {
             CornerButton(label: "Library", action: onLibrary) {
@@ -186,8 +190,7 @@ struct DialPanelView: View {
             }
         }
         .padding(10)
-        .opacity(hovering ? 1 : 0)
-        .allowsHitTesting(hovering)
+        .opacity(Self.cornerOpacity(hovering: hovering))
         .animation(.easeOut(duration: 0.15), value: hovering)
     }
 
