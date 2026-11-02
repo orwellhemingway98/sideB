@@ -194,3 +194,12 @@ final class WindowGlassTests: XCTestCase {
         XCTAssertEqual(glass.cornerRadius, DialPanelView.panelCornerRadius)
     }
 }
+
+@MainActor
+final class CoverCornersTests: XCTestCase {
+    func testLibraryAndPopOutAreFaintAtRestAndFullUnderThePointer() {
+        // Hidden until hover, they couldn't be found by someone who opens the panel and doesn't move the pointer.
+        XCTAssertEqual(DialPanelView.cornerOpacity(hovering: false), 0.35)
+        XCTAssertEqual(DialPanelView.cornerOpacity(hovering: true), 1)
+    }
+}
