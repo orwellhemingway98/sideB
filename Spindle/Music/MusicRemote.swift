@@ -14,6 +14,9 @@ final class MusicRemote: ObservableObject {
     @Published private(set) var track: MusicTrack?
     @Published private(set) var isPlaying = false
     @Published private(set) var artwork: NSImage?
+    /// Which song `artwork` belongs to. It lags the track while a new cover loads: the old cover stays up until
+    /// the new one is in (or there turns out to be none), so the panel changes once rather than flashing.
+    @Published private(set) var artworkTrackID: String?
     /// The playing app's own volume, 0...100.
     @Published private(set) var volume: Int?
     /// The last album or playlist read failed (permission, Music quit, timeout).
@@ -39,7 +42,10 @@ final class MusicRemote: ObservableObject {
     private var pendingSeek: (trackID: String, seconds: Double, pollsLeft: Int)?
     /// A volume we set, believed over polls that may still report the old one.
     private var pendingVolume: (percent: Int, pollsLeft: Int)?
-    private var artworkTrackID: String?
+    /// The song whose cover is being loaded.
+    private var loadingArtworkFor: String?
+    /// How long a new song waits for its cover before showing none.
+    private let artworkPatience: TimeInterval
     /// Albums and playlists already read, by context id ("playlist:…" / "album:…").
     private var contexts: [String: MusicContext] = [:]
     private var contextSource: MusicSourceID?
@@ -49,8 +55,10 @@ final class MusicRemote: ObservableObject {
     private var keyTrackID: String?
 
     init(sources: [MusicSource],
-         every: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> AnyObject = RefreshScheduler.repeatingTimer) {
+         every: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> AnyObject = RefreshScheduler.repeatingTimer,
+         artworkPatience: TimeInterval = 1) {
         self.sources = sources
+        self.artworkPatience = artworkPatience
         self.every = every
     }
 
@@ -240,13 +248,13 @@ final class MusicRemote: ObservableObject {
 
     private func loadArtworkIfNeeded() {
         guard let track, let source = activeSource else {
-            artworkTrackID = nil
-            artwork = nil
+            loadingArtworkFor = nil
+            if artwork != nil { artwork = nil }
+            if artworkTrackID != nil { artworkTrackID = nil }
             return
         }
-        guard track.trackID != artworkTrackID else { return }
-        artworkTrackID = track.trackID
-        artwork = nil
+        guard track.trackID != loadingArtworkFor else { return }
+        loadingArtworkFor = track.trackID
         let trackID = track.trackID
         Task {
             let ref = await Task.detached { (try? source.artwork()) ?? .none }.value
@@ -256,9 +264,22 @@ final class MusicRemote: ObservableObject {
             case .url(let url): data = try? await URLSession.shared.data(from: url).0
             case .none: data = nil
             }
-            guard self.artworkTrackID == trackID, let data, let image = NSImage(data: data) else { return }
-            self.artwork = image
+            guard self.loadingArtworkFor == trackID else { return }
+            let image = data.flatMap(NSImage.init(data:))
+            // A cover that arrives after we gave up on it still goes up; "none" never replaces one.
+            if image == nil, self.artworkTrackID == trackID { return }
+            self.showArtwork(image, for: trackID)
         }
+        Task {
+            try? await Task.sleep(for: .seconds(artworkPatience))
+            guard self.loadingArtworkFor == trackID, self.artworkTrackID != trackID else { return }
+            self.showArtwork(nil, for: trackID)
+        }
+    }
+
+    private func showArtwork(_ image: NSImage?, for trackID: String) {
+        artwork = image
+        if artworkTrackID != trackID { artworkTrackID = trackID }
     }
 
     private func command(_ action: @escaping @Sendable (MusicSource) throws -> Void) {
