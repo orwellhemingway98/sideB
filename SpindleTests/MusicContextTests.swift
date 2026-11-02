@@ -55,4 +55,30 @@ final class MusicContextTests: XCTestCase {
         XCTAssertEqual(context.tracks.count, 500)
         XCTAssertEqual(context.totalCount, 5000)
     }
+
+    // MARK: Finding the playing song
+
+    private func song(_ id: String, _ title: String, artist: String = "Capitão Fausto") -> ContextTrack {
+        ContextTrack(id: id, disc: 1, number: 1, title: title, artist: artist, duration: 174)
+    }
+
+    private func playing(_ id: String, _ title: String, artist: String = "Capitão Fausto") -> MusicTrack {
+        MusicTrack(trackID: id, title: title, artist: artist, album: "Casa Pequena", duration: 174, position: 0,
+                   index: nil, count: nil, source: .appleMusic)
+    }
+
+    func testPlayingSongIsFoundByID() {
+        let context = MusicContext(kind: .album, id: "album:X", title: "X",
+                                   tracks: [song("a", "Escolhas"), song("b", "Escolhas")], totalCount: 2)
+        XCTAssertEqual(context.row(for: playing("b", "Escolhas"))?.id, "b")
+    }
+
+    func testAStreamedCopyIsFoundByTitleAndArtist() {
+        // Streaming a song gives it another ID than the library copy the album list is read from.
+        let context = MusicContext(kind: .album, id: "album:X", title: "X",
+                                   tracks: [song("lib1", "Casa Pequena"), song("lib2", "Escolhas")], totalCount: 2)
+        XCTAssertEqual(context.row(for: playing("stream9", "Escolhas"))?.id, "lib2")
+        XCTAssertNil(context.row(for: playing("stream9", "Escolhas", artist: "Someone Else")))
+        XCTAssertNil(context.row(for: playing("stream9", "Not Here")))
+    }
 }

@@ -174,4 +174,15 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(Rule.decide(last: "album:A", identity: "album:B", isLoading: false), .close)
         XCTAssertEqual(Rule.decide(last: "album:A", identity: nil, isLoading: false), .close)
     }
+
+    func testAStreamedSongIsHighlightedInItsAlbum() async {
+        music.contextResult = .success(album("A", ["lib1", "lib2"]))
+        music.contextKeyValue = "album:A|Northern Static"
+        music.play("lib2", id: "stream7")   // same song, streamed copy
+        await remote.refresh()
+        let list = model()
+        await list.reload()
+        guard case .music(_, let current) = list.content else { return XCTFail("got \(list.content)") }
+        XCTAssertEqual(current, "lib2")
+    }
 }

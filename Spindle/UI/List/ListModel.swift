@@ -69,15 +69,15 @@ final class ListModel: ObservableObject {
             }
             // The next song on the list already shown: just move the highlight.
             if !force, case .music(let context, _) = content, context.id == nowPlaying.music?.contextKey,
-               context.tracks.contains(where: { $0.id == track.trackID }) {
-                content = .music(context, currentTrackID: track.trackID)
+               let row = context.row(for: track) {
+                content = .music(context, currentTrackID: row.id)
                 return
             }
             content = .musicLoading(trackID: track.trackID)
             let context = await loadContext(track, force)
             guard mine == generation else { return }
             if let context, !context.tracks.isEmpty {
-                content = .music(context, currentTrackID: track.trackID)
+                content = .music(context, currentTrackID: context.row(for: track)?.id ?? track.trackID)
             } else {
                 let failed = nowPlaying.music?.contextFailed == true
                 content = .musicMessage(trackID: track.trackID,
