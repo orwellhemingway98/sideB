@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T21:00:00Z",
+  "title": "Design System: Spindle",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "primary", "displayName": "Glass Ink", "canonical": "NSColor.labelColor (white in dark appearance)", "tonalRamp": ["#262626", "#474747", "#6b6b6b", "#8f8f8f", "#b3b3b3", "#d6d6d6", "#ededed", "#ffffff"] },
+      "ink-secondary": { "role": "neutral", "displayName": "Quiet Ink", "canonical": "NSColor.secondaryLabelColor / .secondary" },
+      "row-highlight": { "role": "neutral", "displayName": "Row Light" },
+      "halo-track": { "role": "neutral", "displayName": "Halo Track" },
+      "hairline": { "role": "neutral", "displayName": "Glass Hairline" },
+      "card-back": { "role": "neutral", "displayName": "Smoked Glass" },
+      "key-outline": { "role": "neutral", "displayName": "Key Outline" },
+      "segment-track": { "role": "neutral", "displayName": "Segment Track" },
+      "segment-selected": { "role": "neutral", "displayName": "Segment Light" },
+      "source-spotify": { "role": "tertiary", "displayName": "Spotify Green", "tonalRamp": ["#063d1b", "#0a5c29", "#0f7a36", "#149944", "#1ab851", "#1ED760", "#5be28a", "#a3efbd"] },
+      "source-apple-music": { "role": "tertiary", "displayName": "Music Red", "tonalRamp": ["#4a0812", "#6e0c1b", "#930f24", "#b8132d", "#dc1736", "#FA2D48", "#fb6c7f", "#fdb0ba"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Episode or song title under the cover." },
+      "volume": { "displayName": "Volume", "purpose": "Volume number in the disc's centre during Option + turn." },
+      "body": { "displayName": "Body", "purpose": "Artist or show line, list rows." },
+      "caption": { "displayName": "Caption", "purpose": "Times, durations, dates, pill text." },
+      "label": { "displayName": "Label", "purpose": "Hint pills and uppercase list headings." }
+    },
+    "shadows": [
+      { "name": "cover-lift", "value": "0 10pt 30pt rgba(0,0,0,0.35)", "purpose": "Under the cover so it sits above the panel glass." },
+      { "name": "back-lift", "value": "0 8pt 24pt rgba(0,0,0,0.25)", "purpose": "Under the back of the cover." }
+    ],
+    "motion": [
+      { "name": "develop", "value": "spring(response 0.45, damping 0.9); blur 12→0, scale 0.96→1, opacity 0→1", "purpose": "New cover artwork coming into focus; the title rises 6pt with it." },
+      { "name": "cover-turn", "value": "spring(response 0.5, damping 0.86); rotateY 0→180°, perspective 0.5", "purpose": "The cover turning over to show its list." },
+      { "name": "give", "value": "spring(response 0.25, damping 0.7); scale 1.015 hover, 0.97 press", "purpose": "The cover yielding under the pointer." },
+      { "name": "reduce-motion", "value": "crossfade, 0.2s ease-in-out", "purpose": "Replaces every motion above when Reduce Motion is on." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Hint Pill",
+      "kind": "chip",
+      "refersTo": "hint-pill",
+      "description": "Glass capsule on the cover's corner naming what's on the back.",
+      "html": "<span class=\"ds-hint\">Album <svg width=\"11\" height=\"9\" viewBox=\"0 0 11 9\"><path d=\"M1.5 4.5 A4 2.6 0 1 0 5.2 1.9 M6.9 0.6 L5.2 1.9 L6.9 3.2\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span>",
+      "css": ".ds-hint { display: inline-flex; align-items: center; gap: 4px; font: 600 10px -apple-system, sans-serif; color: #fff; padding: 4px 8px; border-radius: 999px; background: rgba(70,70,80,.55); backdrop-filter: blur(8px); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3); transition: transform .25s; } .ds-hint:hover { transform: scale(1.04); } .ds-hint:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Resume Pill",
+      "kind": "button",
+      "refersTo": "resume-pill",
+      "description": "Quiet glass capsule to return to a paused podcast while music plays.",
+      "html": "<button class=\"ds-resume\"><span class=\"ds-resume-art\"></span><span class=\"ds-resume-k\">Resume</span><span>Tricks, Treats and Trends</span></button>",
+      "css": ".ds-resume { display: flex; align-items: center; gap: 8px; width: 240px; padding: 4px 12px 4px 4px; border: 0; border-radius: 999px; font: 400 11px -apple-system, sans-serif; color: #fff; background: rgba(70,70,80,.35); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.22); cursor: pointer; transition: background .2s, transform .2s; } .ds-resume:hover { background: rgba(90,90,100,.45); } .ds-resume:active { transform: scale(.98); } .ds-resume:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 2px; } .ds-resume-art { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(160deg,#2f5fd6,#0f2a73); } .ds-resume-k { color: rgba(235,235,245,.6); }"
+    },
+    {
+      "name": "List Row",
+      "kind": "custom",
+      "refersTo": "list-row",
+      "description": "A song in an album on the back of the cover; the current one is lit.",
+      "html": "<div class=\"ds-rows\"><div class=\"ds-row\"><span class=\"ds-n\">2</span><span class=\"ds-t\">Blue Hour Drive</span><span class=\"ds-d\">3:59</span></div><div class=\"ds-row ds-cur\"><span class=\"ds-n\">3</span><span class=\"ds-t\">Night Roads</span><span class=\"ds-d\">4:12</span></div><div class=\"ds-row ds-key\"><span class=\"ds-n\">4</span><span class=\"ds-t\">Sodium Glow</span><span class=\"ds-d\">3:20</span></div><div class=\"ds-foot\">11 songs</div></div>",
+      "css": ".ds-rows { width: 228px; padding: 6px; background: linear-gradient(160deg, rgba(120,40,95,.85), rgba(40,18,60,.85)); border-radius: 14px; } .ds-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; border-radius: 8px; font: 400 12px -apple-system, sans-serif; color: #fff; transition: background .15s; } .ds-row:hover { background: rgba(255,255,255,.08); } .ds-cur { background: rgba(255,255,255,.18); font-weight: 600; } .ds-key { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); } .ds-foot { text-align: center; padding-top: 6px; font: 400 11px -apple-system, sans-serif; color: rgba(235,235,245,.6); } .ds-n { width: 18px; text-align: right; color: rgba(235,235,245,.6); font-variant-numeric: tabular-nums; } .ds-t { flex: 1; } .ds-d { color: rgba(235,235,245,.6); font-size: 11px; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Tab Switch",
+      "kind": "nav",
+      "refersTo": "tab-switch",
+      "description": "Episodes | Notes on the back of a podcast's cover.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-on\">Episodes</button><button class=\"ds-tab\">Notes</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 2px; width: 228px; padding: 2px; border-radius: 8px; background: rgba(255,255,255,.10); } .ds-tab { flex: 1; border: 0; background: transparent; color: #fff; font: 400 11px -apple-system, sans-serif; padding: 3px 0; border-radius: 6px; cursor: pointer; } .ds-tab:hover { background: rgba(255,255,255,.08); } .ds-tab:focus-visible { outline: 2px solid rgba(255,255,255,.6); } .ds-on { background: rgba(255,255,255,.22); font-weight: 600; }"
+    },
+    {
+      "name": "Disc",
+      "kind": "custom",
+      "description": "The 150pt glass disc with its halo lit to the current time.",
+      "html": "<div class=\"ds-disc\"><div class=\"ds-halo\"></div><div class=\"ds-face\"><span class=\"ds-l\">&minus;15</span><span class=\"ds-c\">&#9654;</span><span class=\"ds-r\">+30</span></div></div>",
+      "css": ".ds-disc { position: relative; width: 160px; height: 160px; } .ds-halo { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#fff 0 30%, rgba(255,255,255,.14) 30% 100%); -webkit-mask: radial-gradient(circle, transparent 77px, #000 77.5px, #000 80px, transparent 80.5px); } .ds-face { position: absolute; inset: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: space-around; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); color: #fff; font: 600 10px -apple-system, sans-serif; } .ds-c { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .75px rgba(255,255,255,.25); transition: transform .2s; } .ds-c:hover { transform: scale(1.04); }"
+    },
+    {
+      "name": "Source Dot",
+      "kind": "chip",
+      "description": "6pt dot after the artist name saying where a song plays.",
+      "html": "<span class=\"ds-artist\">Northern Static <i class=\"ds-dot\" title=\"Spotify\"></i></span>",
+      "css": ".ds-artist { display: inline-flex; align-items: center; gap: 5px; font: 400 12px -apple-system, sans-serif; color: rgba(235,235,245,.6); } .ds-dot { width: 6px; height: 6px; border-radius: 50%; background: #1ED760; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Wheel",
+    "overview": "Spindle is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention: it hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel tactile, calm and precise — physical controls you feel through the trackpad, nothing shouting, every detail exact. The material is the see-through window glass macOS draws (AppKit NSGlassEffectView): the desktop and the windows behind show through the panel and the floating dial, so Spindle takes its colour from where it sits and from the artwork it shows. Spindle adds almost no colour of its own. Density is low and deliberate: a 272 pt panel holds a 240 pt cover, a title, the 150 pt disc and, when needed, one pill. The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to show what's inside. No Apple assets, logos or SF Symbols appear in Spindle's own controls; glyphs are drawn in code.",
+    "keyCharacteristics": [
+      "Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.",
+      "Colour comes from artwork and the desktop; Spindle's own ink is white at a few opacities.",
+      "System type (SF Pro) at small, exact sizes; tabular digits for every time.",
+      "Soft springs for every change; Reduce Motion always gets a plain crossfade.",
+      "One gesture per thing: turn the disc, press its centre, click the cover."
+    ],
+    "rules": [
+      { "name": "The Borrowed Colour Rule", "body": "Spindle never paints a surface with a colour of its own. Colour comes from the artwork, the desktop through the glass, or the two source dots.", "section": "colors" },
+      { "name": "The Label Ink Rule", "body": "Anything that must read as white on glass uses NSColor.labelColor; .primary and .foreground render grey there.", "section": "colors" },
+      { "name": "The Same Size Rule", "body": "Paired values keep one size: elapsed and remaining times never shrink independently; when space runs out, move them (they sit in the disc row's lower corners) rather than scale them.", "section": "typography" },
+      { "name": "The One Lift Rule", "body": "Only the cover lifts. Pills, rows and the disc sit in the glass, not on it.", "section": "elevation" },
+      { "name": "The Parallel Corners Rule", "body": "An inner radius is the outer radius less the gap between them.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do put window glass (NSGlassEffectView) behind every surface that should see the desktop: the panel and the floating dial.",
+      "Do draw white ink with NSColor.labelColor.",
+      "Do nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.",
+      "Do use tabular digits for every time and number.",
+      "Do give every motion a Reduce Motion crossfade.",
+      "Do draw glyphs in code (play, pause, skip, library)."
+    ],
+    "donts": [
+      "Don't use SwiftUI .glassEffect for a whole window's surface: it only sees inside its own clear window and renders flat grey.",
+      "Don't use Apple logos, product artwork or SF Symbols in Spindle's own controls.",
+      "Don't shrink one of a pair of values (elapsed and remaining time) to make it fit.",
+      "Don't add a window shadow to the panel; the glass carries its own.",
+      "Don't open a second window for something the panel can show in place (the list lives on the back of the cover).",
+      "Don't paint surfaces with Spindle's own colour."
+    ]
+  }
+}
