@@ -6,7 +6,7 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
 
     init() { super.init(bundleIdentifier: "com.apple.Music", appName: "Music") }
 
-    private static let snapshotScript = """
+    static let snapshotScript = """
         set theSep to character id 31
         set theState to player state as string
         set theVolume to sound volume as string
@@ -80,7 +80,7 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
         end if
         """
 
-    private static let contextKeyScript = """
+    static let contextKeyScript = """
         with timeout of 5 seconds
         \(contextPrologue)
         if usePlaylist then return "playlist:" & (persistent ID of pl)
@@ -90,7 +90,7 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
         """
 
     /// Reads the list's songs a property at a time (a few Apple events, not one per field per song).
-    private static let contextScript = """
+    static let contextScript = """
         with timeout of 10 seconds
         set fs to character id 31
         set rs to character id 30
@@ -115,15 +115,16 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
             set n to total
             if n > \(MusicContextParser.cap) then set n to \(MusicContextParser.cap)
         end if
-        set ids to persistent ID of trs
-        set discs to disc number of trs
-        set nums to track number of trs
-        set names to name of trs
-        set artists to artist of trs
-        set durs to duration of trs
+        -- Each list gets a t prefix: plain `names` or `artists` are Music terms and won't compile here.
+        set tIDs to persistent ID of trs
+        set tDiscs to disc number of trs
+        set tNums to track number of trs
+        set tNames to name of trs
+        set tArtists to artist of trs
+        set tDurs to duration of trs
         set out to {head}
         repeat with i from 1 to n
-            set end of out to (item i of ids) & fs & ((item i of discs) as string) & fs & ((item i of nums) as string) & fs & (item i of names) & fs & (item i of artists) & fs & ((item i of durs) as string)
+            set end of out to (item i of tIDs) & fs & ((item i of tDiscs) as string) & fs & ((item i of tNums) as string) & fs & (item i of tNames) & fs & (item i of tArtists) & fs & ((item i of tDurs) as string)
         end repeat
         set AppleScript's text item delimiters to rs
         set res to out as string

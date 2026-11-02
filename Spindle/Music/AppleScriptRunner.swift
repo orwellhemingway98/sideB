@@ -48,13 +48,18 @@ class AppleScriptMusicSource {
     @discardableResult
     func tell(_ body: String) throws -> NSAppleEventDescriptor {
         guard isRunning() else { throw MusicSourceError.notRunning }
-        return try AppleScriptRunner.run("""
-            if application id "\(bundleIdentifier)" is not running then error number -600
-            with timeout of 3 seconds
-            tell application id "\(bundleIdentifier)"
-            \(body)
-            end tell
-            end timeout
-            """)
+        return try AppleScriptRunner.run(Self.wrapped(body, bundleIdentifier: bundleIdentifier))
+    }
+
+    /// The full script `tell` runs for `body`.
+    static func wrapped(_ body: String, bundleIdentifier: String) -> String {
+        """
+        if application id "\(bundleIdentifier)" is not running then error number -600
+        with timeout of 3 seconds
+        tell application id "\(bundleIdentifier)"
+        \(body)
+        end tell
+        end timeout
+        """
     }
 }
