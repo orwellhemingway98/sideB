@@ -77,7 +77,7 @@ private struct FloatingDialView: View {
         VStack(spacing: 4) {
             DiscView(nowPlaying: nowPlaying, host: .floating)
                 .padding(DialGeometry.floatingPadding)
-                .glassEffect(.regular, in: Circle())
+                .background(WindowGlass(cornerRadius: DialGeometry.discSize / 2 + DialGeometry.floatingPadding))
             // A slim bar to look at, with a taller area to grab.
             Capsule()
                 .fill(.clear)

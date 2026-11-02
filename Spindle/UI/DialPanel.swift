@@ -45,6 +45,22 @@ struct DialPanelView: View {
     /// The cover's corners run parallel with the panel's: its radius less the gap between them.
     static let coverCornerRadius: CGFloat = panelCornerRadius - panelPadding
     static let titleSize: CGFloat = 16
+
+    /// Where the cover sits in the panel window's content view (inside the shadow margin), for the list's
+    /// popover to point at.
+    /// The panel's glass in its window's content view: the window less the clear margin for its shadow.
+    static func glassRect(in bounds: NSRect, flipped: Bool, margin: NSEdgeInsets) -> NSRect {
+        NSRect(x: bounds.minX + margin.left, y: bounds.minY + (flipped ? margin.top : margin.bottom),
+               width: bounds.width - margin.left - margin.right, height: bounds.height - margin.top - margin.bottom)
+    }
+
+    static func coverRect(in bounds: NSRect, flipped: Bool, margin: NSEdgeInsets) -> NSRect {
+        let side: CGFloat = 240
+        let x = bounds.minX + margin.left + panelPadding
+        let top = margin.top + panelPadding
+        let y = flipped ? bounds.minY + top : bounds.maxY - top - side
+        return NSRect(x: x, y: y, width: side, height: side)
+    }
     static let subtitleSize: CGFloat = 12
     /// The times sit in the lower corners of the disc's row, where the circle curves away, so even
     /// "−1:13:32" fits at the same size as "0:14".
@@ -85,7 +101,7 @@ struct DialPanelView: View {
         .padding(.bottom, 2)
         .onHover { hovering = $0 }
         .frame(width: Self.width)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Self.panelCornerRadius, style: .continuous))
+        .background(WindowGlass(cornerRadius: Self.panelCornerRadius))
     }
 
     // MARK: Header
@@ -388,6 +404,12 @@ final class DialPanelController {
     /// Posted when the panel shows, so the disc can take scrolls from a pointer already over it.
     static let didShow = Notification.Name("DialPanelController.didShow")
 
+    /// How far below the menu bar icon the panel hangs.
+    static let gapBelowIcon: CGFloat = 6
+    /// Clear room round the glass inside the window, so the glass's own shadow fades out instead of being cut
+    /// off square at the window's edges. The top only goes up to the icon, so the icon stays clickable.
+    static let shadowMargin = NSEdgeInsets(top: gapBelowIcon, left: 24, bottom: 28, right: 24)
+
     private let panel: DialPanelWindow
     private var outsideClickMonitor: Any?
     private var ownWindowClickMonitor: Any?
@@ -413,7 +435,9 @@ final class DialPanelController {
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
                                  onPopOut: onPopOut, placement: placement, onCover: onCover, list: list)
-        let hosting = NSHostingView(rootView: root)
+        let m = Self.shadowMargin
+        let hosting = NSHostingView(rootView: root.padding(EdgeInsets(top: m.top, leading: m.left,
+                                                                       bottom: m.bottom, trailing: m.right)))
         panel.contentView = hosting
     }
 
@@ -429,9 +453,11 @@ final class DialPanelController {
         let size = panel.contentView?.fittingSize ?? panel.frame.size
         let visible = screen?.visibleFrame ?? .zero
 
+        // The window includes the shadow margin; the glass inside it keeps its place under the icon.
+        let m = Self.shadowMargin
         var x = buttonFrame.midX - size.width / 2
-        x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
-        let top = min(buttonFrame.minY - 6, visible.maxY)
+        x = min(max(x, visible.minX + 8 - m.left), visible.maxX - size.width - 8 + m.right)
+        let top = min(buttonFrame.minY - Self.gapBelowIcon + m.top, visible.maxY + m.top)
 
         anchorWindow = buttonWindow
         panel.anchoredTop = top

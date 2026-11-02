@@ -53,12 +53,18 @@ final class ListWindowLayoutTests: XCTestCase {
         let before = panel.window.frame
 
         list.toggle(below: panel.window)
-        // The droplet's spring runs inside a window of fixed size: SwiftUI must not resize the window to follow
-        // it (each resize asked for another layout pass mid-layout, until AppKit gave up and threw).
+        // The list is a popover the panel's width; it opens without disturbing the panel.
         for _ in 0..<15 {
             spin(0.1)
-            XCTAssertEqual(list.frame.width, ListPlacement.width)
+            XCTAssertEqual(list.contentSize.width, ListPlacement.width)
         }
+        // Side by side like facing pages: the list is as tall as the panel's glass.
+        let m = DialPanelController.shadowMargin
+        XCTAssertEqual(list.contentSize.height, panel.window.frame.height - m.top - m.bottom, accuracy: 0.5)
+        let popoverWindow = try XCTUnwrap(list.window)
+        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: popoverWindow, panel: panel.window, anchor: nil,
+                                                    children: panel.window.childWindows ?? []),
+                       "clicks in the list don't close the panel")
 
         XCTAssertTrue(list.isShown)
         XCTAssertEqual(panel.window.frame, before, "opening the list leaves the panel where it was")
@@ -91,11 +97,14 @@ final class ListWindowLayoutTests: XCTestCase {
         })
         let model = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
         let list = ListWindowController(model: model, nowPlaying: nowPlaying)
-        let parent = NSWindow(contentRect: NSRect(x: 200, y: 400, width: 272, height: 300), styleMask: [.borderless],
-                              backing: .buffered, defer: false)
-        parent.orderFront(nil)
+        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+                                        onCover: {}, list: model)
+        panel.show(below: try XCTUnwrap(statusItem.button))
+        spin(0.3)
+        let parent = panel.window
         list.toggle(below: parent)
         spin(0.6)
+        XCTAssertTrue(list.isShown, "the popover opened")
         guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
 
         wait { await account.signIn(clientID: "abc") }
@@ -110,7 +119,7 @@ final class ListWindowLayoutTests: XCTestCase {
         XCTAssertTrue(list.isShown)
         list.toggle(below: parent)
         spin(0.6)
-        parent.orderOut(nil)
+        panel.close()
     }
 
     func testTheTallestPanelFitsA1280By800Screen() {
@@ -164,5 +173,28 @@ final class PanelProportionsTests: XCTestCase {
     func testTheTitleLeadsTheArtistLine() {
         XCTAssertEqual(DialPanelView.titleSize, 16)
         XCTAssertEqual(DialPanelView.subtitleSize, 12)
+    }
+}
+
+@MainActor
+final class WindowGlassTests: XCTestCase {
+    private func glassViews(in view: NSView) -> [NSGlassEffectView] {
+        ((view as? NSGlassEffectView).map { [$0] } ?? []) + view.subviews.flatMap { glassViews(in: $0) }
+    }
+
+    func testThePanelIsWindowGlassThatSeesTheDesktop() async throws {
+        // SwiftUI's glass only sees inside its own window, which is clear, so it rendered flat grey.
+        let feed = URL(string: "https://example.com/feed")!
+        let library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
+        let player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
+        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        let content = try XCTUnwrap(panel.window.contentView)
+        content.frame = NSRect(x: 0, y: 0, width: 320, height: 600)
+        content.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let glass = try XCTUnwrap(glassViews(in: content).first, "an NSGlassEffectView behind the panel")
+        XCTAssertEqual(glass.cornerRadius, DialPanelView.panelCornerRadius)
     }
 }

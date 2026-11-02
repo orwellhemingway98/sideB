@@ -6,28 +6,9 @@ import XCTest
 final class ListWindowTests: XCTestCase {
     private let screen = NSRect(x: 0, y: 0, width: 1440, height: 1000)
 
-    func testListGoesBelowThePanel() {
-        let frame = ListPlacement.frame(panel: NSRect(x: 100, y: 400, width: 272, height: 560), height: 300, visible: screen)
-        XCTAssertEqual(frame, NSRect(x: 100, y: 400 - 12 - 300, width: 272, height: 300))
-    }
 
-    func testListMovesBesideThePanelWhenThereIsNoRoomBelow() {
-        let frame = ListPlacement.frame(panel: NSRect(x: 500, y: 50, width: 272, height: 560), height: 300,
-                                        visible: NSRect(x: 0, y: 0, width: 1440, height: 900))
-        XCTAssertEqual(frame, NSRect(x: 500 - 12 - 272, y: 50 + 560 - 300, width: 272, height: 300))
-    }
 
-    func testListGoesRightWhenLeftHasNoRoom() {
-        let frame = ListPlacement.frame(panel: NSRect(x: 10, y: 50, width: 272, height: 560), height: 300,
-                                        visible: NSRect(x: 0, y: 0, width: 1440, height: 900))
-        XCTAssertEqual(frame.origin.x, 10 + 272 + 12)
-        XCTAssertEqual(frame.maxY, 50 + 560)
-    }
 
-    func testHeightIsCappedAt360() {
-        let frame = ListPlacement.frame(panel: NSRect(x: 100, y: 500, width: 272, height: 400), height: 900, visible: screen)
-        XCTAssertEqual(frame.height, 360)
-    }
 
     func testClicksInTheListDoNotCloseThePanel() {
         func window() -> NSWindow {
@@ -41,11 +22,6 @@ final class ListWindowTests: XCTestCase {
         XCTAssertTrue(PanelClickPolicy.closesPanel(clickWindow: library, panel: panel, anchor: statusBar, children: [list]))
     }
 
-    func testPlacementIsDecidedForTheTallestList() {
-        // 300 pt would fit below, but the list may grow to 360 once it loads: put it beside from the start.
-        let frame = ListPlacement.frame(panel: NSRect(x: 600, y: 350, width: 272, height: 560), height: 300, visible: screen)
-        XCTAssertEqual(frame.origin.x, 600 - 12 - 272)
-    }
 
     func testAlbumRowsQueueTheWholeAlbumFromTheClickedSong() {
         let script = AppleMusicSource.queueScript(trackIDs: ["a\"1", "b2"], startID: "b2", knownPlaylistID: "PL")
@@ -53,6 +29,33 @@ final class ListWindowTests: XCTestCase {
         XCTAssertTrue(script.contains(#"play (first track of q whose persistent ID is "b2")"#))
         XCTAssertTrue(script.contains(#"first user playlist whose persistent ID is "PL""#))
         XCTAssertTrue(script.contains("delete every track of q"), "refilled, never duplicated")
+    }
+
+    func testTheCoverRectIsWhereThePanelDrawsIt() {
+        // The panel's window holds a clear margin for the glass's shadow; the cover sits inside it.
+        let m = DialPanelController.shadowMargin
+        let bounds = NSRect(x: 0, y: 0, width: 272 + m.left + m.right, height: 507 + m.top + m.bottom)
+        XCTAssertEqual(DialPanelView.coverRect(in: bounds, flipped: true, margin: m),
+                       NSRect(x: m.left + 16, y: m.top + 16, width: 240, height: 240))
+        XCTAssertEqual(DialPanelView.coverRect(in: bounds, flipped: false, margin: m),
+                       NSRect(x: m.left + 16, y: bounds.height - m.top - 16 - 240, width: 240, height: 240))
+    }
+
+    func testTheGlassRectIsThePanelLessItsShadowMargin() {
+        let m = DialPanelController.shadowMargin
+        let bounds = NSRect(x: 0, y: 0, width: 272 + m.left + m.right, height: 507 + m.top + m.bottom)
+        XCTAssertEqual(DialPanelView.glassRect(in: bounds, flipped: true, margin: m),
+                       NSRect(x: m.left, y: m.top, width: 272, height: 507))
+        XCTAssertEqual(DialPanelView.glassRect(in: bounds, flipped: false, margin: m),
+                       NSRect(x: m.left, y: m.bottom, width: 272, height: 507))
+    }
+
+    func testTheShadowHasRoomButNeverCoversTheMenuBarIcon() {
+        let m = DialPanelController.shadowMargin
+        XCTAssertGreaterThanOrEqual(m.left, 20)
+        XCTAssertEqual(m.left, m.right, "the panel stays centred under its icon")
+        XCTAssertGreaterThanOrEqual(m.bottom, 20)
+        XCTAssertLessThanOrEqual(m.top, DialPanelController.gapBelowIcon, "the window stops at the icon's bottom edge")
     }
 
     func testEpisodeRowsAreTallerThanSongRows() {

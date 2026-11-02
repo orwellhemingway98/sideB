@@ -190,6 +190,49 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(ListContent.secondTabTitle(hasChapters: false), "Notes")
     }
 
+    func testOpeningShowsTheAlbumAlreadyReadAtOnce() async {
+        music.contextResult = .success(album("A", ["t1", "t2"]))
+        music.contextKeyValue = "album:A|Northern Static"
+        music.play("t2", id: "t2")
+        await remote.refresh()
+        _ = await remote.context(for: remote.track!)          // read once before, so it's cached
+        var release: CheckedContinuation<Void, Never>?
+        let list = model(loadContext: { [unowned self] track, refresh in
+            await withCheckedContinuation { release = $0 }     // a slow re-read
+            return await remote.context(for: track, refresh: refresh)
+        })
+        list.showNow(force: true)
+        guard case .music(let context, let current) = list.content else { return XCTFail("got \(list.content)") }
+        XCTAssertEqual(context.title, "A", "no \"Reading Music…\" while the re-read runs")
+        XCTAssertEqual(current, "t2")
+        let reading = Task { await list.reload(force: true) }
+        while release == nil { await Task.yield() }
+        guard case .music = list.content else { return XCTFail("the cached list stays up, got \(list.content)") }
+        release?.resume()
+        await reading.value
+        guard case .music = list.content else { return XCTFail("got \(list.content)") }
+    }
+
+    func testAFailedReReadKeepsTheCachedAlbum() async {
+        music.contextResult = .success(album("A", ["t1"]))
+        music.contextKeyValue = "album:A|Northern Static"
+        music.play("t1", id: "t1")
+        await remote.refresh()
+        _ = await remote.context(for: remote.track!)
+        let list = model(loadContext: { _, _ in nil })
+        await list.reload(force: true)
+        guard case .music(let context, _) = list.content else { return XCTFail("got \(list.content)") }
+        XCTAssertEqual(context.title, "A")
+    }
+
+    func testWithNothingCachedItSaysReading() async {
+        music.play("t1", id: "t1")
+        await remote.refresh()
+        let list = model()
+        list.showNow(force: true)
+        guard case .musicLoading = list.content else { return XCTFail("got \(list.content)") }
+    }
+
     func testHints() {
         XCTAssertEqual(ListContent.hint(mode: .podcast, source: nil, contextKind: nil), "Episodes \u{2304}")
         XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: .playlist), "Playlist \u{2304}")

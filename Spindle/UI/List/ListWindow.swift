@@ -2,23 +2,10 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// Where the list window goes: below the panel when it fits, else beside it (left, then right), top-aligned.
+/// The list's size: as wide as the panel, as tall as its rows, capped.
 enum ListPlacement {
-    static let gap: CGFloat = 12
     static let width: CGFloat = 272
     static let maxHeight: CGFloat = 360
-
-    /// Decided for the tallest list (`maxHeight`), so a list that grows as it loads doesn't jump from
-    /// below the panel to beside it.
-    static func frame(panel: NSRect, height: CGFloat, visible: NSRect) -> NSRect {
-        let h = min(height, maxHeight)
-        if panel.minY - gap - maxHeight >= visible.minY {
-            return NSRect(x: panel.minX, y: panel.minY - gap - h, width: width, height: h)
-        }
-        let left = panel.minX - gap - width
-        if left >= visible.minX { return NSRect(x: left, y: panel.maxY - h, width: width, height: h) }
-        return NSRect(x: panel.maxX + gap, y: panel.maxY - h, width: width, height: h)
-    }
 
     static let oneLineRow: CGFloat = 30
     /// An episode: its title, with the date and length underneath.
@@ -41,48 +28,29 @@ enum PanelClickPolicy {
     }
 }
 
-/// Whether the droplet has spread into the window.
+/// The song or episode list, in a native glass popover that points at the dial panel's cover. macOS draws and
+/// animates it; Spindle only fills it and sizes it to its rows.
 @MainActor
-final class DropletState: ObservableObject {
-    @Published var open = false
-}
-
-/// The list window under the dial panel. It opens as a glass drop that falls from the panel and spreads into
-/// the window, and closes the same way in reverse.
-@MainActor
-final class ListWindowController {
-    static let spring = Animation.spring(response: 0.6, dampingFraction: 0.78)
-    private static let closeDelay: TimeInterval = 0.4
-
-    private let window: NSPanel
-    private let hosting: NSHostingView<ListDropletView>
+final class ListWindowController: NSObject, NSPopoverDelegate {
+    private let popover = NSPopover()
+    private let hosting: NSHostingController<ListPopoverView>
     private let model: ListModel
     private let nowPlaying: NowPlaying
-    private let state = DropletState()
-    private weak var parent: NSWindow?
     private var cancellables: Set<AnyCancellable> = []
     private var lastIdentity: String?
-    private var placedBelow = true
+    /// The panel's glass height while the list is beside it.
+    private var panelHeight: CGFloat?
 
     init(model: ListModel, nowPlaying: NowPlaying) {
         self.model = model
         self.nowPlaying = nowPlaying
-        window = NSPanel(contentRect: NSRect(x: 0, y: 0, width: ListPlacement.width, height: ListPlacement.maxHeight),
-                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.hidesOnDeactivate = false
-        window.isReleasedWhenClosed = false
-        hosting = NSHostingView(rootView: ListDropletView(state: state, model: model, nowPlaying: nowPlaying))
+        hosting = NSHostingController(rootView: ListPopoverView(model: model, nowPlaying: nowPlaying))
         hosting.sizingOptions = []
-        // A hosting view that is the window's content view resizes the window to follow animated content,
-        // which the droplet's spring turned into a layout loop that crashed. Inside a plain view it can't.
-        let container = NSView(frame: window.contentLayoutRect)
-        hosting.frame = container.bounds
-        hosting.autoresizingMask = [.width, .height]
-        container.addSubview(hosting)
-        window.contentView = container
+        super.init()
+        popover.contentViewController = hosting
+        popover.behavior = .transient
+        popover.animates = true
+        popover.delegate = self
 
         // Close when what the list is about changes (a new show, album or playlist); follow songs within it.
         model.$content.sink { [weak self] content in
@@ -102,69 +70,61 @@ final class ListWindowController {
             DispatchQueue.main.async {
                 guard let self, self.isShown else { return }
                 self.lastIdentity = nil
-                Task { await self.model.reload(force: true); self.place() }
+                Task { await self.model.reload(force: true); self.resize() }
             }
         }.store(in: &cancellables)
         model.$tab.dropFirst().sink { [weak self] _ in
-            DispatchQueue.main.async { self?.place() }
+            DispatchQueue.main.async { self?.resize() }
         }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: DialPanelController.didClose)
             .sink { [weak self] _ in self?.close(animated: false) }
             .store(in: &cancellables)
     }
 
-    var isShown: Bool { window.isVisible && state.open }
-    var frame: NSRect { window.frame }
+    var isShown: Bool { popover.isShown }
+    var contentSize: NSSize { popover.contentSize }
+    /// The popover's own window, once shown.
+    var window: NSWindow? { hosting.view.window }
 
     func toggle(below parent: NSWindow) {
         if isShown { close(animated: true) } else { show(below: parent) }
     }
 
     func show(below parent: NSWindow) {
-        self.parent = parent
+        guard let view = parent.contentView else { return }
         lastIdentity = nil
-        window.level = parent.level
-        window.collectionBehavior = parent.collectionBehavior
-        Task {
-            await model.reload(force: true)
-            place()
-        }
-        place()
-        parent.addChildWindow(window, ordered: .above)
-        window.orderFront(nil)
-        state.open = false
-        DispatchQueue.main.async {
-            withAnimation(Self.spring) { self.state.open = true }
-        }
+        // Show what's already known (the cached album, the episodes) at its size, then read the rest.
+        model.showNow(force: true)
+        // Facing pages: pointed at the whole panel, as tall as it, the popover's top and bottom line up with
+        // the panel's.
+        let glass = DialPanelView.glassRect(in: view.bounds, flipped: view.isFlipped,
+                                            margin: DialPanelController.shadowMargin)
+        panelHeight = glass.height
+        popover.contentSize = size
+        popover.show(relativeTo: glass, of: view, preferredEdge: .minX)
+        Task { await model.reload(force: true) }
     }
 
     func close(animated: Bool) {
-        guard animated else {
-            finishClosing()
-            return
-        }
-        withAnimation(Self.spring) { state.open = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeDelay) { [weak self] in
-            guard let self, !self.state.open else { return }
-            self.finishClosing()
+        guard isShown else { return }
+        if animated {
+            popover.performClose(nil)
+        } else {
+            popover.animates = false
+            popover.close()
+            popover.animates = true
         }
     }
 
-    /// Escape: closes the list if it is open, and says so (so the panel stays).
+    /// Escape in the dial panel closes the list first.
     func handleEscape() -> Bool {
         guard isShown else { return false }
         close(animated: true)
         return true
     }
 
-    private func finishClosing() {
-        state.open = false
-        parent?.removeChildWindow(window)
-        window.orderOut(nil)
-    }
-
     private func contentChanged(_ content: ListContent) {
-        guard window.isVisible, state.open else { return }
+        guard isShown else { return }
         if case .nothing = content {
             close(animated: true)
             return
@@ -174,23 +134,20 @@ final class ListWindowController {
             close(animated: true)
         case .keep(let identity):
             lastIdentity = identity
-            place()
+            resize()
         }
     }
 
-    /// Sizes the window for its rows and puts it below (or beside) the panel. Below the panel, the window also
-    /// covers the gap, so the drop can be seen leaving the panel.
-    private func place() {
-        guard let parent else { return }
-        let visible = parent.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+    /// As tall as the panel beside it; rows that don't fit scroll.
+    private var size: NSSize {
+        if let panelHeight { return NSSize(width: ListPlacement.width, height: panelHeight) }
         let rowHeight = isEpisodeList ? ListPlacement.twoLineRow : ListPlacement.oneLineRow
-        var frame = ListPlacement.frame(panel: parent.frame, height: ListPlacement.height(rows: rowCount, rowHeight: rowHeight),
-                                        visible: visible)
-        placedBelow = frame.maxY <= parent.frame.minY
-        if placedBelow { frame.size.height += ListPlacement.gap }
-        window.setFrame(frame, display: true)
-        hosting.rootView =
-            ListDropletView(state: state, model: model, nowPlaying: nowPlaying, topInset: placedBelow ? ListPlacement.gap : 0)
+        return NSSize(width: ListPlacement.width, height: ListPlacement.height(rows: rowCount, rowHeight: rowHeight))
+    }
+
+    /// The popover eases to a new size itself.
+    private func resize() {
+        if popover.contentSize != size { popover.contentSize = size }
     }
 
     private var isEpisodeList: Bool {
@@ -214,34 +171,14 @@ final class ListWindowController {
     }
 }
 
-// MARK: - The droplet
-
-struct ListDropletView: View {
-    @ObservedObject var state: DropletState
+/// What the popover holds.
+struct ListPopoverView: View {
     @ObservedObject var model: ListModel
     let nowPlaying: NowPlaying
-    var topInset: CGFloat = ListPlacement.gap
-    @Namespace private var glass
 
     var body: some View {
-        GlassEffectContainer(spacing: 24) {
-            ZStack(alignment: .top) {
-                if state.open {
-                    ListBody(model: model, nowPlaying: nowPlaying)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                        .glassEffectID("list", in: glass)
-                } else {
-                    // The drop, about to fall from the panel's bottom edge.
-                    Color.clear
-                        .frame(width: 34, height: 34)
-                        .glassEffect(.regular, in: Circle())
-                        .glassEffectID("list", in: glass)
-                        .offset(y: -26)
-                }
-            }
-            .padding(.top, topInset)
-        }
+        ListBody(model: model, nowPlaying: nowPlaying)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
