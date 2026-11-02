@@ -13,14 +13,18 @@ final class ListModel: ObservableObject {
 
     private let nowPlaying: NowPlaying
     private let library: LibraryStore
+    /// Signed in, Spotify songs list their album or playlist; signed out, they show their details.
+    let spotify: SpotifyAccount?
     private let loadContext: (MusicTrack, Bool) async -> MusicContext?
     private var generation = 0
     private var lastKey: String?
 
     /// `loadContext(track, refresh)` defaults to the music remote's cached reader; tests pass their own.
-    init(nowPlaying: NowPlaying, library: LibraryStore, loadContext: ((MusicTrack, Bool) async -> MusicContext?)? = nil) {
+    init(nowPlaying: NowPlaying, library: LibraryStore, spotify: SpotifyAccount? = nil,
+         loadContext: ((MusicTrack, Bool) async -> MusicContext?)? = nil) {
         self.nowPlaying = nowPlaying
         self.library = library
+        self.spotify = spotify
         self.loadContext = loadContext ?? { [weak nowPlaying] track, refresh in
             await nowPlaying?.music?.context(for: track, refresh: refresh)
         }
@@ -37,6 +41,7 @@ final class ListModel: ObservableObject {
             nowPlaying.music?.track?.trackID ?? "",
             nowPlaying.music?.contextKey ?? "",
             String(nowPlaying.music?.contextFailed ?? false),
+            String(spotify?.isSignedIn ?? false),
         ].joined(separator: "|")
     }
 
@@ -63,7 +68,7 @@ final class ListModel: ObservableObject {
                 content = .nothing
                 return
             }
-            if track.source == .spotify {
+            if track.source == .spotify, spotify?.isSignedIn != true {
                 content = .spotify(track)
                 return
             }
@@ -80,8 +85,9 @@ final class ListModel: ObservableObject {
                 content = .music(context, currentTrackID: context.row(for: track)?.id ?? track.trackID)
             } else {
                 let failed = nowPlaying.music?.contextFailed == true
+                let couldNotRead = track.source == .spotify ? ListContent.couldNotReadSpotify : ListContent.couldNotRead
                 content = .musicMessage(trackID: track.trackID,
-                                        text: failed ? ListContent.couldNotRead : ListContent.nothingToList)
+                                        text: failed ? couldNotRead : ListContent.nothingToList)
             }
         }
     }

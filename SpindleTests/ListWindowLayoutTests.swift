@@ -33,6 +33,15 @@ final class ListWindowLayoutTests: XCTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(seconds))
     }
 
+    /// Runs async work from a synchronous test, keeping the run loop (and so the windows) going meanwhile.
+    private func wait(_ work: @escaping @MainActor () async -> Void) {
+        var done = false
+        Task { await work(); done = true }
+        let deadline = Date().addingTimeInterval(5)
+        while !done, Date() < deadline { spin(0.02) }
+        XCTAssertTrue(done, "timed out")
+    }
+
     func testOpeningTheListFromTheCoverLaysOutCleanly() throws {
         let model = ListModel(nowPlaying: nowPlaying, library: library)
         let list = ListWindowController(model: model, nowPlaying: nowPlaying)
@@ -56,6 +65,52 @@ final class ListWindowLayoutTests: XCTestCase {
         list.toggle(below: panel.window)
         spin(0.6)
         panel.close()
+    }
+
+    func testSigningInToSpotifyKeepsTheListOpen() throws {
+        let spotify = FakeMusicSource(.spotify)
+        spotify.contextResult = .success(MusicContext(kind: .album, id: "album:AL1", title: "Night Roads",
+                                                      tracks: [ContextTrack(id: "spotify:track:T1", disc: 1, number: 1,
+                                                                            title: "Headlights", artist: "Northern Static",
+                                                                            duration: 200)], totalCount: 1))
+        spotify.contextKeyValue = "album:AL1"
+        spotify.play("Headlights", id: "spotify:track:T1")
+        let remote = MusicRemote(sources: [spotify], every: { _, _ in NSObject() })
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] }, music: remote)
+        wait { await remote.refresh() }
+        XCTAssertEqual(nowPlaying.mode, .music)
+        let transport = FakeTransport()
+        transport.reply("/api/token", json: #"{"access_token":"A","expires_in":3600,"refresh_token":"R"}"#)
+        let defaults = UserDefaults(suiteName: "ListWindowLayoutTests")!
+        let account = SpotifyAccount(store: MemoryTokenStore(), transport: transport, defaults: defaults,
+                                     authenticate: { url in
+            let state = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first { $0.name == "state" }?.value ?? ""
+            return URL(string: "spindle://callback?code=C&state=\(state)")!
+        })
+        let model = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
+        let list = ListWindowController(model: model, nowPlaying: nowPlaying)
+        let parent = NSWindow(contentRect: NSRect(x: 200, y: 400, width: 272, height: 300), styleMask: [.borderless],
+                              backing: .buffered, defer: false)
+        parent.orderFront(nil)
+        list.toggle(below: parent)
+        spin(0.6)
+        guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
+
+        wait { await account.signIn(clientID: "abc") }
+        spin(1.0)
+        guard case .music(let context, _) = model.content else { return XCTFail("got \(model.content)") }
+        XCTAssertEqual(context.title, "Night Roads")
+        XCTAssertTrue(list.isShown, "the list stays open and fills in")
+
+        account.signOut()
+        spin(1.0)
+        guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
+        XCTAssertTrue(list.isShown)
+        list.toggle(below: parent)
+        spin(0.6)
+        parent.orderOut(nil)
     }
 
     func testTheTallestPanelFitsA1280By800Screen() {

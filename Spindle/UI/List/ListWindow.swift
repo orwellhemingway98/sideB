@@ -96,6 +96,15 @@ final class ListWindowController {
                 guard let self, self.isShown, self.model.needsReload else { return }
                 Task { await self.model.reload() }
             }.store(in: &cancellables)
+        // Signing in or out of Spotify changes what a Spotify song's list shows (the song's details or its
+        // album), which isn't the author moving on: adopt the new list rather than closing.
+        model.spotify?.$isSignedIn.dropFirst().removeDuplicates().sink { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.isShown else { return }
+                self.lastIdentity = nil
+                Task { await self.model.reload(force: true); self.place() }
+            }
+        }.store(in: &cancellables)
         model.$tab.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async { self?.place() }
         }.store(in: &cancellables)
@@ -194,8 +203,10 @@ final class ListWindowController {
         case .podcast(let episodes, _, let chapters, _, _):
             if model.tab == .episodes { return episodes.count }
             return chapters.isEmpty ? .max : chapters.count   // no chapters: the description, given the full height
-        case .music(let context, _): return context.tracks.count + (context.totalCount > context.tracks.count ? 1 : 0)
-        case .spotify: return 5
+        case .music(let context, _):
+            return context.tracks.count + (context.totalCount > context.tracks.count ? 1 : 0)
+                + (nowPlaying.music?.source == .spotify ? 1 : 0)   // Sign out of Spotify
+        case .spotify: return 7
         case .musicLoading: return .max     // size for the tallest list while it loads
         case .musicMessage: return 2
         case .nothing: return 1
@@ -272,8 +283,15 @@ private struct ListBody: View {
                         nowPlaying.music?.play(contextTrack: song, in: context)
                     }
                 }
+                if nowPlaying.music?.source == .spotify, let account = model.spotify {
+                    Button("Sign out of Spotify") { account.signOut() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             case .musicLoading:
-                note("Reading Music\u{2026}")
+                note(nowPlaying.music?.source == .spotify ? "Reading Spotify\u{2026}" : "Reading Music\u{2026}")
             case .musicMessage(_, let text):
                 note(text)
             case .spotify(let track):
@@ -285,7 +303,11 @@ private struct ListBody: View {
                 }
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                note("Sign in to Spotify to see the album and playlist.")
+                if let account = model.spotify {
+                    SpotifySignInButton(account: account)
+                } else {
+                    note("Sign in to Spotify to see the album and playlist.")
+                }
             case .nothing:
                 EmptyView()
             }
@@ -368,5 +390,36 @@ private struct ListBody: View {
                          ? "\(TimeFormat.clock(max(0, duration - episode.position))) left" : TimeFormat.clock(duration))
         }
         return parts.joined(separator: " \u{00B7} ")
+    }
+}
+
+/// Signs in to Spotify, asking for the Client ID of the author's Spotify app the first time.
+private struct SpotifySignInButton: View {
+    @ObservedObject var account: SpotifyAccount
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let notice = account.notice {
+                Text(notice).font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+            Button {
+                guard let id = account.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
+                Task { await account.signIn(clientID: id) }
+            } label: {
+                Text(account.isSigningIn ? "Signing in\u{2026}" : "Sign in to Spotify")
+                    .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+            }
+            .buttonStyle(.glass)
+            .disabled(account.isSigningIn)
+            .contextMenu {
+                Button("Change Client ID\u{2026}") {
+                    guard let id = SpotifyClientIDPrompt.ask(current: account.clientID) else { return }
+                    Task { await account.signIn(clientID: id) }
+                }
+            }
+        }
+        .padding(.top, 4)
     }
 }

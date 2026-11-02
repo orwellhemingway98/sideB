@@ -4,7 +4,13 @@ final class SpotifySource: AppleScriptMusicSource, MusicSource {
     let id = MusicSourceID.spotify
     var displayName: String { id.displayName }
 
-    init() { super.init(bundleIdentifier: "com.spotify.client", appName: "Spotify") }
+    /// Reads albums and playlists once signed in; nil (no lists) in tests and previews.
+    private let api: SpotifyWebAPI?
+
+    init(api: SpotifyWebAPI? = nil) {
+        self.api = api
+        super.init(bundleIdentifier: "com.spotify.client", appName: "Spotify")
+    }
 
     private static let snapshotScript = """
         set theSep to character id 31
@@ -37,4 +43,18 @@ final class SpotifySource: AppleScriptMusicSource, MusicSource {
     func next() throws { try tell("next track") }
     func previous() throws { try tell("previous track") }
     func setPosition(_ seconds: Double) throws { try tell("set player position to \(String(format: "%.2f", max(0, seconds)))") }
+
+    // Spotify's scripting can't list albums or playlists; its Web API can, once signed in.
+    func contextKey() throws -> String? { try api?.contextKey() }
+    func context() throws -> MusicContext? { try api?.context() }
+
+    /// Playing goes through the app, so it needs no Web API player access.
+    func play(trackID: String, in context: MusicContext) throws {
+        try tell(Self.playScript(trackID: trackID, contextID: context.id))
+    }
+
+    /// `contextID` is "album:<id>" or "playlist:<id>"; Spotify wants "spotify:album:<id>".
+    static func playScript(trackID: String, contextID: String) -> String {
+        "play track \"\(trackID)\" in context \"spotify:\(contextID)\""
+    }
 }
