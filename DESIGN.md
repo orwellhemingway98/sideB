@@ -5,7 +5,6 @@ colors:
   ink: "#FFFFFF"
   ink-secondary: "rgba(235, 235, 245, 0.6)"
   row-highlight: "rgba(255, 255, 255, 0.18)"
-  halo-track: "rgba(255, 255, 255, 0.14)"
   hairline: "rgba(255, 255, 255, 0.18)"
   card-back: "rgba(0, 0, 0, 0.22)"
   key-outline: "rgba(255, 255, 255, 0.55)"
@@ -105,7 +104,7 @@ exact.
 
 The material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows
 behind show through the panel and the floating dial, so Spindle takes its colour from where it sits and from the
-artwork it shows. Spindle adds almost no colour of its own. Density is low and deliberate: a 272 pt panel holds a
+artwork it shows: the glass itself is tinted with the cover's colour. Spindle adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
 240 pt cover, a title, the 150 pt disc and, when needed, one pill.
 
 The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to
@@ -131,7 +130,9 @@ artwork and two tiny source dots.
 - **Quiet Ink** (`ink-secondary`): artist or show line, times beside the disc, "Resume" in the Resume pill, list
   details, the podcast speed.
 - **Row Light** (`row-highlight`): the current song, episode or chapter in a list.
-- **Halo Track** (`halo-track`): the unlit part of the halo round the disc.
+- **Glass Tint**: the window glass of the panel and floating dial takes the cover's hue, lighter and livelier than
+  the Cover Tint (HSB brightness 0.5–0.72, saturation up to 0.8), at 35% so the desktop still shows through. It eases
+  in over about half a second when the cover changes; with no artwork the glass stays plain.
 - **Glass Hairline** (`hairline`): the 0.5 pt edge on the cover and its back.
 - **Cover Tint**: the back of the cover takes the cover's own colour: the artwork's average, kept to its hue but
   held to HSB brightness 0.14–0.32 and saturation ≤ 0.65, drawn at 85%. Even a white cover gives a back that white
@@ -147,7 +148,7 @@ artwork and two tiny source dots.
 
 ### Named Rules
 **The Borrowed Colour Rule.** Spindle never paints a surface with a colour of its own. Colour comes from the
-artwork, the desktop through the glass, or the two source dots.
+artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or the two source dots.
 
 **The Label Ink Rule.** Anything that must read as white on glass uses `NSColor.labelColor`; `.primary` and
 `.foreground` render grey there.
@@ -232,11 +233,19 @@ Episodes | Notes (or Chapters): a 2 pt-inset track in Segment Track with the sel
 in SwiftUI rather than a system segmented control, because a system control doesn't turn with the cover.
 
 ### The Disc (signature)
-A 150 pt clear glass disc with a 60 pt glass centre button (play/pause glyph drawn in code). Back and forward sit at
-9 and 3 o'clock (drawn skip glyphs for music, "−15" and "+30" for podcasts); the podcast speed sits under the centre.
-The **halo** is a 3 pt band 2 pt outside the disc's edge: Halo Track all round, lit in Glass Ink from 12 o'clock to
-the current time, with chapter starts cut as small gaps. During Option + turn the halo shows the volume and the
-centre shows the number for a second.
+A 150 pt disc of system glass, edged only by light: a thin highlight on its rim, bright on one side and faint
+opposite, that turns as the wheel is turned. No drawn rim and no track. A 60 pt glass centre button carries the
+play/pause glyph, drawn in code, whose triangle halves slide and square off into the pause bars (a 0.3 s spring).
+
+The **halo** is a 3 pt band of light 2 pt outside the disc's edge, with nothing for the part still to play: it fades
+in over the first 7% of the circle from 12 o'clock (no cap there) and runs at 85% white to the current time, with a
+round end and a small break at each chapter start. While the wheel is turned it thickens to 4 pt (growing inward)
+and goes full white, settling back when the scrub lands. During Option + turn it shows the volume and the centre
+shows the number for a second.
+
+Back and forward sit at 9 and 3 o'clock (drawn skip glyphs for music, "−15" and "+30" for podcasts) at 35% at rest
+and full while the pointer is over the wheel; their spots work either way. The podcast speed (10 pt) sits under the
+centre. Spindle tried a glass droplet for "now" and controls budding out as bubbles; both were dropped as busy.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when
@@ -260,7 +269,7 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 
 ### Do:
 - **Do** put window glass (`NSGlassEffectView`) behind every surface that should see the desktop: the panel and the
-  floating dial.
+  floating dial, tinted with the cover's colour.
 - **Do** draw white ink with `NSColor.labelColor`.
 - **Do** keep the panel and the floating dial in the dark appearance (`darkAqua`), so that ink stays white in
   Light mode too.

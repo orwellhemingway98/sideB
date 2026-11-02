@@ -1,37 +1,137 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-02T22:33:03Z",
+  "generatedAt": "2026-11-02T23:56:44Z",
   "title": "Design System: Spindle",
   "extensions": {
     "colorMeta": {
-      "ink": { "role": "primary", "displayName": "Glass Ink", "canonical": "NSColor.labelColor (white in dark appearance)", "tonalRamp": ["#262626", "#474747", "#6b6b6b", "#8f8f8f", "#b3b3b3", "#d6d6d6", "#ededed", "#ffffff"] },
-      "ink-secondary": { "role": "neutral", "displayName": "Quiet Ink", "canonical": "NSColor.secondaryLabelColor / .secondary" },
-      "row-highlight": { "role": "neutral", "displayName": "Row Light" },
-      "halo-track": { "role": "neutral", "displayName": "Halo Track" },
-      "hairline": { "role": "neutral", "displayName": "Glass Hairline" },
-      "card-back": { "role": "neutral", "displayName": "Smoked Glass" },
-      "key-outline": { "role": "neutral", "displayName": "Key Outline" },
-      "segment-track": { "role": "neutral", "displayName": "Segment Track" },
-      "segment-selected": { "role": "neutral", "displayName": "Segment Light" },
-      "source-spotify": { "role": "tertiary", "displayName": "Spotify Green", "tonalRamp": ["#063d1b", "#0a5c29", "#0f7a36", "#149944", "#1ab851", "#1ED760", "#5be28a", "#a3efbd"] },
-      "source-apple-music": { "role": "tertiary", "displayName": "Music Red", "tonalRamp": ["#4a0812", "#6e0c1b", "#930f24", "#b8132d", "#dc1736", "#FA2D48", "#fb6c7f", "#fdb0ba"] }
+      "ink": {
+        "role": "primary",
+        "displayName": "Glass Ink",
+        "canonical": "NSColor.labelColor (white in dark appearance)",
+        "tonalRamp": [
+          "#262626",
+          "#474747",
+          "#6b6b6b",
+          "#8f8f8f",
+          "#b3b3b3",
+          "#d6d6d6",
+          "#ededed",
+          "#ffffff"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "canonical": "NSColor.secondaryLabelColor / .secondary"
+      },
+      "row-highlight": {
+        "role": "neutral",
+        "displayName": "Row Light"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Glass Hairline"
+      },
+      "card-back": {
+        "role": "neutral",
+        "displayName": "Smoked Glass"
+      },
+      "key-outline": {
+        "role": "neutral",
+        "displayName": "Key Outline"
+      },
+      "segment-track": {
+        "role": "neutral",
+        "displayName": "Segment Track"
+      },
+      "segment-selected": {
+        "role": "neutral",
+        "displayName": "Segment Light"
+      },
+      "source-spotify": {
+        "role": "tertiary",
+        "displayName": "Spotify Green",
+        "tonalRamp": [
+          "#063d1b",
+          "#0a5c29",
+          "#0f7a36",
+          "#149944",
+          "#1ab851",
+          "#1ED760",
+          "#5be28a",
+          "#a3efbd"
+        ]
+      },
+      "source-apple-music": {
+        "role": "tertiary",
+        "displayName": "Music Red",
+        "tonalRamp": [
+          "#4a0812",
+          "#6e0c1b",
+          "#930f24",
+          "#b8132d",
+          "#dc1736",
+          "#FA2D48",
+          "#fb6c7f",
+          "#fdb0ba"
+        ]
+      }
     },
     "typographyMeta": {
-      "title": { "displayName": "Title", "purpose": "Episode or song title under the cover." },
-      "volume": { "displayName": "Volume", "purpose": "Volume number in the disc's centre during Option + turn." },
-      "body": { "displayName": "Body", "purpose": "Artist or show line, list rows." },
-      "caption": { "displayName": "Caption", "purpose": "Times, durations, dates, pill text." },
-      "label": { "displayName": "Label", "purpose": "Hint pills and uppercase list headings." }
+      "title": {
+        "displayName": "Title",
+        "purpose": "Episode or song title under the cover."
+      },
+      "volume": {
+        "displayName": "Volume",
+        "purpose": "Volume number in the disc's centre during Option + turn."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Artist or show line, list rows."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Times, durations, dates, pill text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Hint pills and uppercase list headings."
+      }
     },
     "shadows": [
-      { "name": "cover-lift", "value": "0 10pt 30pt rgba(0,0,0,0.35)", "purpose": "Under the cover so it sits above the panel glass." },
-      { "name": "back-lift", "value": "0 8pt 24pt rgba(0,0,0,0.25)", "purpose": "Under the back of the cover." }
+      {
+        "name": "cover-lift",
+        "value": "0 10pt 30pt rgba(0,0,0,0.35)",
+        "purpose": "Under the cover so it sits above the panel glass."
+      },
+      {
+        "name": "back-lift",
+        "value": "0 8pt 24pt rgba(0,0,0,0.25)",
+        "purpose": "Under the back of the cover."
+      }
     ],
     "motion": [
-      { "name": "develop", "value": "spring(response 0.45, damping 0.9); blur 12→0, scale 0.96→1, opacity 0→1", "purpose": "New cover artwork coming into focus; the title rises 6pt with it." },
-      { "name": "cover-turn", "value": "spring(response 0.5, damping 0.86); rotateY 0→180°, perspective 0.5", "purpose": "The cover turning over to show its list." },
-      { "name": "give", "value": "spring(response 0.25, damping 0.7); scale 1.015 hover, 0.97 press", "purpose": "The cover yielding under the pointer." },
-      { "name": "reduce-motion", "value": "crossfade, 0.2s ease-in-out", "purpose": "Replaces every motion above when Reduce Motion is on." }
+      {
+        "name": "develop",
+        "value": "spring(response 0.45, damping 0.9); blur 12→0, scale 0.96→1, opacity 0→1",
+        "purpose": "New cover artwork coming into focus; the title rises 6pt with it."
+      },
+      {
+        "name": "cover-turn",
+        "value": "spring(response 0.5, damping 0.86); rotateY 0→180°, perspective 0.5",
+        "purpose": "The cover turning over to show its list."
+      },
+      {
+        "name": "give",
+        "value": "spring(response 0.25, damping 0.7); scale 1.015 hover, 0.97 press",
+        "purpose": "The cover yielding under the pointer."
+      },
+      {
+        "name": "reduce-motion",
+        "value": "crossfade, 0.2s ease-in-out",
+        "purpose": "Replaces every motion above when Reduce Motion is on."
+      }
     ]
   },
   "components": [
@@ -70,9 +170,9 @@
     {
       "name": "Disc",
       "kind": "custom",
-      "description": "The 150pt glass disc with its halo lit to the current time.",
-      "html": "<div class=\"ds-disc\"><div class=\"ds-halo\"></div><div class=\"ds-face\"><span class=\"ds-l\">&minus;15</span><span class=\"ds-c\">&#9654;</span><span class=\"ds-r\">+30</span></div></div>",
-      "css": ".ds-disc { position: relative; width: 160px; height: 160px; } .ds-halo { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#fff 0 30%, rgba(255,255,255,.14) 30% 100%); -webkit-mask: radial-gradient(circle, transparent 77px, #000 77.5px, #000 80px, transparent 80.5px); } .ds-face { position: absolute; inset: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: space-around; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); color: #fff; font: 600 10px -apple-system, sans-serif; } .ds-c { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .75px rgba(255,255,255,.25); transition: transform .2s; } .ds-c:hover { transform: scale(1.04); }"
+      "description": "The wheel: system glass edged by light, a band of light from 12 o'clock to now with no track, and faint back and forward that come up on hover.",
+      "html": "<div class=\"ds-disc\"><div class=\"ds-halo\"></div><div class=\"ds-face\"><span class=\"ds-l\">&minus;15</span><span class=\"ds-c\"><svg width=\"18\" height=\"20\" viewBox=\"0 0 18 20\"><path d=\"M1.4 0 L10 5 L10 15 L1.4 20 Z M10 5 L19 10 L19 10 L10 15 Z\" fill=\"#fff\"/></svg></span><span class=\"ds-r\">+30</span></div></div>",
+      "css": ".ds-disc { position: relative; width: 160px; height: 160px; } .ds-halo { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(255,255,255,0) 0, rgba(255,255,255,.85) 7%, rgba(255,255,255,.85) 30%, transparent 30%); -webkit-mask: radial-gradient(circle, transparent 77px, #000 77.5px, #000 80px, transparent 80.5px); mask: radial-gradient(circle, transparent 77px, #000 77.5px, #000 80px, transparent 80.5px); transition: filter .25s; } .ds-disc:active .ds-halo { filter: brightness(1.2); } .ds-face { position: absolute; inset: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: space-around; background: rgba(120,40,95,.12); backdrop-filter: blur(6px) saturate(1.6); box-shadow: inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -2px 3px rgba(0,0,0,.25); color: #fff; font: 600 10px -apple-system, sans-serif; } .ds-l, .ds-r { opacity: .35; transition: opacity .2s ease-out; } .ds-disc:hover .ds-l, .ds-disc:hover .ds-r { opacity: 1; } .ds-c { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); box-shadow: inset 0 1.5px 1px rgba(255,255,255,.7), inset 0 -2px 4px rgba(0,0,0,.3); transition: transform .2s; } .ds-c:active { transform: scale(.94); }"
     },
     {
       "name": "Source Dot",
@@ -93,11 +193,31 @@
       "One gesture per thing: turn the disc, press its centre, click the cover."
     ],
     "rules": [
-      { "name": "The Borrowed Colour Rule", "body": "Spindle never paints a surface with a colour of its own. Colour comes from the artwork, the desktop through the glass, or the two source dots.", "section": "colors" },
-      { "name": "The Label Ink Rule", "body": "Anything that must read as white on glass uses NSColor.labelColor; .primary and .foreground render grey there.", "section": "colors" },
-      { "name": "The Same Size Rule", "body": "Paired values keep one size: elapsed and remaining times never shrink independently; when space runs out, move them (they sit in the disc row's lower corners) rather than scale them.", "section": "typography" },
-      { "name": "The One Lift Rule", "body": "Only the cover lifts. Pills, rows and the disc sit in the glass, not on it.", "section": "elevation" },
-      { "name": "The Parallel Corners Rule", "body": "An inner radius is the outer radius less the gap between them.", "section": "shapes" }
+      {
+        "name": "The Borrowed Colour Rule",
+        "body": "Spindle never paints a surface with a colour of its own. Colour comes from the artwork, the desktop through the glass, or the two source dots.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label Ink Rule",
+        "body": "Anything that must read as white on glass uses NSColor.labelColor; .primary and .foreground render grey there.",
+        "section": "colors"
+      },
+      {
+        "name": "The Same Size Rule",
+        "body": "Paired values keep one size: elapsed and remaining times never shrink independently; when space runs out, move them (they sit in the disc row's lower corners) rather than scale them.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Lift Rule",
+        "body": "Only the cover lifts. Pills, rows and the disc sit in the glass, not on it.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Parallel Corners Rule",
+        "body": "An inner radius is the outer radius less the gap between them.",
+        "section": "shapes"
+      }
     ],
     "dos": [
       "Do put window glass (NSGlassEffectView) behind every surface that should see the desktop: the panel and the floating dial.",
