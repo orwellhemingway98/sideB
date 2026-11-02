@@ -633,27 +633,47 @@ private struct Developing: ViewModifier {
 private let coverTurn = Animation.spring(response: 0.5, dampingFraction: 0.86)
 
 /// The cover turns over to show its list: a 3D flip about the vertical axis. With Reduce Motion it crossfades.
+/// VoiceOver follows the turn: it reads only the side that faces you and moves to it once the turn ends.
 private struct CoverFlip<Front: View>: View {
     @ObservedObject var list: ListModel
     let nowPlaying: NowPlaying
     let turnBack: (() -> Void)?
     @ViewBuilder let front: Front
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AccessibilityFocusState private var spoken: CoverSide?
 
     var body: some View {
         let angle: Double = list.showsList ? 180 : 0
         ZStack {
             front
                 .modifier(FlipFace(angle: angle, isBack: false, reduceMotion: reduceMotion))
+                .accessibilityElement(children: .contain)
+                .accessibilityFocused($spoken, equals: .front)
             CoverBack(list: list, nowPlaying: nowPlaying, turnBack: turnBack)
                 .modifier(FlipFace(angle: angle, isBack: true, reduceMotion: reduceMotion))
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(list.showsList ? "List" : "")
+                .accessibilityFocused($spoken, equals: .back)
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : coverTurn, value: list.showsList)
+        .onChange(of: list.showsList) { _, showsList in
+            // After the turn, once the side VoiceOver should read is in the tree.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { spoken = showsList ? .back : .front }
+        }
+    }
+}
+
+private enum CoverSide: Hashable { case front, back }
+
+/// Which side of the turning cover faces you: the front up to half-way, the back after.
+enum CoverFace {
+    static func isFacing(angle: Double, isBack: Bool) -> Bool {
+        isBack ? angle > 90 : angle <= 90
     }
 }
 
 /// One face of the turning cover: each shows only while it faces the viewer, so the back appears at the
-/// half-way point, already the right way round.
+/// half-way point, already the right way round. The side facing away is hidden from VoiceOver too.
 private struct FlipFace: ViewModifier, Animatable {
     var angle: Double
     let isBack: Bool
@@ -665,16 +685,18 @@ private struct FlipFace: ViewModifier, Animatable {
     }
 
     func body(content: Content) -> some View {
-        let facing = isBack ? angle > 90 : angle <= 90
+        let facing = CoverFace.isFacing(angle: angle, isBack: isBack)
         if reduceMotion {
             content
                 .opacity(isBack ? angle / 180 : 1 - angle / 180)
                 .allowsHitTesting(facing)
+                .accessibilityHidden(!facing)
         } else {
             content
                 .rotation3DEffect(.degrees(isBack ? angle - 180 : angle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
                 .opacity(facing ? 1 : 0)
                 .allowsHitTesting(facing)
+                .accessibilityHidden(!facing)
         }
     }
 }
