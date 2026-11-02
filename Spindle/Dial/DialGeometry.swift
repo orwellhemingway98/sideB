@@ -52,4 +52,12 @@ enum DialGeometry {
         if speedShown, abs(dx) <= speedHalfSize.width, abs(dy - speedOffset) <= speedHalfSize.height { return .speed }
         return ringBand.contains(hypot(dx, dy)) ? .ring : .outside
     }
+
+    // MARK: The halo
+
+    /// The time shows as a thin band of light just outside the disc's edge, as if from beneath it.
+    static let haloWidth: CGFloat = 3
+    static let haloRadius: CGFloat = discSize / 2 + 2 + haloWidth / 2
+    /// The glass the floating dial puts round its disc.
+    static let floatingPadding: CGFloat = 10
 }
