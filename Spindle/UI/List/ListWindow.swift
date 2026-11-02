@@ -38,6 +38,8 @@ final class ListWindowController: NSObject, NSPopoverDelegate {
     private let nowPlaying: NowPlaying
     private var cancellables: Set<AnyCancellable> = []
     private var lastIdentity: String?
+    /// The panel's glass height while the list is beside it.
+    private var panelHeight: CGFloat?
 
     init(model: ListModel, nowPlaying: NowPlaying) {
         self.model = model
@@ -93,10 +95,13 @@ final class ListWindowController: NSObject, NSPopoverDelegate {
         lastIdentity = nil
         // Show what's already known (the cached album, the episodes) at its size, then read the rest.
         model.showNow(force: true)
+        // Facing pages: pointed at the whole panel, as tall as it, the popover's top and bottom line up with
+        // the panel's.
+        let glass = DialPanelView.glassRect(in: view.bounds, flipped: view.isFlipped,
+                                            margin: DialPanelController.shadowMargin)
+        panelHeight = glass.height
         popover.contentSize = size
-        popover.show(relativeTo: DialPanelView.coverRect(in: view.bounds, flipped: view.isFlipped,
-                                                        margin: DialPanelController.shadowMargin), of: view,
-                     preferredEdge: .minX)
+        popover.show(relativeTo: glass, of: view, preferredEdge: .minX)
         Task { await model.reload(force: true) }
     }
 
@@ -133,7 +138,9 @@ final class ListWindowController: NSObject, NSPopoverDelegate {
         }
     }
 
+    /// As tall as the panel beside it; rows that don't fit scroll.
     private var size: NSSize {
+        if let panelHeight { return NSSize(width: ListPlacement.width, height: panelHeight) }
         let rowHeight = isEpisodeList ? ListPlacement.twoLineRow : ListPlacement.oneLineRow
         return NSSize(width: ListPlacement.width, height: ListPlacement.height(rows: rowCount, rowHeight: rowHeight))
     }

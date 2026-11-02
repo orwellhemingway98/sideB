@@ -48,6 +48,12 @@ struct DialPanelView: View {
 
     /// Where the cover sits in the panel window's content view (inside the shadow margin), for the list's
     /// popover to point at.
+    /// The panel's glass in its window's content view: the window less the clear margin for its shadow.
+    static func glassRect(in bounds: NSRect, flipped: Bool, margin: NSEdgeInsets) -> NSRect {
+        NSRect(x: bounds.minX + margin.left, y: bounds.minY + (flipped ? margin.top : margin.bottom),
+               width: bounds.width - margin.left - margin.right, height: bounds.height - margin.top - margin.bottom)
+    }
+
     static func coverRect(in bounds: NSRect, flipped: Bool, margin: NSEdgeInsets) -> NSRect {
         let side: CGFloat = 240
         let x = bounds.minX + margin.left + panelPadding

@@ -58,6 +58,9 @@ final class ListWindowLayoutTests: XCTestCase {
             spin(0.1)
             XCTAssertEqual(list.contentSize.width, ListPlacement.width)
         }
+        // Side by side like facing pages: the list is as tall as the panel's glass.
+        let m = DialPanelController.shadowMargin
+        XCTAssertEqual(list.contentSize.height, panel.window.frame.height - m.top - m.bottom, accuracy: 0.5)
         let popoverWindow = try XCTUnwrap(list.window)
         XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: popoverWindow, panel: panel.window, anchor: nil,
                                                     children: panel.window.childWindows ?? []),

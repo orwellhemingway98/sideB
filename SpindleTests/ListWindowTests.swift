@@ -41,6 +41,15 @@ final class ListWindowTests: XCTestCase {
                        NSRect(x: m.left + 16, y: bounds.height - m.top - 16 - 240, width: 240, height: 240))
     }
 
+    func testTheGlassRectIsThePanelLessItsShadowMargin() {
+        let m = DialPanelController.shadowMargin
+        let bounds = NSRect(x: 0, y: 0, width: 272 + m.left + m.right, height: 507 + m.top + m.bottom)
+        XCTAssertEqual(DialPanelView.glassRect(in: bounds, flipped: true, margin: m),
+                       NSRect(x: m.left, y: m.top, width: 272, height: 507))
+        XCTAssertEqual(DialPanelView.glassRect(in: bounds, flipped: false, margin: m),
+                       NSRect(x: m.left, y: m.bottom, width: 272, height: 507))
+    }
+
     func testTheShadowHasRoomButNeverCoversTheMenuBarIcon() {
         let m = DialPanelController.shadowMargin
         XCTAssertGreaterThanOrEqual(m.left, 20)
