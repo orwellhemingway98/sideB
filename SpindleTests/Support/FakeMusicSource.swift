@@ -22,6 +22,7 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     private var _contextKeyCalls = 0
     private var _playedInContext: [(trackID: String, contextID: String)] = []
     private var _ignoresVolume = false
+    private var _artworkGate: DispatchSemaphore?
 
     init(_ id: MusicSourceID) { self.id = id }
 
@@ -41,6 +42,8 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     var contextKeyCalls: Int { lock.withLock { _contextKeyCalls } }
     var playedInContext: [(trackID: String, contextID: String)] { lock.withLock { _playedInContext } }
     /// Like an app slow to report a new volume: keeps reporting the old one.
+    /// When set, artwork() waits for a signal, like a slow download.
+    var artworkGate: DispatchSemaphore? { get { lock.withLock { _artworkGate } } set { lock.withLock { _artworkGate = newValue } } }
     var ignoresVolume: Bool { get { lock.withLock { _ignoresVolume } } set { lock.withLock { _ignoresVolume = newValue } } }
 
     /// Reports a track in the given state.
@@ -66,7 +69,8 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     }
 
     func artwork() throws -> ArtworkRef {
-        lock.withLock { _artworkCalls += 1; return _artwork }
+        artworkGate?.wait()
+        return lock.withLock { _artworkCalls += 1; return _artwork }
     }
 
     func context() throws -> MusicContext? {

@@ -11,6 +11,9 @@ struct DialPanelView: View {
     @ObservedObject var artwork: ArtworkCache
     let onLibrary: () -> Void
     @State private var hovering = false
+    /// What the header showed last time the cover was settled; kept while a new song's cover loads.
+    @State private var settledDisplay: NowPlayingDisplay?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
     let onPopOut: (() -> Void)?
     /// Whether the dial is out, so the pill reads Pop out or Put back.
@@ -71,11 +74,32 @@ struct DialPanelView: View {
 
     // MARK: Header
 
-    private func header(_ display: NowPlayingDisplay) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            CoverButton(artwork: artwork, display: display, image: nowPlaying.musicArtwork,
+    /// The cover and title change together: a new song keeps the last one's until its cover is in, then both
+    /// develop in at once.
+    private func header(_ current: NowPlayingDisplay) -> some View {
+        let settled = nowPlaying.coverSettled
+        let display = settled ? current : (settledDisplay ?? current)
+        let identity = settled ? nowPlaying.coverIdentity : nil
+        return VStack(alignment: .leading, spacing: 10) {
+            // While waiting, a podcast's cover mustn't borrow the last song's artwork.
+            CoverButton(artwork: artwork, display: display,
+                        image: display.kind == .music ? nowPlaying.musicArtwork : nil, identity: identity,
                         hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
                 .overlay(alignment: .top) { coverCorners }
+            titles(display)
+                .id(display.title + "\u{1F}" + display.subtitle)
+                .transition(reduceMotion ? .opacity : .asymmetric(
+                    insertion: .opacity.combined(with: .offset(y: 6)), removal: .opacity))
+        }
+        .animation(CoverButton.develop, value: display.title + "\u{1F}" + display.subtitle)
+        .foregroundStyle(.primary)
+        .onAppear { settledDisplay = current }
+        .onChange(of: settled ? current : nil) { _, now in
+            if let now { settledDisplay = now }
+        }
+    }
+
+    private func titles(_ display: NowPlayingDisplay) -> some View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(display.title)
                     .font(.system(size: 14, weight: .semibold))
@@ -95,8 +119,6 @@ struct DialPanelView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .foregroundStyle(.primary)
     }
 
     private var coverHint: String {
@@ -460,16 +482,38 @@ private struct CoverButton: View {
     @ObservedObject var artwork: ArtworkCache
     let display: NowPlayingDisplay
     let image: NSImage?
+    /// Whose cover this is; a new one develops in over the old. Nil keeps whatever is up.
+    let identity: String?
     let hint: String
     let spokenHint: String
     let action: (() -> Void)?
     @State private var hovering = false
+    @State private var shownIdentity: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// A cover coming into focus behind glass.
+    static let develop = Animation.spring(response: 0.45, dampingFraction: 0.9)
+
+    /// Changes when the picture does: another song or episode, or its artwork arriving from the cache.
+    private var pictureKey: String {
+        let hasArtwork = image != nil || artwork.image(for: display.artworkURL) != nil
+        return (shownIdentity ?? display.artworkSeed) + (hasArtwork ? "" : "~")
+    }
     /// Resets itself if the press is interrupted (the panel closes mid-press).
     @GestureState private var pressed = false
 
     var body: some View {
-        ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
-                    size: Self.size, cornerRadius: 18, image: image)
+        ZStack {
+            ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
+                        size: Self.size, cornerRadius: 18, image: image)
+                .id(pictureKey)
+                .transition(reduceMotion ? .opacity : .asymmetric(
+                    insertion: .modifier(active: Developing(amount: 0), identity: Developing(amount: 1)),
+                    removal: .opacity))
+        }
+        .animation(Self.develop, value: pictureKey)
+        .onAppear { shownIdentity = identity }
+        .onChange(of: identity) { _, new in if let new { shownIdentity = new } }
             .shadow(color: .black.opacity(0.35), radius: 15, y: 10)
             .overlay(alignment: .bottomTrailing) {
                 if action != nil {
@@ -514,5 +558,17 @@ struct SourceMark: View {
             .help(source.displayName)
             .accessibilityElement()
             .accessibilityLabel(source.displayName)
+    }
+}
+
+/// The develop-in: from slightly small, soft and clear to full size, sharp and solid.
+private struct Developing: ViewModifier {
+    let amount: Double
+
+    func body(content: Content) -> some View {
+        content
+            .blur(radius: 12 * (1 - amount))
+            .scaleEffect(0.96 + 0.04 * amount)
+            .opacity(amount)
     }
 }

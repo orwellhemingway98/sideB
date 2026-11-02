@@ -106,4 +106,64 @@ final class MusicRemoteTests: XCTestCase {
         await remote.refresh()
         XCTAssertEqual(music.artworkCalls, 1)
     }
+
+    // MARK: Cover changes
+
+    private func png(_ color: NSColor) throws -> Data {
+        let image = NSImage(size: NSSize(width: 2, height: 2))
+        image.lockFocus(); color.setFill(); NSRect(x: 0, y: 0, width: 2, height: 2).fill(); image.unlockFocus()
+        return try XCTUnwrap(NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation))?
+            .representation(using: .png, properties: [:]))
+    }
+
+    func testTheOldCoverStaysUntilTheNewOneArrives() async throws {
+        spotify.running = false
+        music.artworkRef = .data(try png(.red))
+        music.play("One", id: "m1")
+        await remote.refresh()
+        while remote.artworkTrackID != "m1" { await Task.yield() }
+        let first = try XCTUnwrap(remote.artwork)
+
+        let gate = DispatchSemaphore(value: 0)
+        music.artworkGate = gate
+        music.artworkRef = .data(try png(.blue))
+        music.play("Two", id: "m2")
+        await remote.refresh()
+        XCTAssertTrue(remote.artwork === first, "no blank or placeholder while the new cover loads")
+        XCTAssertEqual(remote.artworkTrackID, "m1", "the cover shown still belongs to the last song")
+        gate.signal()
+        while remote.artworkTrackID != "m2" { await Task.yield() }
+        XCTAssertFalse(remote.artwork === first)
+        XCTAssertNotNil(remote.artwork)
+    }
+
+    func testASongWithoutArtworkSettlesOnNoCover() async throws {
+        spotify.running = false
+        music.artworkRef = .data(try png(.red))
+        music.play("One", id: "m1")
+        await remote.refresh()
+        while remote.artworkTrackID != "m1" { await Task.yield() }
+        music.artworkRef = .none
+        music.play("Two", id: "m2")
+        await remote.refresh()
+        while remote.artworkTrackID != "m2" { await Task.yield() }
+        XCTAssertNil(remote.artwork)
+    }
+
+    func testASlowCoverGivesUpAfterAWhile() async throws {
+        let patient = MusicRemote(sources: [music], every: { _, _ in NSObject() }, artworkPatience: 0.05)
+        spotify.running = false
+        let gate = DispatchSemaphore(value: 0)
+        music.artworkGate = gate
+        music.artworkRef = .data(try png(.red))
+        music.play("One", id: "m1")
+        await patient.refresh()
+        let start = Date()
+        while patient.artworkTrackID != "m1", Date().timeIntervalSince(start) < 2 { await Task.yield() }
+        XCTAssertEqual(patient.artworkTrackID, "m1", "the song moves on without its cover")
+        XCTAssertNil(patient.artwork)
+        gate.signal()
+        while patient.artwork == nil, Date().timeIntervalSince(start) < 2 { await Task.yield() }
+        XCTAssertNotNil(patient.artwork, "a late cover still arrives")
+    }
 }

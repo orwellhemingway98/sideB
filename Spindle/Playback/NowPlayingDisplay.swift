@@ -40,6 +40,20 @@ extension NowPlaying {
         }
     }
 
+    /// Whose cover is up: the song whose artwork has loaded (or turned out to have none), or the episode.
+    var coverIdentity: String? {
+        switch mode {
+        case .music: return music?.artworkTrackID.map { "song:" + $0 }
+        case .podcast: return player.episode.map { "episode:" + $0.guid }
+        }
+    }
+
+    /// False while a new song's cover is still loading: the panel keeps the last song's cover and title until
+    /// then, so they change together.
+    var coverSettled: Bool {
+        mode == .podcast || music?.track == nil || music?.artworkTrackID == music?.track?.trackID
+    }
+
     /// The song's artwork in music mode.
     var musicArtwork: NSImage? {
         mode == .music ? music?.artwork : nil
