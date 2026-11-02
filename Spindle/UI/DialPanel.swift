@@ -386,7 +386,31 @@ struct LibraryGlyph: Shape {
     }
 }
 
-/// A borderless panel that can take key status (for Escape) without activating the app, and keeps
+/// The keys the dial panel answers while it's the key window. Keys held with Command, Option or Control
+/// belong to the system, except ⌘L.
+enum PanelKey: Equatable {
+    case playPause, back, forward, turnCover, library, escape
+
+    init?(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
+        let held = modifiers.intersection([.command, .option, .control, .shift])
+        if held == .command {
+            guard keyCode == 37 else { return nil }    // L
+            self = .library
+            return
+        }
+        guard held.isEmpty else { return nil }
+        switch keyCode {
+        case 49: self = .playPause
+        case 123: self = .back
+        case 124: self = .forward
+        case 36, 76: self = .turnCover              // Return, Enter
+        case 53: self = .escape
+        default: return nil
+        }
+    }
+}
+
+/// A borderless panel that can take key status (for its keys) without activating the app, and keeps
 /// its top edge in place when its content grows or shrinks.
 private final class DialPanelWindow: NSPanel {
     var anchoredTop: CGFloat?
@@ -401,7 +425,9 @@ private final class DialPanelWindow: NSPanel {
     }
 }
 
-/// Owns the dial panel: shows it under the status button, closes it on an outside click or Escape.
+/// Owns the dial panel: shows it under the status button, closes it on an outside click or Escape, and
+/// answers its keys: Space plays or pauses, ← and → go back and forward, Return turns the cover, ⌘L opens
+/// the Library.
 @MainActor
 final class DialPanelController {
     /// Posted when the panel closes, so the disc drops its scroll monitor even with the pointer still over it.
@@ -420,13 +446,19 @@ final class DialPanelController {
     private var ownWindowClickMonitor: Any?
     /// The status bar window the panel hangs from: its clicks toggle through the button instead.
     private weak var anchorWindow: NSWindow?
-    private var escapeMonitor: Any?
+    private var keyMonitor: Any?
+    private let nowPlaying: NowPlaying
+    private let onLibrary: () -> Void
+    private let onCover: (() -> Void)?
 
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
          onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
          list: ListModel? = nil) {
+        self.nowPlaying = nowPlaying
+        self.onLibrary = onLibrary
+        self.onCover = onCover
         panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
@@ -507,27 +539,39 @@ final class DialPanelController {
             }
             return event
         }
-        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard event.keyCode == 53 else { return event }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let key = PanelKey(keyCode: event.keyCode, modifiers: event.modifierFlags) else { return event }
             let window = event.window
-            let closed = MainActor.assumeIsolated { () -> Bool in
+            let handled = MainActor.assumeIsolated { () -> Bool in
                 guard let self, window === self.panel else { return false }
-                // An open list window closes first; the panel stays.
-                if self.escapeHandler?() == true { return true }
-                self.close()
+                self.press(key)
                 return true
             }
-            return closed ? nil : event
+            return handled ? nil : event
+        }
+    }
+
+    private func press(_ key: PanelKey) {
+        switch key {
+        case .playPause: nowPlaying.toggle()
+        case .back: nowPlaying.back()
+        case .forward: nowPlaying.forward()
+        case .turnCover: if nowPlaying.display != nil { onCover?() }
+        case .library: onLibrary()
+        case .escape:
+            // The back of the cover turns over first; the panel stays.
+            if escapeHandler?() == true { return }
+            close()
         }
     }
 
     private func removeMonitors() {
         if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
         if let ownWindowClickMonitor { NSEvent.removeMonitor(ownWindowClickMonitor) }
-        if let escapeMonitor { NSEvent.removeMonitor(escapeMonitor) }
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         outsideClickMonitor = nil
         ownWindowClickMonitor = nil
-        escapeMonitor = nil
+        keyMonitor = nil
     }
 }
 

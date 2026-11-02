@@ -74,6 +74,13 @@ final class NowPlayingModeTests: XCTestCase {
         XCTAssertEqual(engine.playCount, 0, "the podcast is left alone")
     }
 
+    func testBackAndForwardChangeTheSong() async {
+        await startMusic()
+        nowPlaying.forward(); await remote.lastCommand?.value
+        nowPlaying.back(); await remote.lastCommand?.value
+        XCTAssertEqual(spotify.commands, [.next, .previous])
+    }
+
     func testMusicGoingAwayFallsBackToThePodcast() async {
         player.open(episode, autoplay: false)
         await startMusic()

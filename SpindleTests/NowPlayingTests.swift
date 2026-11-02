@@ -131,6 +131,13 @@ final class NowPlayingTests: XCTestCase {
         XCTAssertEqual(newSeeks, [595])
     }
 
+    func testBackAndForwardSkipThePodcast() {
+        open(at: 600)
+        nowPlaying.back()
+        nowPlaying.forward()
+        XCTAssertEqual(newSeeks, [585, 615], "back 15 s, then forward 30 s")
+    }
+
     func testSkipStartsFromTheScrubPosition() {
         open(at: 600)
         nowPlaying.turn(degrees: 30)
