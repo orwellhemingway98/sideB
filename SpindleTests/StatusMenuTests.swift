@@ -19,6 +19,14 @@ final class StatusMenuTests: XCTestCase {
         XCTAssertEqual(rows.compactMap { $0?.command }, [.library, .floatingDial, .launchAtLogin, .quit])
     }
 
+    func testSignedInToSpotifyTheMenuOffersToSignOut() {
+        let rows = StatusMenu.rows(floatingDial: nil, launchAtLogin: false, spotifySignedIn: true)
+        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", nil, "Launch at Login", nil,
+                                                "Sign Out of Spotify", nil, "Quit Spindle"])
+        XCTAssertEqual(rows[4]?.command, .signOutOfSpotify)
+        XCTAssertFalse(StatusMenu.rows(floatingDial: nil, launchAtLogin: false).contains { $0?.command == .signOutOfSpotify })
+    }
+
     func testTheTickFollowsTheLoginItem() {
         XCTAssertEqual(StatusMenu.rows(floatingDial: nil, launchAtLogin: true).compactMap { $0?.isOn },
                        [false, true, false])

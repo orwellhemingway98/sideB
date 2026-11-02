@@ -119,7 +119,9 @@ struct DialPanelView: View {
                                     hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
                 .overlay(alignment: .top) { coverCorners }
             if let list {
-                CoverFlip(list: list, nowPlaying: nowPlaying, turnBack: onCover) { cover }
+                let image = (display.kind == .music ? nowPlaying.musicArtwork : nil) ?? artwork.image(for: display.artworkURL)
+                CoverFlip(list: list, nowPlaying: nowPlaying, tint: image.flatMap(CoverTint.backColour(for:)),
+                          turnBack: onCover) { cover }
             } else {
                 cover
             }
@@ -389,7 +391,7 @@ struct LibraryGlyph: Shape {
 /// The keys the dial panel answers while it's the key window. Keys held with Command, Option or Control
 /// belong to the system, except ⌘L.
 enum PanelKey: Equatable {
-    case playPause, back, forward, turnCover, library, escape
+    case playPause, back, forward, up, down, turnCover, library, escape
 
     init?(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
         let held = modifiers.intersection([.command, .option, .control, .shift])
@@ -403,6 +405,8 @@ enum PanelKey: Equatable {
         case 49: self = .playPause
         case 123: self = .back
         case 124: self = .forward
+        case 126: self = .up
+        case 125: self = .down
         case 36, 76: self = .turnCover              // Return, Enter
         case 53: self = .escape
         default: return nil
@@ -427,7 +431,7 @@ private final class DialPanelWindow: NSPanel {
 
 /// Owns the dial panel: shows it under the status button, closes it on an outside click or Escape, and
 /// answers its keys: Space plays or pauses, ← and → go back and forward, Return turns the cover, ⌘L opens
-/// the Library.
+/// the Library. On the back of the cover, ↑ and ↓ move through the rows and Return plays one.
 @MainActor
 final class DialPanelController {
     /// Posted when the panel closes, so the disc drops its scroll monitor even with the pointer still over it.
@@ -450,6 +454,7 @@ final class DialPanelController {
     private let nowPlaying: NowPlaying
     private let onLibrary: () -> Void
     private let onCover: (() -> Void)?
+    private let list: ListModel?
 
     var isShown: Bool { panel.isVisible }
 
@@ -459,6 +464,7 @@ final class DialPanelController {
         self.nowPlaying = nowPlaying
         self.onLibrary = onLibrary
         self.onCover = onCover
+        self.list = list
         panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
@@ -556,7 +562,13 @@ final class DialPanelController {
         case .playPause: nowPlaying.toggle()
         case .back: nowPlaying.back()
         case .forward: nowPlaying.forward()
-        case .turnCover: if nowPlaying.display != nil { onCover?() }
+        case .up, .down:
+            // The rows on the back of the cover.
+            if list?.showsList == true { list?.moveKey(by: key == .up ? -1 : 1) }
+        case .turnCover:
+            // On the back, Return plays the outlined row; with none outlined it turns the cover back.
+            if list?.showsList == true, list?.playKeyRow() == true { return }
+            if nowPlaying.display != nil { onCover?() }
         case .library: onLibrary()
         case .escape:
             // The back of the cover turns over first; the panel stays.
@@ -681,6 +693,8 @@ private let coverTurn = Animation.spring(response: 0.5, dampingFraction: 0.86)
 private struct CoverFlip<Front: View>: View {
     @ObservedObject var list: ListModel
     let nowPlaying: NowPlaying
+    /// The back's colour, from the cover; nil keeps it smoked glass.
+    let tint: NSColor?
     let turnBack: (() -> Void)?
     @ViewBuilder let front: Front
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -693,7 +707,7 @@ private struct CoverFlip<Front: View>: View {
                 .modifier(FlipFace(angle: angle, isBack: false, reduceMotion: reduceMotion))
                 .accessibilityElement(children: .contain)
                 .accessibilityFocused($spoken, equals: .front)
-            CoverBack(list: list, nowPlaying: nowPlaying, turnBack: turnBack)
+            CoverBack(list: list, nowPlaying: nowPlaying, tint: tint, turnBack: turnBack)
                 .modifier(FlipFace(angle: angle, isBack: true, reduceMotion: reduceMotion))
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(list.showsList ? "List" : "")
@@ -745,10 +759,11 @@ private struct FlipFace: ViewModifier, Animatable {
     }
 }
 
-/// The back of the cover: the album, playlist or episodes, on glass, with a pill to turn back.
+/// The back of the cover: the album, playlist or episodes, on the cover's own colour, with a pill to turn back.
 private struct CoverBack: View {
     @ObservedObject var list: ListModel
     let nowPlaying: NowPlaying
+    let tint: NSColor?
     let turnBack: (() -> Void)?
 
     var body: some View {
@@ -769,7 +784,8 @@ private struct CoverBack: View {
             .accessibilityLabel("Show the cover")
         }
         .frame(width: 240, height: 240)
-        .background(Color.black.opacity(0.22), in: shape)
+        .background(tint.map { Color(nsColor: $0).opacity(0.85) } ?? Color.black.opacity(0.22), in: shape)
+        .animation(.easeInOut(duration: 0.3), value: tint)
         .overlay(shape.strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
         .clipShape(shape)
         .shadow(color: .black.opacity(0.25), radius: 12, y: 8)

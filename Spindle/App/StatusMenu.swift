@@ -1,9 +1,10 @@
 import AppKit
 import ServiceManagement
 
-/// The menu bar icon's right-click menu: Library, the floating dial, Launch at Login and Quit.
+/// The menu bar icon's right-click menu: Library, the floating dial, Launch at Login, signing out of Spotify
+/// and Quit.
 enum StatusMenu {
-    enum Command: Equatable { case library, floatingDial, launchAtLogin, quit }
+    enum Command: Equatable { case library, floatingDial, launchAtLogin, signOutOfSpotify, quit }
 
     struct Row: Equatable {
         let title: String
@@ -12,13 +13,15 @@ enum StatusMenu {
     }
 
     /// The rows top to bottom; nil is a separator. `floatingDial` is whether it is out (nil: no floating dial).
-    static func rows(floatingDial: Bool?, launchAtLogin: Bool) -> [Row?] {
+    /// Signed in to Spotify, the menu offers to sign out (the list on the back of the cover has no account controls).
+    static func rows(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool = false) -> [Row?] {
         var rows: [Row?] = [Row(title: "Open Library\u{2026}", command: .library, isOn: false)]
         if let out = floatingDial {
             rows.append(Row(title: out ? "Put Dial Back" : "Show Floating Dial", command: .floatingDial, isOn: false))
         }
-        rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil,
-                 Row(title: "Quit Spindle", command: .quit, isOn: false)]
+        rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil]
+        if spotifySignedIn { rows += [Row(title: "Sign Out of Spotify", command: .signOutOfSpotify, isOn: false), nil] }
+        rows.append(Row(title: "Quit Spindle", command: .quit, isOn: false))
         return rows
     }
 
@@ -28,9 +31,10 @@ enum StatusMenu {
     }
 
     @MainActor
-    static func menu(floatingDial: Bool?, launchAtLogin: Bool, perform: @escaping (Command) -> Void) -> NSMenu {
+    static func menu(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool = false,
+                     perform: @escaping (Command) -> Void) -> NSMenu {
         let menu = NSMenu()
-        for row in rows(floatingDial: floatingDial, launchAtLogin: launchAtLogin) {
+        for row in rows(floatingDial: floatingDial, launchAtLogin: launchAtLogin, spotifySignedIn: spotifySignedIn) {
             guard let row else { menu.addItem(.separator()); continue }
             let item = CommandItem(title: row.title, keyEquivalent: row.command == .quit ? "q" : "") { perform(row.command) }
             item.state = row.isOn ? .on : .off

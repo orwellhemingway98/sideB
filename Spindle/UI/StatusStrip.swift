@@ -63,10 +63,13 @@ final class StatusStripController: NSObject {
     private let onLibrary: () -> Void
     private let floatingDial: FloatingDialController?
     private let loginItem: LoginItem
+    private let spotify: SpotifyAccount?
     private var cancellables: Set<AnyCancellable> = []
 
     init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void,
-         floatingDial: FloatingDialController? = nil, loginItem: LoginItem = MainAppLoginItem()) {
+         floatingDial: FloatingDialController? = nil, loginItem: LoginItem = MainAppLoginItem(),
+         spotify: SpotifyAccount? = nil) {
+        self.spotify = spotify
         self.floatingDial = floatingDial
         self.loginItem = loginItem
         self.nowPlaying = nowPlaying
@@ -117,7 +120,8 @@ final class StatusStripController: NSObject {
     private func showMenu() {
         guard let button = statusItem.button else { return }
         panel.close()
-        let menu = StatusMenu.menu(floatingDial: floatingDial?.isShown, launchAtLogin: loginItem.isEnabled) { [weak self] in
+        let menu = StatusMenu.menu(floatingDial: floatingDial?.isShown, launchAtLogin: loginItem.isEnabled,
+                                   spotifySignedIn: spotify?.isSignedIn == true) { [weak self] in
             self?.perform($0)
         }
         statusItem.menu = menu
@@ -137,6 +141,7 @@ final class StatusStripController: NSObject {
                 NSApp.forceActivate()
                 alert.runModal()
             }
+        case .signOutOfSpotify: spotify?.signOut()
         case .quit: NSApp.terminate(nil)
         }
     }
