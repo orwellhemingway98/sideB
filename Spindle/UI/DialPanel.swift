@@ -40,12 +40,16 @@ struct DialPanelView: View {
     /// Between the panel's rows, and the extra room round the disc so it doesn't crowd the text above and
     /// the pills below (22 pt from the halo's edge in all).
     static let rowSpacing: CGFloat = 14
-    /// The times either side of the disc: each gets what's left of the row, less the halo and a hair's gap.
+    /// The times sit in the lower corners of the disc's row, where the circle curves away, so even
+    /// "−1:13:32" fits at the same size as "0:14".
     static let timeFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    static let timeColumnWidth: CGFloat = (width - 32 - DialGeometry.discSize) / 2 - timeHaloClearance
-    static let timeHaloClearance: CGFloat = (DialGeometry.haloSide - DialGeometry.discSize) / 2 + 1
-    /// An hour-long time ("−1:13:32") shrinks this far to stay on one line.
-    static let timeMinimumScale: CGFloat = 0.7
+    static var timeColumnWidth: CGFloat {
+        let radius = DialGeometry.haloSide / 2
+        let textHeight = ceil(timeFont.ascender - timeFont.descender + timeFont.leading)
+        // How far the halo reaches sideways at the top of the text line, plus a small gap.
+        let reach = sqrt(radius * radius - pow(radius - textHeight, 2))
+        return (width - 32) / 2 - reach - 4
+    }
     static let discBreathing: CGFloat = 8
 
     var body: some View {
@@ -160,15 +164,14 @@ struct DialPanelView: View {
 
     // MARK: Disc and times
 
-    /// The times sit either side of the disc, like the ends of a scrubber.
+    /// The times sit in the row's lower corners, either side of the disc, like the ends of a scrubber.
     private func discRow(_ display: NowPlayingDisplay) -> some View {
-        HStack(spacing: 0) {
+        ZStack {
+            DiscView(nowPlaying: nowPlaying, showsControls: true)
             Text(TimeFormat.clock(nowPlaying.displayPosition))
                 .lineLimit(1)
-                .minimumScaleFactor(Self.timeMinimumScale)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.trailing, Self.timeHaloClearance)
-            DiscView(nowPlaying: nowPlaying, showsControls: true)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .allowsHitTesting(false)   // the disc under them keeps every click and turn
             Group {
                 if let duration = display.duration {
                     Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
@@ -177,9 +180,8 @@ struct DialPanelView: View {
                 }
             }
             .lineLimit(1)
-            .minimumScaleFactor(Self.timeMinimumScale)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.leading, Self.timeHaloClearance)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .allowsHitTesting(false)
         }
         // The halo reaches past the disc; reserve it, so the gaps above and below are real.
         .frame(height: DialGeometry.haloSide)
