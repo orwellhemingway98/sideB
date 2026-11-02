@@ -73,13 +73,18 @@ struct DialPanelView: View {
                 Text(display.title)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(2)
-                let subtitle = [display.subtitle, display.sourceLabel ?? ""].filter { !$0.isEmpty }
-                    .joined(separator: " \u{00B7} ")
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .opacity(0.8)
-                        .lineLimit(1)
+                if !display.subtitle.isEmpty || display.source != nil {
+                    HStack(spacing: 5) {
+                        if !display.subtitle.isEmpty {
+                            Text(display.subtitle)
+                                .font(.system(size: 11))
+                                .opacity(0.8)
+                                .lineLimit(1)
+                        }
+                        if let source = display.source {
+                            SourceMark(source: source)
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -486,3 +491,19 @@ private struct CoverButton: View {
     }
 }
 
+/// A small coloured dot for where a song plays; hovering names it, and VoiceOver reads the name.
+struct SourceMark: View {
+    let source: MusicSourceID
+
+    var body: some View {
+        Circle()
+            .fill(Color(red: Double(source.markHex >> 16 & 0xFF) / 255, green: Double(source.markHex >> 8 & 0xFF) / 255,
+                        blue: Double(source.markHex & 0xFF) / 255))
+            .frame(width: 6, height: 6)
+            .padding(3)                 // a larger target for the tooltip
+            .contentShape(Rectangle())
+            .help(source.displayName)
+            .accessibilityElement()
+            .accessibilityLabel(source.displayName)
+    }
+}

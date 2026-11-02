@@ -185,6 +185,11 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .spotify, contextKind: .album), "Show album")
     }
 
+    func testTheSecondTabIsNotesWithoutChapters() {
+        XCTAssertEqual(ListContent.secondTabTitle(hasChapters: true), "Chapters")
+        XCTAssertEqual(ListContent.secondTabTitle(hasChapters: false), "Notes")
+    }
+
     func testHints() {
         XCTAssertEqual(ListContent.hint(mode: .podcast, source: nil, contextKind: nil), "Episodes \u{2304}")
         XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: .playlist), "Playlist \u{2304}")

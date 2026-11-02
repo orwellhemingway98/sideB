@@ -10,6 +10,14 @@ enum MusicSourceID: String, CaseIterable {
         case .spotify: return "Spotify"
         }
     }
+
+    /// The colour of the small dot that stands for the source beside the artist (our own mark, not a logo).
+    var markHex: UInt32 {
+        switch self {
+        case .appleMusic: return 0xFA2D48
+        case .spotify: return 0x1ED760
+        }
+    }
 }
 
 enum MusicPlayerState: Equatable {
