@@ -703,20 +703,25 @@ private struct CoverButton: View {
     }
 }
 
-/// A small coloured dot for where a song plays; hovering names it, and VoiceOver reads the name.
+/// Where a song plays, after the artist: a small coloured dot and the source's name, so it never rests on
+/// colour alone. The artist gives way first when the line is short of room.
 struct SourceMark: View {
     let source: MusicSourceID
 
     var body: some View {
-        Circle()
-            .fill(Color(red: Double(source.markHex >> 16 & 0xFF) / 255, green: Double(source.markHex >> 8 & 0xFF) / 255,
-                        blue: Double(source.markHex & 0xFF) / 255))
-            .frame(width: 6, height: 6)
-            .padding(3)                 // a larger target for the tooltip
-            .contentShape(Rectangle())
-            .help(source.displayName)
-            .accessibilityElement()
-            .accessibilityLabel(source.displayName)
+        HStack(spacing: 4) {
+            Circle()
+                .fill(Color(red: Double(source.markHex >> 16 & 0xFF) / 255, green: Double(source.markHex >> 8 & 0xFF) / 255,
+                            blue: Double(source.markHex & 0xFF) / 255))
+                .frame(width: 6, height: 6)
+            Text(source.shortName)
+                .font(.system(size: DialPanelView.subtitleSize))
+                .foregroundStyle(.secondary)
+        }
+        .fixedSize()
+        .layoutPriority(1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(source.displayName)
     }
 }
 

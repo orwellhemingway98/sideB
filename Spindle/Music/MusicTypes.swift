@@ -11,6 +11,14 @@ enum MusicSourceID: String, CaseIterable {
         }
     }
 
+    /// The word after the dot under the title: the Mac app's own name for Apple Music.
+    var shortName: String {
+        switch self {
+        case .appleMusic: return "Music"
+        case .spotify: return "Spotify"
+        }
+    }
+
     /// The colour of the small dot that stands for the source beside the artist (our own mark, not a logo).
     var markHex: UInt32 {
         switch self {
