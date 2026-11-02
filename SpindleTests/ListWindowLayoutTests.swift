@@ -53,12 +53,15 @@ final class ListWindowLayoutTests: XCTestCase {
         let before = panel.window.frame
 
         list.toggle(below: panel.window)
-        // The droplet's spring runs inside a window of fixed size: SwiftUI must not resize the window to follow
-        // it (each resize asked for another layout pass mid-layout, until AppKit gave up and threw).
+        // The list is a popover the panel's width; it opens without disturbing the panel.
         for _ in 0..<15 {
             spin(0.1)
-            XCTAssertEqual(list.frame.width, ListPlacement.width)
+            XCTAssertEqual(list.contentSize.width, ListPlacement.width)
         }
+        let popoverWindow = try XCTUnwrap(list.window)
+        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: popoverWindow, panel: panel.window, anchor: nil,
+                                                    children: panel.window.childWindows ?? []),
+                       "clicks in the list don't close the panel")
 
         XCTAssertTrue(list.isShown)
         XCTAssertEqual(panel.window.frame, before, "opening the list leaves the panel where it was")
@@ -91,11 +94,14 @@ final class ListWindowLayoutTests: XCTestCase {
         })
         let model = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
         let list = ListWindowController(model: model, nowPlaying: nowPlaying)
-        let parent = NSWindow(contentRect: NSRect(x: 200, y: 400, width: 272, height: 300), styleMask: [.borderless],
-                              backing: .buffered, defer: false)
-        parent.orderFront(nil)
+        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+                                        onCover: {}, list: model)
+        panel.show(below: try XCTUnwrap(statusItem.button))
+        spin(0.3)
+        let parent = panel.window
         list.toggle(below: parent)
         spin(0.6)
+        XCTAssertTrue(list.isShown, "the popover opened")
         guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
 
         wait { await account.signIn(clientID: "abc") }
@@ -110,7 +116,7 @@ final class ListWindowLayoutTests: XCTestCase {
         XCTAssertTrue(list.isShown)
         list.toggle(below: parent)
         spin(0.6)
-        parent.orderOut(nil)
+        panel.close()
     }
 
     func testTheTallestPanelFitsA1280By800Screen() {

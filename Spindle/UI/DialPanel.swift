@@ -45,6 +45,14 @@ struct DialPanelView: View {
     /// The cover's corners run parallel with the panel's: its radius less the gap between them.
     static let coverCornerRadius: CGFloat = panelCornerRadius - panelPadding
     static let titleSize: CGFloat = 16
+
+    /// Where the cover sits in the panel's content view, for the list's popover to point at.
+    static func coverRect(in bounds: NSRect, flipped: Bool) -> NSRect {
+        let side: CGFloat = 240
+        let x = bounds.midX - side / 2
+        let y = flipped ? bounds.minY + panelPadding : bounds.maxY - panelPadding - side
+        return NSRect(x: x, y: y, width: side, height: side)
+    }
     static let subtitleSize: CGFloat = 12
     /// The times sit in the lower corners of the disc's row, where the circle curves away, so even
     /// "−1:13:32" fits at the same size as "0:14".
