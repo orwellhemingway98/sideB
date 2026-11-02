@@ -140,22 +140,14 @@ struct ListBody: View {
                     }
                 }
             case .music(let context, let currentTrackID):
-                title("\(context.title) \u{00B7} \(context.totalCount) song\(context.totalCount == 1 ? "" : "s")")
+                title(context.title)
                 rows(context.tracks, id: \.id, currentID: currentTrackID,
-                     footer: context.totalCount > context.tracks.count
-                        ? "and \(context.totalCount - context.tracks.count) more" : nil) { song in
+                     footer: ListContent.countLine(shown: context.tracks.count, total: context.totalCount)) { song in
                     row(title: song.title, detail: TimeFormat.clock(song.duration),
                         number: context.kind == .album ? song.number : nil,
                         current: song.id == currentTrackID) {
                         nowPlaying.music?.play(contextTrack: song, in: context)
                     }
-                }
-                if nowPlaying.music?.source == .spotify, let account = model.spotify {
-                    Button("Sign out of Spotify") { account.signOut() }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             case .musicLoading:
                 note(nowPlaying.music?.source == .spotify ? "Reading Spotify\u{2026}" : "Reading Music\u{2026}")
@@ -194,14 +186,24 @@ struct ListBody: View {
         Text(text).font(.system(size: 12)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// A scrolling list that opens on the current item and fades at its edges rather than cutting rows.
+    /// A scrolling list that opens on the current item and fades at its edges rather than cutting rows. The row
+    /// the arrow keys have reached gets an outline, apart from the soft highlight on what's playing.
     private func rows<Item, ID: Hashable, Row: View>(_ items: [Item], id: KeyPath<Item, ID>, currentID: ID?,
                                                     footer: String? = nil,
                                                     @ViewBuilder row: @escaping (Item) -> Row) -> some View {
-        ScrollViewReader { proxy in
+        let keyID = model.keyRow.flatMap { $0 < items.count ? items[$0][keyPath: id] : nil }
+        return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(items, id: id) { item in row(item) }
+                    ForEach(items, id: id) { item in
+                        row(item)
+                            .overlay {
+                                if item[keyPath: id] == keyID {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(Color(nsColor: .labelColor).opacity(0.55), lineWidth: 1.5)
+                                }
+                            }
+                    }
                     if let footer {
                         Text(footer).font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 6)
                     }
@@ -211,6 +213,9 @@ struct ListBody: View {
             .onAppear { if let currentID { proxy.scrollTo(currentID, anchor: .center) } }
             .onChange(of: currentID) { _, id in
                 if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+            }
+            .onChange(of: keyID) { _, id in
+                if let id { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) } }
             }
         }
     }

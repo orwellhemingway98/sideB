@@ -11,6 +11,8 @@ final class PanelKeyTests: XCTestCase {
         XCTAssertEqual(PanelKey(keyCode: 36, modifiers: []), .turnCover, "Return")
         XCTAssertEqual(PanelKey(keyCode: 76, modifiers: []), .turnCover, "Enter")
         XCTAssertEqual(PanelKey(keyCode: 53, modifiers: []), .escape)
+        XCTAssertEqual(PanelKey(keyCode: 126, modifiers: []), .up, "↑")
+        XCTAssertEqual(PanelKey(keyCode: 125, modifiers: []), .down, "↓")
     }
 
     func testCommandLOpensTheLibrary() {
@@ -27,6 +29,6 @@ final class PanelKeyTests: XCTestCase {
 
     func testOtherKeysAreLeftAlone() {
         XCTAssertNil(PanelKey(keyCode: 0, modifiers: []), "A")
-        XCTAssertNil(PanelKey(keyCode: 126, modifiers: []), "↑")
+        XCTAssertNil(PanelKey(keyCode: 125, modifiers: .option), "⌥↓")
     }
 }

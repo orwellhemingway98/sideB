@@ -33,6 +33,12 @@ enum ListContent {
         return false
     }
 
+    /// The count at the foot of a song list: "11 songs", or "500 of 812 songs" when only some could be read.
+    static func countLine(shown: Int, total: Int) -> String {
+        let songs = "\(total) song\(total == 1 ? "" : "s")"
+        return shown < total ? "\(shown) of \(songs)" : songs
+    }
+
     /// The podcast list's second tab: an episode without chapters only has its notes to show.
     static func secondTabTitle(hasChapters: Bool) -> String {
         hasChapters ? "Chapters" : "Notes"

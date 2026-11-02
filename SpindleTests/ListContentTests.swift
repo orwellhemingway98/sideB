@@ -38,6 +38,63 @@ final class ListContentTests: XCTestCase {
         ListModel(nowPlaying: nowPlaying, library: library, loadContext: loadContext)
     }
 
+    func testTheCountSitsAtTheFootOfTheList() {
+        XCTAssertEqual(ListContent.countLine(shown: 11, total: 11), "11 songs")
+        XCTAssertEqual(ListContent.countLine(shown: 1, total: 1), "1 song")
+        XCTAssertEqual(ListContent.countLine(shown: 500, total: 812), "500 of 812 songs")
+    }
+
+    func testArrowKeysMoveThroughTheEpisodesFromTheOnePlaying() async {
+        let episodes = library.episodes(of: show)
+        player.open(episodes[1], autoplay: false)
+        let list = model()
+        await list.reload()
+        XCTAssertNil(list.keyRow, "no outline until a key is pressed")
+        list.moveKey(by: 1)
+        XCTAssertEqual(list.keyRow, 2, "starts from the episode playing")
+        list.moveKey(by: 1)
+        XCTAssertEqual(list.keyRow, 2, "stops at the last row")
+        list.moveKey(by: -5)
+        XCTAssertEqual(list.keyRow, 0, "stops at the first row")
+        XCTAssertTrue(list.playKeyRow())
+        XCTAssertTrue(player.episode === episodes[0])
+    }
+
+    func testReturnPlaysTheOutlinedSongInItsAlbum() async {
+        music.contextResult = .success(album("A", ["t1", "t2", "t3"]))
+        music.contextKeyValue = "album:A|Northern Static"
+        music.play("t1", id: "t1")
+        await remote.refresh()
+        let list = model()
+        await list.reload()
+        list.moveKey(by: 2)
+        XCTAssertEqual(list.keyRow, 2)
+        XCTAssertTrue(list.playKeyRow())
+        await remote.lastCommand?.value
+        XCTAssertEqual(music.playedInContext.map(\.trackID), ["t3"])
+    }
+
+    func testWithNoOutlineReturnHasNothingToPlay() async {
+        player.open(library.episodes(of: show)[0], autoplay: false)
+        let list = model()
+        await list.reload()
+        XCTAssertFalse(list.playKeyRow())
+    }
+
+    func testTheOutlineGoesWhenTheCoverTurnsBackOrTheListChanges() async {
+        let episodes = library.episodes(of: show)
+        player.open(episodes[0], autoplay: false)
+        let list = model()
+        await list.reload()
+        list.showsList = true
+        list.moveKey(by: 1)
+        list.showsList = false
+        XCTAssertNil(list.keyRow)
+        list.moveKey(by: 1)
+        list.tab = .chapters
+        XCTAssertNil(list.keyRow, "another tab is another list")
+    }
+
     func testPodcastContentListsTheShowNewestFirst() async {
         let episodes = library.episodes(of: show)
         player.open(episodes[1], autoplay: false)

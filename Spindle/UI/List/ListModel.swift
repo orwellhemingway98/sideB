@@ -8,10 +8,18 @@ enum PodcastTab: Hashable {
 /// A read that finishes after the song has moved on is dropped.
 @MainActor
 final class ListModel: ObservableObject {
-    @Published private(set) var content: ListContent = .nothing
-    @Published var tab: PodcastTab = .episodes
+    @Published private(set) var content: ListContent = .nothing {
+        didSet { if content.identity != oldValue.identity { keyRow = nil } }
+    }
+    @Published var tab: PodcastTab = .episodes {
+        didSet { if tab != oldValue { keyRow = nil } }
+    }
     /// The cover is turned over, showing this list.
-    @Published var showsList = false
+    @Published var showsList = false {
+        didSet { if !showsList { keyRow = nil } }
+    }
+    /// The row ↑ and ↓ have outlined, which Return plays; nil until a key is pressed.
+    @Published private(set) var keyRow: Int?
 
     private let nowPlaying: NowPlaying
     private let library: LibraryStore
@@ -32,6 +40,42 @@ final class ListModel: ObservableObject {
             await nowPlaying?.music?.context(for: track, refresh: refresh)
         }
         cachedContext = { [weak nowPlaying] track in nowPlaying?.music?.cachedContext(for: track) }
+    }
+
+    /// The rows the keys move through: episodes, chapters or songs, with the one playing.
+    private var keyRows: (count: Int, current: Int?) {
+        switch content {
+        case .podcast(let episodes, let current, let chapters, let currentChapter, _):
+            if tab == .episodes { return (episodes.count, episodes.firstIndex { $0 === current }) }
+            return (chapters.count, currentChapter.flatMap { chapters.firstIndex(of: $0) })
+        case .music(let context, let currentTrackID):
+            return (context.tracks.count, context.tracks.firstIndex { $0.id == currentTrackID })
+        default:
+            return (0, nil)
+        }
+    }
+
+    /// Moves the outline, starting from the row playing, and stops at either end.
+    func moveKey(by delta: Int) {
+        let rows = keyRows
+        guard rows.count > 0 else { return }
+        let start = keyRow ?? rows.current ?? (delta > 0 ? -1 : rows.count)
+        keyRow = min(rows.count - 1, max(0, start + delta))
+    }
+
+    /// Plays the outlined row. False when nothing is outlined, so Return can turn the cover back instead.
+    @discardableResult
+    func playKeyRow() -> Bool {
+        guard let row = keyRow, row < keyRows.count else { return false }
+        switch content {
+        case .podcast(let episodes, _, let chapters, _, _):
+            if tab == .episodes { nowPlaying.play(episodes[row]) } else { nowPlaying.jump(to: chapters[row].start) }
+        case .music(let context, _):
+            nowPlaying.music?.play(contextTrack: context.tracks[row], in: context)
+        default:
+            return false
+        }
+        return true
     }
 
     /// What the list depends on: not the playing position, so ticks don't rebuild it.

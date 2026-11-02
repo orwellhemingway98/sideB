@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.list = list
         let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
                                           onLibrary: { [weak self] in self?.showLibrary() },
-                                          floatingDial: floatingDial)
+                                          floatingDial: floatingDial, spotify: spotify)
 
         // Downloads live beside the library store, in Application Support/Spindle/Episodes.
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
