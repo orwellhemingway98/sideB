@@ -10,16 +10,20 @@ struct DialPanelView: View {
     @ObservedObject var library: LibraryStore
     @ObservedObject var artwork: ArtworkCache
     let onLibrary: () -> Void
-    /// Pops the disc out into the floating dial; nil hides the pill.
+    /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
     let onPopOut: (() -> Void)?
+    /// Whether the dial is out, so the pill reads Pop out or Put back.
+    let placement: DialPlacement?
     /// Clicking the cover opens or closes the list window.
     let onCover: (() -> Void)?
     /// Tells the cover's hint whether a Music song plays from an album or a playlist.
     let list: ListModel?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, onCover: (() -> Void)? = nil, list: ListModel? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil) {
         self.onPopOut = onPopOut
+        self.placement = placement
         self.onCover = onCover
         self.list = list
         self.nowPlaying = nowPlaying
@@ -30,31 +34,31 @@ struct DialPanelView: View {
     }
 
     var body: some View {
-        GlassEffectContainer(spacing: 8) {
-            VStack(spacing: 14) {
-                if let display = nowPlaying.display {
-                    header(display)
-                    DiscView(nowPlaying: nowPlaying)
-                    times(display)
-                    if display.kind == .music {
-                        musicPills
-                        if let paused = nowPlaying.pausedEpisode { resumePill(paused) }
-                    } else {
-                        pills
-                    }
-                    upNext
+        // No GlassEffectContainer: it draws all its glass as one layer, which merged the disc's button into
+        // the disc and drew the ring and the pill glyphs underneath.
+        VStack(spacing: 14) {
+            if let display = nowPlaying.display {
+                header(display)
+                DiscView(nowPlaying: nowPlaying)
+                times(display)
+                if display.kind == .music {
+                    musicPills
+                    if let paused = nowPlaying.pausedEpisode { resumePill(paused) }
                 } else {
-                    DiscView(nowPlaying: nowPlaying)
-                        .padding(.top, 6)
-                    Text("Find a show in Library")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    pills
                 }
-                footer
+                upNext
+            } else {
+                DiscView(nowPlaying: nowPlaying)
+                    .padding(.top, 6)
+                Text("Find a show in Library")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
-            .padding(16)
-            .frame(width: Self.width)
+            footer
         }
+        .padding(16)
+        .frame(width: Self.width)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
     }
 
@@ -134,7 +138,7 @@ struct DialPanelView: View {
     private func resumePill(_ episode: Episode) -> some View {
         Button { nowPlaying.resumePodcast() } label: {
             HStack(spacing: 6) {
-                PlayPauseGlyph(isPlaying: false).fill(.primary).frame(width: 7, height: 8)
+                PlayPauseGlyph(isPlaying: false).fill(Color(nsColor: .labelColor)).frame(width: 7, height: 8)
                 Text("Resume \(episode.title)")
                     .font(.system(size: 11, weight: .medium))
                     .lineLimit(1)
@@ -164,7 +168,7 @@ struct DialPanelView: View {
 
     private func glyphPill(_ glyph: TrackSkipGlyph, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            glyph.fill(.primary)
+            glyph.fill(Color(nsColor: .labelColor))
                 .frame(width: 14, height: 10)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
@@ -258,8 +262,31 @@ struct DialPanelView: View {
         HStack {
             pill("Library", action: onLibrary)
             Spacer(minLength: 0)
-            if let onPopOut { pill("Pop out \u{2197}", action: onPopOut) }
+            if let onPopOut {
+                if let placement { PopOutPill(placement: placement, action: onPopOut) }
+                else { pill("Pop out \u{2197}", action: onPopOut) }
+            }
         }
+    }
+}
+
+/// Pop out while the dial lives in the panel, Put back while it floats.
+private struct PopOutPill: View {
+    @ObservedObject var placement: DialPlacement
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(placement.isPoppedOut ? "Put back \u{2199}" : "Pop out \u{2197}")
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .contentShape(Capsule())
+                .glassEffect(.regular.interactive(), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -296,7 +323,8 @@ final class DialPanelController {
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, onCover: (() -> Void)? = nil, list: ListModel? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil) {
         panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
@@ -309,7 +337,7 @@ final class DialPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
-                                 onPopOut: onPopOut, onCover: onCover, list: list)
+                                 onPopOut: onPopOut, placement: placement, onCover: onCover, list: list)
         let hosting = NSHostingView(rootView: root)
         panel.contentView = hosting
     }

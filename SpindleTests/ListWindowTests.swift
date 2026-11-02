@@ -54,4 +54,11 @@ final class ListWindowTests: XCTestCase {
         XCTAssertTrue(script.contains(#"first user playlist whose persistent ID is "PL""#))
         XCTAssertTrue(script.contains("delete every track of q"), "refilled, never duplicated")
     }
+
+    func testEpisodeRowsAreTallerThanSongRows() {
+        // Episodes show the title with the date and length on a second line.
+        XCTAssertEqual(ListPlacement.height(rows: 3), 56 + 3 * 30 + 12)
+        XCTAssertEqual(ListPlacement.height(rows: 3, rowHeight: ListPlacement.twoLineRow), 56 + 3 * 44 + 12)
+        XCTAssertEqual(ListPlacement.height(rows: 30, rowHeight: ListPlacement.twoLineRow), ListPlacement.maxHeight)
+    }
 }

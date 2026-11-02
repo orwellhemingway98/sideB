@@ -33,7 +33,7 @@ struct StatusStripView: View {
                                 size: 13, cornerRadius: 3.5, image: nowPlaying.musicArtwork)
                     ZStack(alignment: .leading) {
                         Capsule().fill(.primary.opacity(0.25))
-                        Capsule().fill(.primary)
+                        Capsule().fill(Color(nsColor: .labelColor))
                             .frame(width: max(3, Self.barWidth * progress))
                     }
                     .frame(width: Self.barWidth, height: 3)

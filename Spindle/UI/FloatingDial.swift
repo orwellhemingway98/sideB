@@ -2,17 +2,18 @@ import AppKit
 import SwiftUI
 
 /// Whether the dial is popped out of the menu bar, remembered across launches.
-final class DialPlacement {
+final class DialPlacement: ObservableObject {
     private static let key = "dialPoppedOut"
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        isPoppedOut = defaults.bool(forKey: Self.key)
     }
 
-    var isPoppedOut: Bool {
-        get { defaults.bool(forKey: Self.key) }
-        set { defaults.set(newValue, forKey: Self.key) }
+    /// Published so the panel's pill can read Pop out or Put back.
+    @Published var isPoppedOut: Bool {
+        didSet { defaults.set(isPoppedOut, forKey: Self.key) }
     }
 }
 
