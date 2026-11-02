@@ -40,6 +40,12 @@ struct DialPanelView: View {
     /// Between the panel's rows, and the extra room round the disc so it doesn't crowd the text above and
     /// the pills below (22 pt from the halo's edge in all).
     static let rowSpacing: CGFloat = 14
+    static let panelPadding: CGFloat = 16
+    static let panelCornerRadius: CGFloat = 30
+    /// The cover's corners run parallel with the panel's: its radius less the gap between them.
+    static let coverCornerRadius: CGFloat = panelCornerRadius - panelPadding
+    static let titleSize: CGFloat = 16
+    static let subtitleSize: CGFloat = 12
     /// The times sit in the lower corners of the disc's row, where the circle curves away, so even
     /// "−1:13:32" fits at the same size as "0:14".
     static let timeFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
@@ -75,11 +81,11 @@ struct DialPanelView: View {
                 footer
             }
         }
-        .padding(16)
+        .padding(Self.panelPadding)
         .padding(.bottom, 2)
         .onHover { hovering = $0 }
         .frame(width: Self.width)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Self.panelCornerRadius, style: .continuous))
     }
 
     // MARK: Header
@@ -112,14 +118,14 @@ struct DialPanelView: View {
     private func titles(_ display: NowPlayingDisplay) -> some View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(display.title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: Self.titleSize, weight: .semibold))
                     .lineLimit(2)
                 if !display.subtitle.isEmpty || display.source != nil {
                     HStack(spacing: 5) {
                         if !display.subtitle.isEmpty {
                             Text(display.subtitle)
-                                .font(.system(size: 11))
-                                .opacity(0.8)
+                                .font(.system(size: Self.subtitleSize))
+                                .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
                         if let source = display.source {
@@ -193,16 +199,21 @@ struct DialPanelView: View {
 
     /// While music has the dial, the waiting podcast is one click away.
     private func resumePill(_ episode: Episode) -> some View {
+        // A side option, so it's quiet: the show's artwork, "Resume" in grey, the title in regular weight.
         Button { nowPlaying.resumePodcast() } label: {
-            HStack(spacing: 6) {
-                PlayPauseGlyph(isPlaying: false).fill(Color(nsColor: .labelColor)).frame(width: 7, height: 8)
-                Text("Resume \(episode.title)")
-                    .font(.system(size: 11, weight: .medium))
+            HStack(spacing: 8) {
+                ArtworkView(cache: artwork, url: episode.show?.artworkURL, seed: episode.show?.title ?? episode.title,
+                            size: 22, cornerRadius: 6)
+                Text("Resume").foregroundStyle(.secondary)
+                Text(episode.title)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .font(.system(size: 11))
+            .padding(.leading, 4)
+            .padding(.trailing, 12)
+            .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
             .contentShape(Capsule())
             .glassEffect(.regular.interactive(), in: Capsule())
@@ -519,7 +530,7 @@ private struct CoverButton: View {
     var body: some View {
         ZStack {
             ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
-                        size: Self.size, cornerRadius: 18, image: image)
+                        size: Self.size, cornerRadius: DialPanelView.coverCornerRadius, image: image)
                 .id(pictureKey)
                 .transition(reduceMotion ? .opacity : .asymmetric(
                     insertion: .modifier(active: Developing(amount: 0), identity: Developing(amount: 1)),
