@@ -37,6 +37,8 @@ final class FloatingDialController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
+        // White ink on glass, like the panel: dark in Light mode too.
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
@@ -55,6 +57,9 @@ final class FloatingDialController {
     }
 
     var isShown: Bool { panel.isVisible }
+
+    /// The dial's window.
+    var window: NSWindow { panel }
 
     func show() {
         placement.isPoppedOut = true

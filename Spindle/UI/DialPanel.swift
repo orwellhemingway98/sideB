@@ -474,6 +474,8 @@ final class DialPanelController {
         panel.backgroundColor = .clear
         // The glass carries its own depth; a window shadow is drawn around the square frame, past the corners.
         panel.hasShadow = false
+        // White ink on glass: keep the dark look in Light mode too, where the label colour would turn black.
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = .statusBar
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false

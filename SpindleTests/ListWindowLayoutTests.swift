@@ -203,3 +203,29 @@ final class CoverCornersTests: XCTestCase {
         XCTAssertEqual(DialPanelView.cornerOpacity(hovering: true), 1)
     }
 }
+
+/// Spindle's ink is white on glass, so its windows keep the dark look even when macOS is in Light mode
+/// (there, the label colour turns black and the white highlights sit on pale glass).
+@MainActor
+final class DarkGlassTests: XCTestCase {
+    private func isDark(_ window: NSWindow) -> Bool {
+        window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    }
+
+    func testThePanelAndTheFloatingDialStayDarkInLightMode() {
+        let feed = URL(string: "https://example.com/feed")!
+        let library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
+        let player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
+        let previous = NSApp.appearance
+        NSApp.appearance = NSAppearance(named: .aqua)
+        defer { NSApp.appearance = previous }
+
+        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        XCTAssertTrue(isDark(panel.window))
+        let dial = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: UserDefaults(suiteName: "DarkGlassTests")!),
+                                          onPutBack: {}, onLibrary: {})
+        XCTAssertTrue(isDark(dial.window))
+    }
+}

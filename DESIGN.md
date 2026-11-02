@@ -260,6 +260,8 @@ A 6 pt circle after the artist name in Spotify Green or Music Red; hover shows t
 - **Do** put window glass (`NSGlassEffectView`) behind every surface that should see the desktop: the panel and the
   floating dial.
 - **Do** draw white ink with `NSColor.labelColor`.
+- **Do** keep the panel and the floating dial in the dark appearance (`darkAqua`), so that ink stays white in
+  Light mode too.
 - **Do** nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.
 - **Do** use tabular digits for every time and number.
 - **Do** give every motion a Reduce Motion crossfade.
