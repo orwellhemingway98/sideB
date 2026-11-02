@@ -7,8 +7,6 @@ import SwiftUI
 /// 9 and 3 o'clock (⏮ ⏭ for music, −15 and +30 for podcasts) and the podcast speed under the centre.
 struct DiscView: View {
     static let size: CGFloat = DialGeometry.discSize
-    private static let ringRadius: CGFloat = 63
-    private static let ringWidth: CGFloat = 3
     private static let buttonSize: CGFloat = 60
 
     @ObservedObject var nowPlaying: NowPlaying
@@ -107,31 +105,40 @@ struct DiscView: View {
             lineWidth: 1)
     }
 
+    /// The time, as a thin band of light just outside the disc's edge: a faint track, lit from 12 o'clock to
+    /// now, with a small gap where each chapter starts.
     private var ring: some View {
-        let diameter = Self.ringRadius * 2
-        return ZStack {
-            Circle()
-                .stroke(.white.opacity(0.25), lineWidth: Self.ringWidth)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(.white, style: StrokeStyle(lineWidth: Self.ringWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .shadow(color: .black.opacity(0.18), radius: 1.5)
-            ForEach(Array(chapterAngles.enumerated()), id: \.offset) { _, degrees in
-                Circle()
-                    .fill(.white)
-                    .frame(width: 5, height: 5)
-                    .shadow(color: .black.opacity(0.25), radius: 1)
-                    .offset(y: -Self.ringRadius)
-                    .rotationEffect(.degrees(degrees))
+        let progress = progress, chapters = chapterFractions
+        let r = DialGeometry.haloRadius, w = DialGeometry.haloWidth
+        let side = 2 * (r + w)
+        return Canvas { context, size in
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            func arc(_ from: Double, _ to: Double) -> Path {
+                Path { p in
+                    p.addArc(center: c, radius: r, startAngle: .degrees(from * 360 - 90),
+                             endAngle: .degrees(to * 360 - 90), clockwise: false)
+                }
+            }
+            context.stroke(arc(0, 1), with: .color(.white.opacity(0.14)), lineWidth: w)
+            if progress > 0 {
+                context.stroke(arc(0, progress), with: .color(Color(nsColor: .labelColor)),
+                               style: StrokeStyle(lineWidth: w, lineCap: .round))
+            }
+            // Chapter gaps: cut a sliver out of the band.
+            context.blendMode = .destinationOut
+            for f in chapters where f > 0 {
+                context.stroke(arc(f - 0.004, f + 0.004), with: .color(.black), lineWidth: w + 2)
             }
         }
-        .frame(width: diameter, height: diameter)
+        .frame(width: side, height: side)
+        .allowsHitTesting(false)
+        .opacity(nowPlaying.display == nil ? 0.5 : 1)
     }
 
-    private var chapterAngles: [Double] {
+    /// Where the chapters start, as shares of the episode (podcasts only).
+    private var chapterFractions: [Double] {
         guard nowPlaying.mode == .podcast, player.episode != nil, let duration else { return [] }
-        return nowPlaying.chapters.map { min(1, max(0, $0.start / duration)) * 360 }
+        return nowPlaying.chapters.map { min(1, max(0, $0.start / duration)) }
     }
 
     private var isMusic: Bool { nowPlaying.mode == .music }

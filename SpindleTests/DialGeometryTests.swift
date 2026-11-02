@@ -31,4 +31,14 @@ final class DialGeometryTests: XCTestCase {
                        "with no speed label (music) the spot does nothing, as before")
         XCTAssertEqual(G.zone(of: CGPoint(x: 2, y: 2), speedShown: true), .outside)
     }
+
+    // MARK: The halo
+
+    func testTheHaloSitsJustOutsideTheDisc() {
+        typealias G = DialGeometry
+        let edge = G.discSize / 2
+        XCTAssertEqual(G.haloRadius - G.haloWidth / 2 - edge, 2, accuracy: 0.01, "a 2 pt gap, so it reads as under the disc")
+        XCTAssertLessThanOrEqual(G.haloRadius + G.haloWidth / 2, edge + G.floatingPadding,
+                                 "it fits inside the floating dial's glass")
+    }
 }
