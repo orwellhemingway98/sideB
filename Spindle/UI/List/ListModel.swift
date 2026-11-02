@@ -10,6 +10,8 @@ enum PodcastTab: Hashable {
 final class ListModel: ObservableObject {
     @Published private(set) var content: ListContent = .nothing
     @Published var tab: PodcastTab = .episodes
+    /// The cover is turned over, showing this list.
+    @Published var showsList = false
 
     private let nowPlaying: NowPlaying
     private let library: LibraryStore

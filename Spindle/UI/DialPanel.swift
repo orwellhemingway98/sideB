@@ -114,10 +114,15 @@ struct DialPanelView: View {
         let identity = settled ? nowPlaying.coverIdentity : nil
         return VStack(alignment: .leading, spacing: 10) {
             // While waiting, a podcast's cover mustn't borrow the last song's artwork.
-            CoverButton(artwork: artwork, display: display,
-                        image: display.kind == .music ? nowPlaying.musicArtwork : nil, identity: identity,
-                        hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
+            let cover = CoverButton(artwork: artwork, display: display,
+                                    image: display.kind == .music ? nowPlaying.musicArtwork : nil, identity: identity,
+                                    hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
                 .overlay(alignment: .top) { coverCorners }
+            if let list {
+                CoverFlip(list: list, nowPlaying: nowPlaying, turnBack: onCover) { cover }
+            } else {
+                cover
+            }
             titles(display)
                 .id(display.title + "\u{1F}" + display.subtitle)
                 .transition(reduceMotion ? .opacity : .asymmetric(
@@ -621,5 +626,87 @@ private struct Developing: ViewModifier {
             .blur(radius: 12 * (1 - amount))
             .scaleEffect(0.96 + 0.04 * amount)
             .opacity(amount)
+    }
+}
+
+/// How the cover turns over.
+private let coverTurn = Animation.spring(response: 0.5, dampingFraction: 0.86)
+
+/// The cover turns over to show its list: a 3D flip about the vertical axis. With Reduce Motion it crossfades.
+private struct CoverFlip<Front: View>: View {
+    @ObservedObject var list: ListModel
+    let nowPlaying: NowPlaying
+    let turnBack: (() -> Void)?
+    @ViewBuilder let front: Front
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let angle: Double = list.showsList ? 180 : 0
+        ZStack {
+            front
+                .modifier(FlipFace(angle: angle, isBack: false, reduceMotion: reduceMotion))
+            CoverBack(list: list, nowPlaying: nowPlaying, turnBack: turnBack)
+                .modifier(FlipFace(angle: angle, isBack: true, reduceMotion: reduceMotion))
+        }
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : coverTurn, value: list.showsList)
+    }
+}
+
+/// One face of the turning cover: each shows only while it faces the viewer, so the back appears at the
+/// half-way point, already the right way round.
+private struct FlipFace: ViewModifier, Animatable {
+    var angle: Double
+    let isBack: Bool
+    let reduceMotion: Bool
+
+    var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let facing = isBack ? angle > 90 : angle <= 90
+        if reduceMotion {
+            content
+                .opacity(isBack ? angle / 180 : 1 - angle / 180)
+                .allowsHitTesting(facing)
+        } else {
+            content
+                .rotation3DEffect(.degrees(isBack ? angle - 180 : angle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                .opacity(facing ? 1 : 0)
+                .allowsHitTesting(facing)
+        }
+    }
+}
+
+/// The back of the cover: the album, playlist or episodes, on glass, with a pill to turn back.
+private struct CoverBack: View {
+    @ObservedObject var list: ListModel
+    let nowPlaying: NowPlaying
+    let turnBack: (() -> Void)?
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: DialPanelView.coverCornerRadius, style: .continuous)
+        ZStack(alignment: .bottomTrailing) {
+            ListBody(model: list, nowPlaying: nowPlaying)
+                .frame(width: 240, height: 240, alignment: .top)
+            Button { turnBack?() } label: {
+                Text("Cover \u{2303}")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color(nsColor: .labelColor))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .glassEffect(.regular.interactive(), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(10)
+            .accessibilityLabel("Show the cover")
+        }
+        .frame(width: 240, height: 240)
+        .background(Color.black.opacity(0.22), in: shape)
+        .overlay(shape.strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+        .clipShape(shape)
+        .shadow(color: .black.opacity(0.25), radius: 12, y: 8)
+        .frame(maxWidth: .infinity)
     }
 }
