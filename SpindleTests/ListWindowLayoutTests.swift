@@ -42,35 +42,32 @@ final class ListWindowLayoutTests: XCTestCase {
         XCTAssertTrue(done, "timed out")
     }
 
-    func testOpeningTheListFromTheCoverLaysOutCleanly() throws {
+    func testClickingTheCoverFlipsItToTheList() throws {
         let model = ListModel(nowPlaying: nowPlaying, library: library)
-        let list = ListWindowController(model: model, nowPlaying: nowPlaying)
-        var panel: DialPanelController!
-        panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
-                                    onCover: { list.toggle(below: panel.window) }, list: model)
+        let list = ListController(model: model, nowPlaying: nowPlaying)
+        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+                                        onCover: { list.toggle() }, list: model)
         panel.show(below: try XCTUnwrap(statusItem.button))
         spin(0.3)
         let before = panel.window.frame
 
-        list.toggle(below: panel.window)
-        // The list is a popover the panel's width; it opens without disturbing the panel.
-        for _ in 0..<15 {
-            spin(0.1)
-            XCTAssertEqual(list.contentSize.width, ListPlacement.width)
-        }
-        // Side by side like facing pages: the list is as tall as the panel's glass.
-        let m = DialPanelController.shadowMargin
-        XCTAssertEqual(list.contentSize.height, panel.window.frame.height - m.top - m.bottom, accuracy: 0.5)
-        let popoverWindow = try XCTUnwrap(list.window)
-        XCTAssertFalse(PanelClickPolicy.closesPanel(clickWindow: popoverWindow, panel: panel.window, anchor: nil,
-                                                    children: panel.window.childWindows ?? []),
-                       "clicks in the list don't close the panel")
-
+        list.toggle()
+        spin(0.8)
         XCTAssertTrue(list.isShown)
-        XCTAssertEqual(panel.window.frame, before, "opening the list leaves the panel where it was")
-        list.toggle(below: panel.window)
-        spin(0.6)
+        XCTAssertTrue(model.showsList, "the cover shows its back: the list")
+        guard case .podcast = model.content else { return XCTFail("got \(model.content)") }
+        XCTAssertEqual(panel.window.frame, before, "the list lives in the cover's square; the panel doesn't move")
+        XCTAssertNil(panel.window.childWindows?.first, "no second window")
+
+        XCTAssertTrue(list.handleEscape(), "Escape turns the cover back first")
+        XCTAssertFalse(model.showsList)
+        XCTAssertFalse(list.handleEscape(), "then Escape is the panel's again")
+
+        list.toggle()
+        spin(0.3)
         panel.close()
+        spin(0.1)
+        XCTAssertFalse(model.showsList, "closing the panel turns the cover back, so it opens on the cover next time")
     }
 
     func testSigningInToSpotifyKeepsTheListOpen() throws {
@@ -96,15 +93,14 @@ final class ListWindowLayoutTests: XCTestCase {
             return URL(string: "spindle://callback?code=C&state=\(state)")!
         })
         let model = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
-        let list = ListWindowController(model: model, nowPlaying: nowPlaying)
+        let list = ListController(model: model, nowPlaying: nowPlaying)
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
-                                        onCover: {}, list: model)
+                                        onCover: { list.toggle() }, list: model)
         panel.show(below: try XCTUnwrap(statusItem.button))
         spin(0.3)
-        let parent = panel.window
-        list.toggle(below: parent)
+        list.toggle()
         spin(0.6)
-        XCTAssertTrue(list.isShown, "the popover opened")
+        XCTAssertTrue(list.isShown, "the cover turned over")
         guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
 
         wait { await account.signIn(clientID: "abc") }
@@ -117,7 +113,7 @@ final class ListWindowLayoutTests: XCTestCase {
         spin(1.0)
         guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
         XCTAssertTrue(list.isShown)
-        list.toggle(below: parent)
+        list.toggle()
         spin(0.6)
         panel.close()
     }

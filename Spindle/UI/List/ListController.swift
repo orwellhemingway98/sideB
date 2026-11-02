@@ -28,35 +28,25 @@ enum PanelClickPolicy {
     }
 }
 
-/// The song or episode list, in a native glass popover that points at the dial panel's cover. macOS draws and
-/// animates it; Spindle only fills it and sizes it to its rows.
+/// The song or episode list on the back of the cover: clicking the cover turns it over. This keeps what the
+/// back shows current, and turns the cover back when the music moves to another album or show.
 @MainActor
-final class ListWindowController: NSObject, NSPopoverDelegate {
-    private let popover = NSPopover()
-    private let hosting: NSHostingController<ListPopoverView>
+final class ListController {
     private let model: ListModel
     private let nowPlaying: NowPlaying
     private var cancellables: Set<AnyCancellable> = []
     private var lastIdentity: String?
-    /// The panel's glass height while the list is beside it.
-    private var panelHeight: CGFloat?
 
     init(model: ListModel, nowPlaying: NowPlaying) {
         self.model = model
         self.nowPlaying = nowPlaying
-        hosting = NSHostingController(rootView: ListPopoverView(model: model, nowPlaying: nowPlaying))
-        hosting.sizingOptions = []
-        super.init()
-        popover.contentViewController = hosting
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
 
-        // Close when what the list is about changes (a new show, album or playlist); follow songs within it.
+        // Turn back when what the list is about changes (a new show, album or playlist), so the new cover
+        // shows; follow songs within it.
         model.$content.sink { [weak self] content in
             DispatchQueue.main.async { self?.contentChanged(content) }
         }.store(in: &cancellables)
-        // Keep the list current while it is open, but only when what it shows has changed (not on every
+        // Keep the list current while it shows, but only when what it shows has changed (not on every
         // position tick); NowPlaying changes often, so wait for a quiet moment first.
         nowPlaying.objectWillChange
             .debounce(for: .seconds(0.3), scheduler: DispatchQueue.main)
@@ -65,58 +55,46 @@ final class ListWindowController: NSObject, NSPopoverDelegate {
                 Task { await self.model.reload() }
             }.store(in: &cancellables)
         // Signing in or out of Spotify changes what a Spotify song's list shows (the song's details or its
-        // album), which isn't the author moving on: adopt the new list rather than closing.
+        // album), which isn't the author moving on: adopt the new list rather than turning back.
         model.spotify?.$isSignedIn.dropFirst().removeDuplicates().sink { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.isShown else { return }
                 self.lastIdentity = nil
-                Task { await self.model.reload(force: true); self.resize() }
+                Task { await self.model.reload(force: true) }
             }
         }.store(in: &cancellables)
-        model.$tab.dropFirst().sink { [weak self] _ in
-            DispatchQueue.main.async { self?.resize() }
-        }.store(in: &cancellables)
+        // The panel opens on the cover next time.
         NotificationCenter.default.publisher(for: DialPanelController.didClose)
             .sink { [weak self] _ in self?.close(animated: false) }
             .store(in: &cancellables)
     }
 
-    var isShown: Bool { popover.isShown }
-    var contentSize: NSSize { popover.contentSize }
-    /// The popover's own window, once shown.
-    var window: NSWindow? { hosting.view.window }
+    var isShown: Bool { model.showsList }
 
-    func toggle(below parent: NSWindow) {
-        if isShown { close(animated: true) } else { show(below: parent) }
+    func toggle() {
+        if isShown { close(animated: true) } else { show() }
     }
 
-    func show(below parent: NSWindow) {
-        guard let view = parent.contentView else { return }
+    func show() {
         lastIdentity = nil
-        // Show what's already known (the cached album, the episodes) at its size, then read the rest.
+        // Show what's already known (the cached album, the episodes) as the cover turns, then read the rest.
         model.showNow(force: true)
-        // Facing pages: pointed at the whole panel, as tall as it, the popover's top and bottom line up with
-        // the panel's.
-        let glass = DialPanelView.glassRect(in: view.bounds, flipped: view.isFlipped,
-                                            margin: DialPanelController.shadowMargin)
-        panelHeight = glass.height
-        popover.contentSize = size
-        popover.show(relativeTo: glass, of: view, preferredEdge: .minX)
+        model.showsList = true
         Task { await model.reload(force: true) }
     }
 
     func close(animated: Bool) {
         guard isShown else { return }
         if animated {
-            popover.performClose(nil)
+            model.showsList = false
         } else {
-            popover.animates = false
-            popover.close()
-            popover.animates = true
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { model.showsList = false }
         }
     }
 
-    /// Escape in the dial panel closes the list first.
+    /// Escape in the dial panel turns the cover back first.
     func handleEscape() -> Bool {
         guard isShown else { return false }
         close(animated: true)
@@ -130,72 +108,24 @@ final class ListWindowController: NSObject, NSPopoverDelegate {
             return
         }
         switch ListCloseRule.decide(last: lastIdentity, identity: content.identity, isLoading: content.isLoading) {
-        case .close:
-            close(animated: true)
-        case .keep(let identity):
-            lastIdentity = identity
-            resize()
-        }
-    }
-
-    /// As tall as the panel beside it; rows that don't fit scroll.
-    private var size: NSSize {
-        if let panelHeight { return NSSize(width: ListPlacement.width, height: panelHeight) }
-        let rowHeight = isEpisodeList ? ListPlacement.twoLineRow : ListPlacement.oneLineRow
-        return NSSize(width: ListPlacement.width, height: ListPlacement.height(rows: rowCount, rowHeight: rowHeight))
-    }
-
-    /// The popover eases to a new size itself.
-    private func resize() {
-        if popover.contentSize != size { popover.contentSize = size }
-    }
-
-    private var isEpisodeList: Bool {
-        if case .podcast = model.content { return model.tab == .episodes }
-        return false
-    }
-
-    private var rowCount: Int {
-        switch model.content {
-        case .podcast(let episodes, _, let chapters, _, _):
-            if model.tab == .episodes { return episodes.count }
-            return chapters.isEmpty ? .max : chapters.count   // no chapters: the description, given the full height
-        case .music(let context, _):
-            return context.tracks.count + (context.totalCount > context.tracks.count ? 1 : 0)
-                + (nowPlaying.music?.source == .spotify ? 1 : 0)   // Sign out of Spotify
-        case .spotify: return 7
-        case .musicLoading: return .max     // size for the tallest list while it loads
-        case .musicMessage: return 2
-        case .nothing: return 1
+        case .close: close(animated: true)
+        case .keep(let identity): lastIdentity = identity
         }
     }
 }
 
-/// What the popover holds.
-struct ListPopoverView: View {
+/// What the back of the cover shows.
+struct ListBody: View {
     @ObservedObject var model: ListModel
     let nowPlaying: NowPlaying
+    /// Room round the list; the bottom keeps clear of the "Cover" pill.
+    var insets = EdgeInsets(top: 10, leading: 6, bottom: 32, trailing: 6)
 
     var body: some View {
-        ListBody(model: model, nowPlaying: nowPlaying)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-}
-
-private struct ListBody: View {
-    @ObservedObject var model: ListModel
-    let nowPlaying: NowPlaying
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             switch model.content {
             case .podcast(let episodes, let current, let chapters, let currentChapter, let description):
-                Picker("", selection: $model.tab) {
-                    Text("Episodes").tag(PodcastTab.episodes)
-                    Text(ListContent.secondTabTitle(hasChapters: !chapters.isEmpty)).tag(PodcastTab.chapters)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                TabSwitch(tab: $model.tab, second: ListContent.secondTabTitle(hasChapters: !chapters.isEmpty))
                 if model.tab == .episodes {
                     rows(episodes, id: \.persistentModelID, currentID: current.persistentModelID) { episode in
                         episodeRow(episode, current: episode === current) { nowPlaying.play(episode) }
@@ -249,7 +179,7 @@ private struct ListBody: View {
                 EmptyView()
             }
         }
-        .padding(14)
+        .padding(insets)
     }
 
     private func title(_ text: String) -> some View {
@@ -358,5 +288,34 @@ private struct SpotifySignInButton: View {
             }
         }
         .padding(.top, 4)
+    }
+}
+
+/// Episodes | Notes, drawn in SwiftUI so it turns with the cover (a system segmented control wouldn't).
+private struct TabSwitch: View {
+    @Binding var tab: PodcastTab
+    let second: String
+
+    var body: some View {
+        HStack(spacing: 2) {
+            segment("Episodes", .episodes)
+            segment(second, .chapters)
+        }
+        .padding(2)
+        .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func segment(_ title: String, _ value: PodcastTab) -> some View {
+        Button { tab = value } label: {
+            Text(title)
+                .font(.system(size: 11, weight: tab == value ? .semibold : .regular))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 3)
+                .background(tab == value ? Color.white.opacity(0.22) : .clear,
+                            in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(tab == value ? .isSelected : [])
     }
 }
