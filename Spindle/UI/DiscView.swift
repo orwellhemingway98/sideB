@@ -16,6 +16,11 @@ struct DiscView: View {
     @State private var dragAngle: Double?
     @State private var dragIgnored = false
     @State private var scroll = ScrollMonitor()
+    /// Where the glass's highlight sits; it turns as the wheel is turned.
+    @State private var highlight: Double = -40
+    /// The pointer is over the wheel: back and forward bud out of the glass.
+    @State private var pointerNear = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Which window the disc is in; only the panel's disc follows the panel's notifications.
     let host: DiscHost
@@ -46,7 +51,7 @@ struct DiscView: View {
             Circle()
                 .fill(.clear)
                 .glassEffect(.regular, in: Circle())
-                .overlay(rim)
+                .overlay(specular)
             ring
             centreButton
             if showsControls { controls.allowsHitTesting(false) }
@@ -57,6 +62,7 @@ struct DiscView: View {
         .simultaneousGesture(rotateGesture)
         .background(ScrollAnchor(monitor: scroll))
         .onHover { inside in
+            pointerNear = inside
             if inside { installScroll() } else { scroll.remove() }
         }
         // The monitor only acts on scrolls over the disc, so it can go in as soon as the panel shows.
@@ -103,26 +109,44 @@ struct DiscView: View {
     }
 
     private func installScroll() {
-        scroll.install { [nowPlaying] degrees in nowPlaying.turn(degrees: degrees) }
+        scroll.install { degrees in turn(by: degrees) }
     }
 
     // MARK: Drawing
 
-    private var rim: some View {
-        Circle().strokeBorder(
-            LinearGradient(colors: [.white.opacity(0.85), .white.opacity(0.15), .white.opacity(0.45)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing),
-            lineWidth: 1)
+    /// The wheel is turned (scrubbing, or Option + turn for the volume) until the scrub is committed.
+    private var isTurning: Bool { nowPlaying.scrubPosition != nil || nowPlaying.volumeShown != nil }
+
+    /// Every turn goes through here, so the glass's highlight turns with the hand.
+    private func turn(by degrees: Double) {
+        nowPlaying.turn(degrees: degrees)
+        guard nowPlaying.display != nil else { return }
+        highlight += degrees
     }
 
-    /// The time, as a thin band of light just outside the disc's edge: a faint track, lit from 12 o'clock to
-    /// now, with a small gap where each chapter starts. While Option + turn sets the volume, it shows that.
+    /// The glass's edge, caught by light: a bright highlight and a fainter one opposite, turning with the wheel.
+    private var specular: some View {
+        Circle()
+            .strokeBorder(AngularGradient(stops: [
+                .init(color: .white.opacity(0.7), location: 0), .init(color: .clear, location: 0.08),
+                .init(color: .clear, location: 0.44), .init(color: .white.opacity(0.25), location: 0.5),
+                .init(color: .clear, location: 0.56), .init(color: .clear, location: 0.92),
+                .init(color: .white.opacity(0.7), location: 1),
+            ], center: .center, angle: .degrees(highlight)), lineWidth: 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.8), value: highlight)
+            .allowsHitTesting(false)
+    }
+
+    /// The time, as a band of light just outside the glass edge: it fades in from 12 o'clock and runs to now,
+    /// with a small break where each chapter starts. While Option + turn sets the volume, it shows that. No track.
     private var ring: some View {
         let volume = nowPlaying.volumeShown
         let progress = volume.map { Double($0) / 100 } ?? progress
         let chapters = volume == nil ? chapterFractions : []
-        let r = DialGeometry.haloRadius, w = DialGeometry.haloWidth
-        let side = 2 * (r + w)
+        // Thicker while turning, growing inward so it stays within the room round the disc.
+        let w = WheelLight.width + (isTurning ? 1 : 0), r = WheelLight.radius - (isTurning ? 0.5 : 0)
+        let brightness = isTurning ? 1.0 : 0.85
+        let side = DialGeometry.haloSide
         return Canvas { context, size in
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             func arc(_ from: Double, _ to: Double) -> Path {
@@ -131,18 +155,26 @@ struct DiscView: View {
                              endAngle: .degrees(to * 360 - 90), clockwise: false)
                 }
             }
-            context.stroke(arc(0, 1), with: .color(.white.opacity(0.14)), lineWidth: w)
-            if progress > 0 {
-                context.stroke(arc(0, progress), with: .color(Color(nsColor: .labelColor)),
+            guard progress > 0 else { return }
+            // The fade-in, in short steps, then the rest at full strength with a round end at now.
+            let fadeEnd = min(progress, WheelLight.fadeLength)
+            let steps = 14
+            for i in 0..<steps {
+                let a = fadeEnd * Double(i) / Double(steps), b = fadeEnd * Double(i + 1) / Double(steps)
+                context.stroke(arc(a, b + 0.001), with: .color(.white.opacity(brightness * WheelLight.opacity(atFraction: b))),
+                               lineWidth: w)
+            }
+            if progress > fadeEnd {
+                context.stroke(arc(fadeEnd, progress), with: .color(.white.opacity(brightness)),
                                style: StrokeStyle(lineWidth: w, lineCap: .round))
             }
-            // Chapter gaps: cut a sliver out of the band.
             context.blendMode = .destinationOut
-            for f in chapters where f > 0 {
+            for f in chapters where f > 0 && f < progress {
                 context.stroke(arc(f - 0.004, f + 0.004), with: .color(.black), lineWidth: w + 2)
             }
         }
         .frame(width: side, height: side)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isTurning)
         .allowsHitTesting(false)
         .opacity(nowPlaying.display == nil ? 0.5 : 1)
     }
@@ -157,8 +189,15 @@ struct DiscView: View {
 
     private var speedShown: Bool { showsControls && !isMusic && player.episode != nil }
 
+    /// Back and forward sit faintly on the wheel at rest and come up fully while the pointer is over it, like
+    /// the cover's corners.
+    static func controlOpacity(pointerNear: Bool) -> Double {
+        DialPanelView.cornerOpacity(hovering: pointerNear)
+    }
+
     private var controls: some View {
         let ink = Color(nsColor: .labelColor)
+        let shown = pointerNear && nowPlaying.display != nil
         return ZStack {
             Group {
                 if isMusic {
@@ -167,6 +206,7 @@ struct DiscView: View {
                     Text("\u{2212}15").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(ink)
                 }
             }
+            .modifier(Bud(shown: shown, reduceMotion: reduceMotion))
             .offset(x: -DialGeometry.controlOffset)
             Group {
                 if isMusic {
@@ -175,10 +215,11 @@ struct DiscView: View {
                     Text("+30").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(ink)
                 }
             }
+            .modifier(Bud(shown: shown, reduceMotion: reduceMotion))
             .offset(x: DialGeometry.controlOffset)
             if speedShown {
                 Text(DialPanelView.rateLabel(player.rate))
-                    .font(.system(size: 9, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
                     .foregroundStyle(.secondary)
                     .offset(y: DialGeometry.speedOffset)
             }
@@ -217,6 +258,8 @@ struct DiscView: View {
             } else {
                 PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
                     .fill(Color(nsColor: .labelColor))
+                    .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.78),
+                               value: nowPlaying.display?.isPlaying ?? false)
                     .frame(width: 18, height: 20)
                     .opacity(nowPlaying.display == nil ? 0.35 : 1)
             }
@@ -238,7 +281,7 @@ struct DiscView: View {
             .onChanged { value in
                 let previous = lastRotation ?? .zero
                 lastRotation = value.rotation
-                nowPlaying.turn(degrees: Self.rotateSign * (value.rotation - previous).degrees)
+                turn(by: Self.rotateSign * (value.rotation - previous).degrees)
             }
             .onEnded { _ in lastRotation = nil }
     }
@@ -258,7 +301,7 @@ struct DiscView: View {
                 guard let previous = dragAngle else { return }
                 let current = DialGeometry.angle(of: value.location, around: center)
                 dragAngle = current
-                nowPlaying.turn(degrees: DialGeometry.delta(from: previous, to: current))
+                turn(by: DialGeometry.delta(from: previous, to: current))
             }
             .onEnded { value in
                 let start = zone(of: value.startLocation)
@@ -291,24 +334,38 @@ struct DiscView: View {
     }
 }
 
-/// Pause bars, or a play triangle, drawn as a path.
+/// A play triangle that morphs into pause bars: each is two four-sided pieces, so the triangle's halves slide
+/// and square off into the bars. `morph` 0 is play, 1 is pause.
 struct PlayPauseGlyph: Shape {
-    var isPlaying: Bool
+    var morph: Double
+
+    init(morph: Double) { self.morph = morph }
+    init(isPlaying: Bool) { morph = isPlaying ? 1 : 0 }
+
+    var animatableData: Double {
+        get { morph }
+        set { morph = newValue }
+    }
+
+    // In a unit box. The triangle is nudged right so it looks centred.
+    private static let play: [CGPoint] = [
+        CGPoint(x: 0.12, y: 0), CGPoint(x: 0.62, y: 0.25), CGPoint(x: 0.62, y: 0.75), CGPoint(x: 0.12, y: 1),
+        CGPoint(x: 0.62, y: 0.25), CGPoint(x: 1.12, y: 0.5), CGPoint(x: 1.12, y: 0.5), CGPoint(x: 0.62, y: 0.75),
+    ]
+    private static let pause: [CGPoint] = [
+        CGPoint(x: 0.08, y: 0), CGPoint(x: 0.40, y: 0), CGPoint(x: 0.40, y: 1), CGPoint(x: 0.08, y: 1),
+        CGPoint(x: 0.60, y: 0), CGPoint(x: 0.92, y: 0), CGPoint(x: 0.92, y: 1), CGPoint(x: 0.60, y: 1),
+    ]
 
     func path(in rect: CGRect) -> Path {
+        let t = min(1, max(0, morph))
+        let points = zip(Self.play, Self.pause).map { a, b in
+            CGPoint(x: rect.minX + (a.x + (b.x - a.x) * t) * rect.width,
+                    y: rect.minY + (a.y + (b.y - a.y) * t) * rect.height)
+        }
         var path = Path()
-        if isPlaying {
-            let bar = rect.width * 0.32
-            path.addRoundedRect(in: CGRect(x: rect.minX + rect.width * 0.08, y: rect.minY, width: bar, height: rect.height),
-                                cornerSize: CGSize(width: 1.5, height: 1.5))
-            path.addRoundedRect(in: CGRect(x: rect.maxX - rect.width * 0.08 - bar, y: rect.minY, width: bar, height: rect.height),
-                                cornerSize: CGSize(width: 1.5, height: 1.5))
-        } else {
-            // Nudged right so the triangle looks centred.
-            let inset = rect.width * 0.12
-            path.move(to: CGPoint(x: rect.minX + inset, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX + inset, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.minX + inset, y: rect.maxY))
+        for piece in [points[0..<4], points[4..<8]] {
+            path.addLines(Array(piece))
             path.closeSubpath()
         }
         return path
@@ -332,5 +389,17 @@ struct TrackSkipGlyph: Shape {
         path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height))
         guard !forward else { return path }
         return path.applying(CGAffineTransform(translationX: rect.minX + rect.maxX, y: 0).scaledBy(x: -1, y: 1))
+    }
+}
+
+/// A control, faint at rest and full while the pointer is over the wheel.
+private struct Bud: ViewModifier {
+    let shown: Bool
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(DiscView.controlOpacity(pointerNear: shown))
+            .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.2), value: shown)
     }
 }

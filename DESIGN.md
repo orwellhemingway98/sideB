@@ -143,7 +143,7 @@ artwork and two tiny source dots.
 
 ### Tertiary
 - **Spotify Green** (`source-spotify`) and **Music Red** (`source-apple-music`): only the 6 pt dot after the artist
-  name, saying where a song plays. Our own mark, never a logo.
+  name, saying where a song plays, always followed by the source's name. Our own mark, never a logo.
 
 ### Named Rules
 **The Borrowed Colour Rule.** Spindle never paints a surface with a colour of its own. Colour comes from the
@@ -252,7 +252,9 @@ turns the cover, ⌘L opens the Library, Escape turns the cover back and then cl
 move the Key Outline and Return plays that row. Keys held with ⌘, ⌥ or ⌃ (other than ⌘L) are left to macOS.
 
 ### Source Dot
-A 6 pt circle after the artist name in Spotify Green or Music Red; hover shows the source's name, VoiceOver reads it.
+A 6 pt circle after the artist name in Spotify Green or Music Red, then the source's name ("Spotify" or "Music") in
+Quiet Ink, so the source never rests on colour alone (red and green are the pair colour-blind people confuse most).
+The artist line gives way first when space runs short; VoiceOver reads "Spotify" or "Apple Music".
 
 ## Do's and Don'ts
 

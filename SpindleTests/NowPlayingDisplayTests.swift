@@ -54,6 +54,12 @@ final class NowPlayingDisplayTests: XCTestCase {
         XCTAssertNil(nowPlaying.display)
     }
 
+    func testEachSourceIsNamedBesideItsMark() {
+        // The dot's colour alone can't be told apart by everyone; the name says it in words.
+        XCTAssertEqual(MusicSourceID.spotify.shortName, "Spotify")
+        XCTAssertEqual(MusicSourceID.appleMusic.shortName, "Music", "the Mac app's own name")
+    }
+
     func testEachSourceHasItsOwnMarkColour() {
         XCTAssertEqual(MusicSourceID.spotify.markHex, 0x1ED760)
         XCTAssertEqual(MusicSourceID.appleMusic.markHex, 0xFA2D48)
