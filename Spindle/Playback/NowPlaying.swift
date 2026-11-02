@@ -28,6 +28,9 @@ final class NowPlaying: ObservableObject {
     private var limiter = HapticLimiter()
     private var generation = 0
     private let optionHeld: () -> Bool
+    private let turnSubject = PassthroughSubject<Void, Never>()
+    /// Fires each time the dial is turned while there's something to steer.
+    var turned: AnyPublisher<Void, Never> { turnSubject.eraseToAnyPublisher() }
     private var volumeGeneration = 0
     /// Part of a percent turned but not yet applied.
     private var volumeRemainder = 0.0
@@ -155,6 +158,7 @@ final class NowPlaying: ObservableObject {
 
     func turn(degrees: Double) {
         guard hasSomethingToSteer else { return }
+        turnSubject.send()
         if optionHeld() { return turnVolume(degrees: degrees) }
         let time = now()
         let position = displayPosition
