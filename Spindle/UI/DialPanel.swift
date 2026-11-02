@@ -30,31 +30,31 @@ struct DialPanelView: View {
     }
 
     var body: some View {
-        GlassEffectContainer(spacing: 8) {
-            VStack(spacing: 14) {
-                if let display = nowPlaying.display {
-                    header(display)
-                    DiscView(nowPlaying: nowPlaying)
-                    times(display)
-                    if display.kind == .music {
-                        musicPills
-                        if let paused = nowPlaying.pausedEpisode { resumePill(paused) }
-                    } else {
-                        pills
-                    }
-                    upNext
+        // No GlassEffectContainer: it draws all its glass as one layer, which merged the disc's button into
+        // the disc and drew the ring and the pill glyphs underneath.
+        VStack(spacing: 14) {
+            if let display = nowPlaying.display {
+                header(display)
+                DiscView(nowPlaying: nowPlaying)
+                times(display)
+                if display.kind == .music {
+                    musicPills
+                    if let paused = nowPlaying.pausedEpisode { resumePill(paused) }
                 } else {
-                    DiscView(nowPlaying: nowPlaying)
-                        .padding(.top, 6)
-                    Text("Find a show in Library")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    pills
                 }
-                footer
+                upNext
+            } else {
+                DiscView(nowPlaying: nowPlaying)
+                    .padding(.top, 6)
+                Text("Find a show in Library")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
-            .padding(16)
-            .frame(width: Self.width)
+            footer
         }
+        .padding(16)
+        .frame(width: Self.width)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
     }
 
@@ -134,7 +134,7 @@ struct DialPanelView: View {
     private func resumePill(_ episode: Episode) -> some View {
         Button { nowPlaying.resumePodcast() } label: {
             HStack(spacing: 6) {
-                PlayPauseGlyph(isPlaying: false).fill(.primary).frame(width: 7, height: 8)
+                PlayPauseGlyph(isPlaying: false).fill(Color(nsColor: .labelColor)).frame(width: 7, height: 8)
                 Text("Resume \(episode.title)")
                     .font(.system(size: 11, weight: .medium))
                     .lineLimit(1)
@@ -164,7 +164,7 @@ struct DialPanelView: View {
 
     private func glyphPill(_ glyph: TrackSkipGlyph, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            glyph.fill(.primary)
+            glyph.fill(Color(nsColor: .labelColor))
                 .frame(width: 14, height: 10)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)

@@ -128,7 +128,7 @@ struct DiscView: View {
 
     private var centreButton: some View {
         PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
-            .fill(.primary)
+            .fill(Color(nsColor: .labelColor))
             .frame(width: 18, height: 20)
             .opacity(nowPlaying.display == nil ? 0.35 : 1)
             .frame(width: Self.buttonSize, height: Self.buttonSize)
