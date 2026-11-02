@@ -27,4 +27,29 @@ enum DialGeometry {
     static func time(atRingPoint point: CGPoint, center: CGPoint, duration: TimeInterval) -> TimeInterval {
         angle(of: point, around: center) / 360 * duration
     }
+
+    // MARK: Zones of the 150 pt disc
+
+    /// What a press on the disc lands on.
+    enum Zone: Equatable { case centre, back, forward, speed, ring, outside }
+
+    static let discSize: CGFloat = 150
+    static let centreRadius: CGFloat = 30
+    static let ringBand: ClosedRange<CGFloat> = 45...75
+    /// The back and forward controls sit inside the ring at 9 and 3 o'clock, this far from the middle.
+    static let controlOffset: CGFloat = 45
+    static let controlRadius: CGFloat = 15
+    /// The speed label's centre, below the centre button, and its half-size.
+    static let speedOffset: CGFloat = 41
+    static let speedHalfSize = CGSize(width: 16, height: 9)
+
+    static func zone(of point: CGPoint, speedShown: Bool) -> Zone {
+        let c = discSize / 2
+        let dx = point.x - c, dy = point.y - c
+        if hypot(dx, dy) <= centreRadius { return .centre }
+        if hypot(dx + controlOffset, dy) <= controlRadius { return .back }
+        if hypot(dx - controlOffset, dy) <= controlRadius { return .forward }
+        if speedShown, abs(dx) <= speedHalfSize.width, abs(dy - speedOffset) <= speedHalfSize.height { return .speed }
+        return ringBand.contains(hypot(dx, dy)) ? .ring : .outside
+    }
 }

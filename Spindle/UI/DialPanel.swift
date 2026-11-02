@@ -10,6 +10,7 @@ struct DialPanelView: View {
     @ObservedObject var library: LibraryStore
     @ObservedObject var artwork: ArtworkCache
     let onLibrary: () -> Void
+    @State private var hovering = false
     /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
     let onPopOut: (() -> Void)?
     /// Whether the dial is out, so the pill reads Pop out or Put back.
@@ -39,14 +40,12 @@ struct DialPanelView: View {
         VStack(spacing: 14) {
             if let display = nowPlaying.display {
                 header(display)
-                DiscView(nowPlaying: nowPlaying)
-                times(display)
-                if display.kind == .music {
-                    musicPills
-                    if let paused = nowPlaying.pausedEpisode { resumePill(paused) }
-                } else {
-                    pills
+                discRow(display)
+                if display.kind == .podcast, let failure = player.failure {
+                    Text(failure).font(.system(size: 11, weight: .semibold)).frame(maxWidth: .infinity)
                 }
+                if display.kind == .podcast, !nowPlaying.chapters.isEmpty { chapterMenu }
+                if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumePill(paused) }
                 upNext
             } else {
                 DiscView(nowPlaying: nowPlaying)
@@ -54,10 +53,11 @@ struct DialPanelView: View {
                 Text("Find a show in Library")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
+                footer
             }
-            footer
         }
         .padding(16)
+        .onHover { hovering = $0 }
         .frame(width: Self.width)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
     }
@@ -68,6 +68,7 @@ struct DialPanelView: View {
         VStack(alignment: .leading, spacing: 10) {
             CoverButton(artwork: artwork, display: display, image: nowPlaying.musicArtwork,
                         hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
+                .overlay(alignment: .top) { coverCorners }
             VStack(alignment: .leading, spacing: 2) {
                 Text(display.title)
                     .font(.system(size: 14, weight: .semibold))
@@ -96,43 +97,49 @@ struct DialPanelView: View {
                                contextKind: nowPlaying.music?.contextKind)
     }
 
-    // MARK: Times
-
-    @ViewBuilder private func times(_ display: NowPlayingDisplay) -> some View {
-        if display.kind == .podcast, let failure = player.failure {
-            Text(failure)
-                .font(.system(size: 11, weight: .semibold))
-                .frame(maxWidth: .infinity)
-        } else {
-            HStack {
-                Text(TimeFormat.clock(nowPlaying.displayPosition))
-                Spacer()
-                if let duration = display.duration {
-                    Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
+    /// Library and Pop out, in the cover's top corners while the pointer is over the panel.
+    private var coverCorners: some View {
+        HStack {
+            CornerButton(label: "Library", action: onLibrary) {
+                LibraryGlyph().fill(Color(nsColor: .labelColor)).frame(width: 13, height: 12)
+            }
+            Spacer(minLength: 0)
+            if let onPopOut {
+                if let placement {
+                    PopOutCorner(placement: placement, action: onPopOut)
+                } else {
+                    CornerButton(label: "Pop out", action: onPopOut) { Text("\u{2197}") }
                 }
             }
-            .font(.system(size: 11).monospacedDigit())
-            .foregroundStyle(.secondary)
         }
+        .padding(10)
+        .opacity(hovering ? 1 : 0)
+        .allowsHitTesting(hovering)
+        .animation(.easeOut(duration: 0.15), value: hovering)
+    }
+
+    // MARK: Disc and times
+
+    /// The times sit either side of the disc, like the ends of a scrubber.
+    private func discRow(_ display: NowPlayingDisplay) -> some View {
+        HStack(spacing: 0) {
+            Text(TimeFormat.clock(nowPlaying.displayPosition))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            DiscView(nowPlaying: nowPlaying, showsControls: true)
+            Group {
+                if let duration = display.duration {
+                    Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
+                } else {
+                    Text("")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .font(.system(size: 11).monospacedDigit())
+        .foregroundStyle(.secondary)
     }
 
     // MARK: Pills
-
-    private var pills: some View {
-        HStack(spacing: 6) {
-            pill("\u{2212}15") { nowPlaying.skip(by: -15) }
-                .accessibilityLabel("Back 15 seconds")
-            if !nowPlaying.chapters.isEmpty {
-                chapterMenu
-            } else {
-                Spacer(minLength: 0)
-            }
-            pill(Self.rateLabel(player.rate)) { nowPlaying.cycleRate() }
-                .accessibilityLabel("Speed \(Self.rateLabel(player.rate))")
-            pill("+30") { nowPlaying.skip(by: 30) }
-                .accessibilityLabel("Forward 30 seconds")
-        }
-    }
 
     /// While music has the dial, the waiting podcast is one click away.
     private func resumePill(_ episode: Episode) -> some View {
@@ -152,30 +159,6 @@ struct DialPanelView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Resume podcast: \(episode.title)")
-    }
-
-    /// Music: just previous and next; the dial does the scrubbing.
-    private var musicPills: some View {
-        HStack(spacing: 6) {
-            Spacer(minLength: 0)
-            glyphPill(TrackSkipGlyph(forward: false)) { nowPlaying.previous() }
-                .accessibilityLabel("Previous track")
-            glyphPill(TrackSkipGlyph(forward: true)) { nowPlaying.next() }
-                .accessibilityLabel("Next track")
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func glyphPill(_ glyph: TrackSkipGlyph, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            glyph.fill(Color(nsColor: .labelColor))
-                .frame(width: 14, height: 10)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .contentShape(Capsule())
-                .glassEffect(.regular.interactive(), in: Capsule())
-        }
-        .buttonStyle(.plain)
     }
 
     private var chapterMenu: some View {
@@ -262,31 +245,62 @@ struct DialPanelView: View {
         HStack {
             pill("Library", action: onLibrary)
             Spacer(minLength: 0)
-            if let onPopOut {
-                if let placement { PopOutPill(placement: placement, action: onPopOut) }
-                else { pill("Pop out \u{2197}", action: onPopOut) }
-            }
+            if let onPopOut { pill("Pop out \u{2197}", action: onPopOut) }
         }
     }
 }
 
+/// A small round glass button for the cover's corners.
+private struct CornerButton<Glyph: View>: View {
+    let label: String
+    let action: () -> Void
+    @ViewBuilder let glyph: () -> Glyph
+
+    var body: some View {
+        Button(action: action) {
+            glyph()
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color(nsColor: .labelColor))
+                .frame(width: 28, height: 28)
+                .contentShape(Circle())
+                .glassEffect(.regular.interactive(), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+    }
+}
+
 /// Pop out while the dial lives in the panel, Put back while it floats.
-private struct PopOutPill: View {
+private struct PopOutCorner: View {
     @ObservedObject var placement: DialPlacement
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text(placement.isPoppedOut ? "Put back \u{2199}" : "Pop out \u{2197}")
-                .font(.system(size: 11, weight: .medium))
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .contentShape(Capsule())
-                .glassEffect(.regular.interactive(), in: Capsule())
+        CornerButton(label: placement.isPoppedOut ? "Put back" : "Pop out", action: action) {
+            Text(placement.isPoppedOut ? "\u{2199}" : "\u{2197}")
         }
-        .buttonStyle(.plain)
+    }
+}
+
+/// Three spines on a shelf, the last leaning.
+struct LibraryGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width, h = rect.height
+        let spine = w * 0.24, gap = w * 0.1
+        var path = Path()
+        path.addRoundedRect(in: CGRect(x: rect.minX, y: rect.minY, width: spine, height: h),
+                            cornerSize: CGSize(width: 1, height: 1))
+        path.addRoundedRect(in: CGRect(x: rect.minX + spine + gap, y: rect.minY, width: spine, height: h),
+                            cornerSize: CGSize(width: 1, height: 1))
+        let leaning = Path(roundedRect: CGRect(x: rect.minX + 2 * (spine + gap), y: rect.minY + h * 0.08,
+                                               width: spine, height: h * 0.92),
+                           cornerSize: CGSize(width: 1, height: 1))
+            .applying(CGAffineTransform(translationX: -rect.minX - 2 * (spine + gap), y: -rect.maxY)
+                .concatenating(CGAffineTransform(rotationAngle: -0.28))
+                .concatenating(CGAffineTransform(translationX: rect.minX + 2 * (spine + gap) + spine * 0.6, y: rect.maxY)))
+        path.addPath(leaning)
+        return path
     }
 }
 
