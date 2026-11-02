@@ -61,7 +61,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let artwork = ArtworkCache()
         let placement = DialPlacement()
         let floatingDial = FloatingDialController(nowPlaying: nowPlaying, placement: placement,
-                                                  onPutBack: {}, onLibrary: { [weak self] in self?.showLibrary() })
+                                                  onPutBack: {}, onLibrary: { [weak self] in self?.showLibrary() },
+                                                  artwork: artwork)
         let listModel = ListModel(nowPlaying: nowPlaying, library: library, spotify: spotify)
         let list = ListController(model: listModel, nowPlaying: nowPlaying)
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,

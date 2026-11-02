@@ -118,7 +118,7 @@ struct DialPanelView: View {
         .padding(.bottom, 2)
         .onHover { hovering = $0 }
         .frame(width: Self.width)
-        .background(WindowGlass(cornerRadius: Self.panelCornerRadius))
+        .background(WindowGlass(cornerRadius: Self.panelCornerRadius, tint: CoverTint.glassTint(for: coverImage)))
     }
 
     // MARK: Header
@@ -136,8 +136,7 @@ struct DialPanelView: View {
                                     hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
                 .overlay(alignment: .top) { coverCorners }
             if let list {
-                let image = (display.kind == .music ? nowPlaying.musicArtwork : nil) ?? artwork.image(for: display.artworkURL)
-                CoverFlip(list: list, nowPlaying: nowPlaying, tint: image.flatMap(CoverTint.backColour(for:)),
+                CoverFlip(list: list, nowPlaying: nowPlaying, tint: coverImage.flatMap(CoverTint.backColour(for:)),
                           turnBack: onCover) { cover }
             } else {
                 cover
@@ -175,6 +174,12 @@ struct DialPanelView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The cover's picture, once it's in: the glass and the back of the cover take their colour from it.
+    private var coverImage: NSImage? {
+        guard let display = nowPlaying.display else { return nil }
+        return (display.kind == .music ? nowPlaying.musicArtwork : nil) ?? artwork.image(for: display.artworkURL)
     }
 
     private var coverHint: String {

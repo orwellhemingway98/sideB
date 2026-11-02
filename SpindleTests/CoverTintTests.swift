@@ -39,4 +39,29 @@ final class CoverTintTests: XCTestCase {
         XCTAssertEqual(average.g, 0.4, accuracy: 0.02)
         XCTAssertEqual(average.b, 0.8, accuracy: 0.02)
     }
+
+    func testTheGlassColourIsVividButNeverGlaring() {
+        for colour in [CoverTint.RGB(r: 1, g: 1, b: 1), CoverTint.RGB(r: 0.05, g: 0.05, b: 0.1), CoverTint.RGB(r: 0.9, g: 0.1, b: 0.2)] {
+            let glass = CoverTint.glass(from: colour)
+            let hsb = NSColor(srgbRed: glass.r, green: glass.g, blue: glass.b, alpha: 1)
+            XCTAssertTrue(CoverTint.glassBrightness.contains(Double(hsb.brightnessComponent)), "\(colour)")
+            XCTAssertLessThanOrEqual(Double(hsb.saturationComponent), CoverTint.glassMaxSaturation + 0.01)
+        }
+    }
+
+    func testTheWindowGlassTakesTheCoversColourLightly() throws {
+        let image = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in
+            NSColor(srgbRed: 0.8, green: 0.2, blue: 0.6, alpha: 1).setFill()
+            rect.fill()
+            return true
+        }
+        let glass = try XCTUnwrap(CoverTint.glassTint(for: image))
+        let back = try XCTUnwrap(CoverTint.backColour(for: image))
+        XCTAssertEqual(glass.alphaComponent, CoverTint.glassStrength, accuracy: 0.001)
+        XCTAssertGreaterThan(CoverTint.glassStrength, 0.2)
+        XCTAssertLessThanOrEqual(CoverTint.glassStrength, 0.5, "a tint, not paint: the desktop still shows through")
+        XCTAssertGreaterThan(glass.brightnessComponent, back.brightnessComponent + 0.15, "lighter and livelier than the back")
+        XCTAssertEqual(glass.hueComponent, back.hueComponent, accuracy: 0.02, "the same colour family")
+        XCTAssertNil(CoverTint.glassTint(for: nil), "no artwork, plain glass")
+    }
 }

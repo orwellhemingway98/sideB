@@ -55,4 +55,34 @@ enum CoverTint {
         cache.setObject(colour, forKey: image)
         return colour
     }
+
+    /// How strongly the window glass takes the cover's colour: a tint, not paint, so the desktop still shows.
+    static let glassStrength: CGFloat = 0.35
+    /// The glass's colour is lighter and livelier than the back's, but held short of glaring.
+    static let glassBrightness: ClosedRange<Double> = 0.5...0.72
+    static let glassMaxSaturation = 0.8
+
+    /// The cover's colour for the window glass: its hue, brighter, and a little more vivid.
+    static func glass(from average: RGB) -> RGB {
+        let colour = NSColor(srgbRed: average.r, green: average.g, blue: average.b, alpha: 1)
+        var hue: CGFloat = 0, saturation: CGFloat = 0, value: CGFloat = 0, alpha: CGFloat = 0
+        colour.getHue(&hue, saturation: &saturation, brightness: &value, alpha: &alpha)
+        let b = glassBrightness.lowerBound + (glassBrightness.upperBound - glassBrightness.lowerBound) * Double(value)
+        let s = min(Double(saturation) * 1.15, glassMaxSaturation)
+        let glass = NSColor(hue: hue, saturation: s, brightness: b, alpha: 1).usingColorSpace(.sRGB) ?? colour
+        return RGB(r: Double(glass.redComponent), g: Double(glass.greenComponent), b: Double(glass.blueComponent))
+    }
+
+    private static let glassCache = NSCache<NSImage, NSColor>()
+
+    /// The panel's and floating dial's glass for this cover, lightly. Nil keeps plain glass.
+    static func glassTint(for image: NSImage?) -> NSColor? {
+        guard let image else { return nil }
+        if let known = glassCache.object(forKey: image) { return known }
+        guard let average = average(of: image) else { return nil }
+        let rgb = glass(from: average)
+        let tint = NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: glassStrength)
+        glassCache.setObject(tint, forKey: image)
+        return tint
+    }
 }
