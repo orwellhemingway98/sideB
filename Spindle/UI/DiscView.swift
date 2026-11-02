@@ -3,13 +3,10 @@ import SwiftUI
 
 /// The 150 pt glass disc: a progress ring with chapter dots round a play/pause button.
 /// Turn it (two-finger rotate, scroll, or drag round the ring) to scrub; press the centre to
-/// play or pause; press the ring to jump there.
+/// play or pause; press the ring to jump there. With controls, it also carries back and forward at
+/// 9 and 3 o'clock (⏮ ⏭ for music, −15 and +30 for podcasts) and the podcast speed under the centre.
 struct DiscView: View {
-    static let size: CGFloat = 150
-    /// Presses and drags count as on the ring between these radii.
-    static let ringBand: ClosedRange<CGFloat> = 45...75
-    /// A press inside this radius is on the centre button.
-    static let centreRadius: CGFloat = 30
+    static let size: CGFloat = DialGeometry.discSize
     private static let ringRadius: CGFloat = 63
     private static let ringWidth: CGFloat = 3
     private static let buttonSize: CGFloat = 60
@@ -24,9 +21,12 @@ struct DiscView: View {
 
     /// Which window the disc is in; only the panel's disc follows the panel's notifications.
     let host: DiscHost
+    /// Draws back, forward and speed on the disc.
+    let showsControls: Bool
 
-    init(nowPlaying: NowPlaying, host: DiscHost = .panel) {
+    init(nowPlaying: NowPlaying, host: DiscHost = .panel, showsControls: Bool = false) {
         self.host = host
+        self.showsControls = showsControls
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
     }
@@ -51,6 +51,7 @@ struct DiscView: View {
                 .overlay(rim)
             ring
             centreButton
+            if showsControls { controls.allowsHitTesting(false) }
         }
         .frame(width: Self.size, height: Self.size)
         .contentShape(Circle())
@@ -77,6 +78,13 @@ struct DiscView: View {
         .accessibilityLabel("Dial")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { nowPlaying.toggle() }
+        .accessibilityActions {
+            if showsControls {
+                Button(isMusic ? "Previous track" : "Back 15 seconds") { perform(.back) }
+                Button(isMusic ? "Next track" : "Forward 30 seconds") { perform(.forward) }
+                if speedShown { Button("Speed \(DialPanelView.rateLabel(player.rate))") { perform(.speed) } }
+            }
+        }
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: nowPlaying.skip(by: 30)
@@ -126,6 +134,58 @@ struct DiscView: View {
         return nowPlaying.chapters.map { min(1, max(0, $0.start / duration)) * 360 }
     }
 
+    private var isMusic: Bool { nowPlaying.mode == .music }
+
+    private var speedShown: Bool { showsControls && !isMusic && player.episode != nil }
+
+    private var controls: some View {
+        let ink = Color(nsColor: .labelColor)
+        return ZStack {
+            Group {
+                if isMusic {
+                    TrackSkipGlyph(forward: false).fill(ink).frame(width: 13, height: 9)
+                } else {
+                    Text("\u{2212}15").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(ink)
+                }
+            }
+            .offset(x: -DialGeometry.controlOffset)
+            Group {
+                if isMusic {
+                    TrackSkipGlyph(forward: true).fill(ink).frame(width: 13, height: 9)
+                } else {
+                    Text("+30").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(ink)
+                }
+            }
+            .offset(x: DialGeometry.controlOffset)
+            if speedShown {
+                Text(DialPanelView.rateLabel(player.rate))
+                    .font(.system(size: 9, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .offset(y: DialGeometry.speedOffset)
+            }
+        }
+        .opacity(nowPlaying.display == nil ? 0.35 : 1)
+    }
+
+    private func zone(of point: CGPoint) -> DialGeometry.Zone {
+        let zone = DialGeometry.zone(of: point, speedShown: speedShown)
+        if !showsControls, zone == .back || zone == .forward {
+            // Without controls those spots are plain ring, as they always were.
+            return DialGeometry.ringBand.contains(distance(of: point)) ? .ring : .outside
+        }
+        return zone
+    }
+
+    private func perform(_ zone: DialGeometry.Zone) {
+        switch zone {
+        case .centre: nowPlaying.toggle()
+        case .back: if isMusic { nowPlaying.previous() } else { nowPlaying.skip(by: -15) }
+        case .forward: if isMusic { nowPlaying.next() } else { nowPlaying.skip(by: 30) }
+        case .speed: nowPlaying.cycleRate()
+        case .ring, .outside: break
+        }
+    }
+
     private var centreButton: some View {
         PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
             .fill(Color(nsColor: .labelColor))
@@ -153,13 +213,13 @@ struct DiscView: View {
             .onEnded { _ in lastRotation = nil }
     }
 
-    /// Dragging round the ring. Drags that start off the ring band (on the centre button, say) don't turn;
-    /// one that starts and ends on the centre button is a press that drifted, so it still plays or pauses.
+    /// Dragging round the ring. Drags that start off the ring (on the centre button or a control, say) don't
+    /// turn; one that starts and ends on the same button is a press that drifted, so it still counts.
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
                 if dragAngle == nil, !dragIgnored {
-                    guard Self.ringBand.contains(distance(of: value.startLocation)) else {
+                    guard zone(of: value.startLocation) == .ring else {
                         dragIgnored = true
                         return
                     }
@@ -171,25 +231,27 @@ struct DiscView: View {
                 nowPlaying.turn(degrees: DialGeometry.delta(from: previous, to: current))
             }
             .onEnded { value in
-                if dragAngle == nil, distance(of: value.startLocation) <= Self.centreRadius,
-                   distance(of: value.location) <= Self.centreRadius {
-                    nowPlaying.toggle()
+                let start = zone(of: value.startLocation)
+                if dragAngle == nil, start != .ring, start == zone(of: value.location) {
+                    perform(start)
                 }
                 dragAngle = nil
                 dragIgnored = false
             }
     }
 
-    /// A press on the centre plays or pauses; a press on the ring jumps to that point.
+    /// A press on the centre plays or pauses, one on a control acts, one on the ring jumps to that point.
     private var tapGesture: some Gesture {
         SpatialTapGesture()
             .onEnded { value in
-                let radius = distance(of: value.location)
-                if radius <= Self.centreRadius {
-                    nowPlaying.toggle()
-                } else if Self.ringBand.contains(radius), let duration {
-                    nowPlaying.jump(to: DialGeometry.time(atRingPoint: value.location, center: center,
-                                                          duration: duration))
+                let zone = zone(of: value.location)
+                if zone == .ring {
+                    if let duration {
+                        nowPlaying.jump(to: DialGeometry.time(atRingPoint: value.location, center: center,
+                                                              duration: duration))
+                    }
+                } else {
+                    perform(zone)
                 }
             }
     }

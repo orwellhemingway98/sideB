@@ -67,4 +67,11 @@ final class ListWindowLayoutTests: XCTestCase {
         // 800 pt, less a 33 pt menu bar and the 6 pt gap, leaves 761 pt; keep a margin for the Dock.
         XCTAssertLessThanOrEqual(view.fittingSize.height, 720)
     }
+
+    func testThePanelStaysCompact() {
+        // The times, skip buttons and footer live in the disc and the cover's corners, not rows of their own.
+        let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
+        XCTAssertLessThanOrEqual(view.fittingSize.height, 500)
+    }
 }

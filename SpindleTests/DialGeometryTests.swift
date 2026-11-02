@@ -17,4 +17,18 @@ final class DialGeometryTests: XCTestCase {
     func testRingPointToTime() {
         XCTAssertEqual(DialGeometry.time(atRingPoint: CGPoint(x: 75, y: 150), center: CGPoint(x: 75, y: 75), duration: 3600), 1800, accuracy: 0.001)
     }
+
+    // MARK: Zones of the 150 pt disc
+
+    func testPressesFindTheirZone() {
+        typealias G = DialGeometry
+        XCTAssertEqual(G.zone(of: CGPoint(x: 75, y: 75), speedShown: true), .centre)
+        XCTAssertEqual(G.zone(of: CGPoint(x: 30, y: 75), speedShown: true), .back)       // 9 o'clock
+        XCTAssertEqual(G.zone(of: CGPoint(x: 120, y: 75), speedShown: true), .forward)   // 3 o'clock
+        XCTAssertEqual(G.zone(of: CGPoint(x: 75, y: 116), speedShown: true), .speed)     // under the button
+        XCTAssertEqual(G.zone(of: CGPoint(x: 75, y: 12), speedShown: true), .ring)       // the top of the ring
+        XCTAssertEqual(G.zone(of: CGPoint(x: 75, y: 116), speedShown: false), .outside,
+                       "with no speed label (music) the spot does nothing, as before")
+        XCTAssertEqual(G.zone(of: CGPoint(x: 2, y: 2), speedShown: true), .outside)
+    }
 }
