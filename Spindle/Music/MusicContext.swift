@@ -22,6 +22,13 @@ struct MusicContext: Equatable {
     let tracks: [ContextTrack]
     /// How many there are before the cap.
     let totalCount: Int
+
+    /// The playing song's row. A streamed song has another ID than the library copy the list was read from,
+    /// so when the ID isn't there, the song with the same title and artist is.
+    func row(for track: MusicTrack) -> ContextTrack? {
+        tracks.first { $0.id == track.trackID }
+            ?? tracks.first { $0.title == track.title && $0.artist == track.artist }
+    }
 }
 
 /// Parses the context script's output: a header record "kind␟id␟title␟totalCount", then one record per track

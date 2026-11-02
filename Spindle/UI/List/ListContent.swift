@@ -42,6 +42,16 @@ enum ListContent {
         }
     }
 
+    /// What VoiceOver says for the cover: the hint without its arrow glyph, as an action.
+    static func spokenHint(mode: PlaybackMode, source: MusicSourceID?, contextKind: MusicContext.Kind?) -> String {
+        switch mode {
+        case .podcast: return "Show episodes"
+        case .music:
+            if source == .spotify { return "Show song details" }
+            return contextKind == .playlist ? "Show playlist" : "Show album"
+        }
+    }
+
     /// An episode description as plain text: tags stripped, common entities decoded, whitespace collapsed.
     static func plainText(fromHTML html: String?) -> String {
         guard var text = html else { return noDescription }

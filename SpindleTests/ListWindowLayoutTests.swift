@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import Spindle
 
@@ -55,5 +56,15 @@ final class ListWindowLayoutTests: XCTestCase {
         list.toggle(below: panel.window)
         spin(0.6)
         panel.close()
+    }
+
+    func testTheTallestPanelFitsA1280By800Screen() {
+        // A podcast with a full Up Next is the tallest the panel gets.
+        for episode in library.episodes(of: library.shows[0]) { library.enqueue(episode) }
+        XCTAssertEqual(library.upNext.count, 3)
+        let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
+        // 800 pt, less a 33 pt menu bar and the 6 pt gap, leaves 761 pt; keep a margin for the Dock.
+        XCTAssertLessThanOrEqual(view.fittingSize.height, 720)
     }
 }
