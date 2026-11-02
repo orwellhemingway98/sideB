@@ -51,7 +51,7 @@ final class SpotifyClient: @unchecked Sendable {
     private var cached: SpotifyTokens??
 
     init(clientID: @escaping @Sendable () -> String?, store: SpotifyTokenStore,
-         transport: HTTPTransport = URLSessionTransport(), now: @escaping @Sendable () -> Date = Date.init,
+         transport: HTTPTransport = URLSessionTransport(), now: @escaping @Sendable () -> Date = { Date() },
          sleep: @escaping @Sendable (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
          onSignedOut: @escaping @Sendable (_ expired: Bool) -> Void = { _ in }) {
         self.clientID = clientID

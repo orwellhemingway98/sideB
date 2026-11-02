@@ -40,7 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let player = PodcastPlayer(engine: engine, library: library)
         let media = MediaCenter()
         let haptics = Haptics()
-        let music = MusicRemote(sources: [AppleMusicSource(), SpotifySource()])
+        let spotify = SpotifyAccount()
+        let music = MusicRemote(sources: [AppleMusicSource(), SpotifySource(api: spotify.api)])
         let nowPlaying = NowPlaying(
             player: player, media: media, haptics: haptics,
             schedule: { delay, work in
@@ -61,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let placement = DialPlacement()
         let floatingDial = FloatingDialController(nowPlaying: nowPlaying, placement: placement,
                                                   onPutBack: {}, onLibrary: { [weak self] in self?.showLibrary() })
-        let listModel = ListModel(nowPlaying: nowPlaying, library: library)
+        let listModel = ListModel(nowPlaying: nowPlaying, library: library, spotify: spotify)
         let listWindow = ListWindowController(model: listModel, nowPlaying: nowPlaying)
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,
                                         onLibrary: { [weak self] in self?.showLibrary() },
