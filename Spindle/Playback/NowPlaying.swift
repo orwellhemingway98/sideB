@@ -260,6 +260,16 @@ final class NowPlaying: ObservableObject {
         music?.previous()
     }
 
+    /// The disc's 9 o'clock: the previous song, or 15 seconds back in a podcast.
+    func back() {
+        if mode == .music { previous() } else { skip(by: -15) }
+    }
+
+    /// The disc's 3 o'clock: the next song, or 30 seconds on in a podcast.
+    func forward() {
+        if mode == .music { next() } else { skip(by: 30) }
+    }
+
     /// Starts from what the dial shows and wins over any pending scrub commit.
     func skip(by seconds: TimeInterval) {
         jump(to: displayPosition + seconds)

@@ -198,8 +198,8 @@ struct DiscView: View {
     private func perform(_ zone: DialGeometry.Zone) {
         switch zone {
         case .centre: nowPlaying.toggle()
-        case .back: if isMusic { nowPlaying.previous() } else { nowPlaying.skip(by: -15) }
-        case .forward: if isMusic { nowPlaying.next() } else { nowPlaying.skip(by: 30) }
+        case .back: nowPlaying.back()
+        case .forward: nowPlaying.forward()
         case .speed: nowPlaying.cycleRate()
         case .ring, .outside: break
         }
