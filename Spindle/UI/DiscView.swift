@@ -53,7 +53,6 @@ struct DiscView: View {
                 .glassEffect(.regular, in: Circle())
                 .overlay(specular)
             ring
-            droplet
             centreButton
             if showsControls { controls.allowsHitTesting(false) }
         }
@@ -179,29 +178,6 @@ struct DiscView: View {
         .opacity(nowPlaying.display == nil ? 0.5 : 1)
     }
 
-    /// "Now": a bead of glass on the edge. It lifts off while you turn and settles back when you stop.
-    @ViewBuilder private var droplet: some View {
-        if nowPlaying.display != nil {
-            let volume = nowPlaying.volumeShown
-            let at = volume.map { Double($0) / 100 } ?? progress
-            let lift = isTurning ? 1.0 : 0
-            let size = WheelLight.dropletSize(lift: lift)
-            let side = DialGeometry.haloSide
-            let centre = WheelLight.dropletCentre(progress: at, lift: lift, around: CGPoint(x: side / 2, y: side / 2))
-            Circle()
-                .fill(RadialGradient(colors: [.white, .white.opacity(0.55), .white.opacity(0.15)],
-                                     center: UnitPoint(x: 0.35, y: 0.3), startRadius: 0, endRadius: size * 0.6))
-                .overlay(Circle().strokeBorder(.white.opacity(0.6), lineWidth: 0.5))
-                .shadow(color: .white.opacity(isTurning ? 0.7 : 0.4), radius: isTurning ? 5 : 3)
-                .shadow(color: .black.opacity(0.25), radius: 1.5, y: 1)
-                .frame(width: size, height: size)
-                .position(centre)
-                .frame(width: side, height: side)
-                .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.62), value: isTurning)
-                .allowsHitTesting(false)
-        }
-    }
-
     /// Where the chapters start, as shares of the episode (podcasts only).
     private var chapterFractions: [Double] {
         guard nowPlaying.mode == .podcast, player.episode != nil, let duration else { return [] }
@@ -212,8 +188,8 @@ struct DiscView: View {
 
     private var speedShown: Bool { showsControls && !isMusic && player.episode != nil }
 
-    /// Back and forward bud out of the glass as small droplets while the pointer is over the wheel, and sink
-    /// back when it leaves; at rest the wheel is just the wheel. Their spots work either way.
+    /// Back and forward fade in while the pointer is over the wheel and out when it leaves; at rest the wheel
+    /// is just the wheel. Their spots work either way.
     private var controls: some View {
         let ink = Color(nsColor: .labelColor)
         let shown = pointerNear && nowPlaying.display != nil
@@ -411,17 +387,14 @@ struct TrackSkipGlyph: Shape {
     }
 }
 
-/// A control budding out of the glass: a small glass droplet that grows from the wheel's surface.
+/// A control fading in while the pointer is over the wheel.
 private struct Bud: ViewModifier {
     let shown: Bool
     let reduceMotion: Bool
 
     func body(content: Content) -> some View {
         content
-            .frame(width: 28, height: 28)
-            .glassEffect(.regular, in: Circle())
-            .scaleEffect(shown || reduceMotion ? 1 : 0.35)
             .opacity(shown ? 1 : 0)
-            .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.32, dampingFraction: 0.62), value: shown)
+            .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.2), value: shown)
     }
 }
