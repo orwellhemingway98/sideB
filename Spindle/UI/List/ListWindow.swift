@@ -96,10 +96,12 @@ final class ListWindowController {
                 guard let self, self.isShown, self.model.needsReload else { return }
                 Task { await self.model.reload() }
             }.store(in: &cancellables)
-        // Signing in or out of Spotify changes what a Spotify song's list shows.
+        // Signing in or out of Spotify changes what a Spotify song's list shows (the song's details or its
+        // album), which isn't the author moving on: adopt the new list rather than closing.
         model.spotify?.$isSignedIn.dropFirst().removeDuplicates().sink { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.isShown else { return }
+                self.lastIdentity = nil
                 Task { await self.model.reload(force: true); self.place() }
             }
         }.store(in: &cancellables)

@@ -115,6 +115,12 @@ final class SpotifyWebAPITests: XCTestCase {
         XCTAssertEqual(transport.requests(to: "/v1/playlists/PL1").first?.url?.query, "market=from_token")
     }
 
+    func testPlaylistEntriesUnderTheOldTrackKeyAreRead() throws {
+        playing(context: "spotify:playlist:PL1")
+        transport.reply("/v1/playlists/PL1", json: #"{"id":"PL1","name":"Old","items":{"items":[{"track":\#(Self.track("T1", "One", number: 1))}],"next":null,"total":1}}"#)
+        XCTAssertEqual(try api.context()?.tracks.map(\.title), ["One"])
+    }
+
     func testPlaylistStopsAtTheCap() throws {
         playing(context: "spotify:playlist:PL1")
         let page = (0..<100).map { #"{"item":\#(Self.track("P\($0)", "Song \($0)", number: 1))}"# }.joined(separator: ",")

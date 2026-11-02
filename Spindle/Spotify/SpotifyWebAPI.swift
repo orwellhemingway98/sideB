@@ -31,9 +31,13 @@ enum SpotifyContextParser {
         let total: Int?
     }
 
+    /// Spotify's docs name the song `item` since February 2026 and `track` before; either is read.
     struct PlaylistEntry: Decodable {
         let item: Track?
+        let track: Track?
         let is_local: Bool?
+
+        var song: Track? { item ?? track }
     }
 
     struct Album: Decodable {
@@ -169,7 +173,7 @@ final class SpotifyWebAPI: @unchecked Sendable {
             entries += page.items
             next = page.next
         }
-        let songs = entries.filter { $0.is_local != true }.map(\.item)
+        let songs = entries.filter { $0.is_local != true }.map(\.song)
         let tracks = songs.compactMap { SpotifyContextParser.row($0, number: 0) }.prefix(MusicContextParser.cap)
             .enumerated().map { index, track in
                 ContextTrack(id: track.id, disc: track.disc, number: index + 1, title: track.title,
