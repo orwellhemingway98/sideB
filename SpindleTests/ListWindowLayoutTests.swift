@@ -152,3 +152,17 @@ final class DiscTimesTests: XCTestCase {
         XCTAssertGreaterThan(DialPanelView.timeColumnWidth, 60)
     }
 }
+
+@MainActor
+final class PanelProportionsTests: XCTestCase {
+    func testTheCoverCornersRunParallelWithThePanels() {
+        // Concentric corners: the inner radius is the outer one less the gap between them.
+        XCTAssertEqual(DialPanelView.coverCornerRadius, DialPanelView.panelCornerRadius - DialPanelView.panelPadding)
+        XCTAssertEqual(DialPanelView.coverCornerRadius, 14)
+    }
+
+    func testTheTitleLeadsTheArtistLine() {
+        XCTAssertEqual(DialPanelView.titleSize, 16)
+        XCTAssertEqual(DialPanelView.subtitleSize, 12)
+    }
+}
