@@ -40,6 +40,12 @@ struct DialPanelView: View {
     /// Between the panel's rows, and the extra room round the disc so it doesn't crowd the text above and
     /// the pills below (22 pt from the halo's edge in all).
     static let rowSpacing: CGFloat = 14
+    /// The times either side of the disc: each gets what's left of the row, less the halo and a hair's gap.
+    static let timeFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    static let timeColumnWidth: CGFloat = (width - 32 - DialGeometry.discSize) / 2 - timeHaloClearance
+    static let timeHaloClearance: CGFloat = (DialGeometry.haloSide - DialGeometry.discSize) / 2 + 1
+    /// An hour-long time ("−1:13:32") shrinks this far to stay on one line.
+    static let timeMinimumScale: CGFloat = 0.7
     static let discBreathing: CGFloat = 8
 
     var body: some View {
@@ -158,7 +164,10 @@ struct DialPanelView: View {
     private func discRow(_ display: NowPlayingDisplay) -> some View {
         HStack(spacing: 0) {
             Text(TimeFormat.clock(nowPlaying.displayPosition))
+                .lineLimit(1)
+                .minimumScaleFactor(Self.timeMinimumScale)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, Self.timeHaloClearance)
             DiscView(nowPlaying: nowPlaying, showsControls: true)
             Group {
                 if let duration = display.duration {
@@ -167,11 +176,14 @@ struct DialPanelView: View {
                     Text("")
                 }
             }
+            .lineLimit(1)
+            .minimumScaleFactor(Self.timeMinimumScale)
             .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.leading, Self.timeHaloClearance)
         }
         // The halo reaches past the disc; reserve it, so the gaps above and below are real.
         .frame(height: DialGeometry.haloSide)
-        .font(.system(size: 11).monospacedDigit())
+        .font(Font(Self.timeFont))
         .foregroundStyle(.secondary)
     }
 
