@@ -114,24 +114,41 @@ enum SpotifyWebSignIn {
     }
 }
 
-/// Asks for the Client ID of the author's Spotify developer app.
+/// Asks for the Client ID of the author's Spotify developer app, until it gets one or is cancelled.
 enum SpotifyClientIDPrompt {
+    static let explanation = "Create a free app at developer.spotify.com/dashboard with redirect URI "
+        + "spindle://callback, then paste its Client ID."
+    static let notAnID = "That isn't a Client ID. It's 32 letters and numbers at the top of your Spotify app's "
+        + "Settings page (not the app name or the client secret)."
+
+    /// A Client ID is 32 hexadecimal characters; anything else (a username, the app's name) is refused here
+    /// rather than by Spotify's sign-in page.
+    static func validated(_ raw: String) -> String? {
+        let id = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard id.count == 32, id.allSatisfy(\.isHexDigit) else { return nil }
+        return id
+    }
+
     @MainActor
     static func ask(current: String?) -> String? {
-        let alert = NSAlert()
-        alert.messageText = "Your Spotify app's Client ID"
-        alert.informativeText = "Create a free app at developer.spotify.com/dashboard with redirect URI "
-            + "spindle://callback, then paste its Client ID."
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        field.placeholderString = "Client ID"
-        field.stringValue = current ?? ""
-        alert.accessoryView = field
-        alert.addButton(withTitle: "Continue")
-        alert.addButton(withTitle: "Cancel")
-        alert.window.initialFirstResponder = field
-        NSApp.forceActivate()
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
-        let id = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        return id.isEmpty ? nil : id
+        var text = current ?? ""
+        var message = explanation
+        while true {
+            let alert = NSAlert()
+            alert.messageText = "Your Spotify app's Client ID"
+            alert.informativeText = message
+            let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+            field.placeholderString = "Client ID"
+            field.stringValue = text
+            alert.accessoryView = field
+            alert.addButton(withTitle: "Continue")
+            alert.addButton(withTitle: "Cancel")
+            alert.window.initialFirstResponder = field
+            NSApp.forceActivate()
+            guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+            if let id = validated(field.stringValue) { return id }
+            text = field.stringValue
+            message = notAnID
+        }
     }
 }

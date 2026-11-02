@@ -77,3 +77,14 @@ final class SpotifyAuthTests: XCTestCase {
         XCTAssertEqual(tokens.accessToken, "B")
     }
 }
+
+final class SpotifyClientIDTests: XCTestCase {
+    func testOnlyA32CharacterHexIDIsAccepted() {
+        XCTAssertEqual(SpotifyClientIDPrompt.validated("  64c3deef8969445ca15a174b9c116b21 \n"), "64c3deef8969445ca15a174b9c116b21")
+        XCTAssertEqual(SpotifyClientIDPrompt.validated("64C3DEEF8969445CA15A174B9C116B21"), "64c3deef8969445ca15a174b9c116b21")
+        XCTAssertNil(SpotifyClientIDPrompt.validated("mfelouro"), "a username isn't a Client ID")
+        XCTAssertNil(SpotifyClientIDPrompt.validated("64c3deef8969445ca15a174b9c116b2"), "one character short")
+        XCTAssertNil(SpotifyClientIDPrompt.validated("64c3deef8969445ca15a174b9c116b2z"))
+        XCTAssertNil(SpotifyClientIDPrompt.validated(""))
+    }
+}
