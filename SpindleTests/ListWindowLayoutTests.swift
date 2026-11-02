@@ -143,15 +143,12 @@ final class ListWindowLayoutTests: XCTestCase {
 
 @MainActor
 final class DiscTimesTests: XCTestCase {
-    func testAnHourLongTimeFitsBesideTheHaloOnOneLine() {
-        // The longest time a podcast shows: ten hours and more is rare, nine hours plus is not.
+    func testEveryTimeFitsInTheLowerCornersAtFullSize() {
+        // Both times always use the same font size: no shrinking for long episodes.
         let longest = TimeFormat.remaining(9 * 3600 + 59 * 60 + 59)
         XCTAssertEqual(longest, "\u{2212}9:59:59")
         let width = (longest as NSString).size(withAttributes: [.font: DialPanelView.timeFont]).width
-        XCTAssertLessThanOrEqual(width * DialPanelView.timeMinimumScale, DialPanelView.timeColumnWidth,
-                                 "shrinks to fit rather than wrapping or running under the halo")
-        XCTAssertLessThanOrEqual((TimeFormat.remaining(59 * 60 + 59) as NSString)
-                                    .size(withAttributes: [.font: DialPanelView.timeFont]).width,
-                                 DialPanelView.timeColumnWidth, "under an hour, full size")
+        XCTAssertLessThanOrEqual(width, DialPanelView.timeColumnWidth, "fits where the disc curves away")
+        XCTAssertGreaterThan(DialPanelView.timeColumnWidth, 60)
     }
 }
