@@ -41,18 +41,88 @@ enum PanelClickPolicy {
     }
 }
 
-/// Whether the droplet has spread into the window.
+/// The list's arrival: a glass drop forms at the panel's bottom edge, falls, then spreads into the window.
+enum DropletPhase: Equatable {
+    case hidden, forming, falling, open
+}
+
+/// Runs the drop's steps in order; closing runs them back up into the panel. A newer open or close
+/// cancels the steps still pending from the last one.
 @MainActor
 final class DropletState: ObservableObject {
-    @Published var open = false
+    static let formDuration: TimeInterval = 0.12
+    static let fallDuration: TimeInterval = 0.16
+    static let gatherDuration: TimeInterval = 0.22
+    static let riseDuration: TimeInterval = 0.12
+    static let spread = Animation.spring(response: 0.55, dampingFraction: 0.78)
+
+    @Published private(set) var phase: DropletPhase = .hidden
+    var isOpen: Bool { phase == .open }
+
+    private let after: (TimeInterval, @escaping @MainActor () -> Void) -> Void
+    private let animate: (Animation, () -> Void) -> Void
+    private let reduceMotion: () -> Bool
+    private var generation = 0
+
+    init(after: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, run in
+             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { MainActor.assumeIsolated(run) }
+         },
+         animate: @escaping (Animation, () -> Void) -> Void = { animation, change in withAnimation(animation, change) },
+         reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }) {
+        self.after = after
+        self.animate = animate
+        self.reduceMotion = reduceMotion
+    }
+
+    /// Back to nothing at once, as the window goes away.
+    func hide() {
+        generation += 1
+        phase = .hidden
+    }
+
+    func open() {
+        generation += 1
+        let mine = generation
+        if reduceMotion() {
+            animate(.easeOut(duration: 0.2)) { phase = .open }
+            return
+        }
+        animate(.easeOut(duration: Self.formDuration)) { phase = .forming }
+        after(Self.formDuration) { [weak self] in
+            guard let self, self.generation == mine else { return }
+            self.animate(.easeIn(duration: Self.fallDuration)) { self.phase = .falling }
+            self.after(Self.fallDuration) { [weak self] in
+                guard let self, self.generation == mine else { return }
+                self.animate(Self.spread) { self.phase = .open }
+            }
+        }
+    }
+
+    func close(then done: @escaping @MainActor () -> Void) {
+        generation += 1
+        let mine = generation
+        if reduceMotion() {
+            animate(.easeOut(duration: 0.15)) { phase = .hidden }
+            after(0.15) { [weak self] in if self?.generation == mine { done() } }
+            return
+        }
+        animate(.spring(response: 0.3, dampingFraction: 0.85)) { phase = .falling }
+        after(Self.gatherDuration) { [weak self] in
+            guard let self, self.generation == mine else { return }
+            self.animate(.easeOut(duration: Self.riseDuration)) { self.phase = .forming }
+            self.after(Self.riseDuration) { [weak self] in
+                guard let self, self.generation == mine else { return }
+                self.animate(.easeIn(duration: 0.1)) { self.phase = .hidden }
+                self.after(0.1) { [weak self] in if self?.generation == mine { done() } }
+            }
+        }
+    }
 }
 
 /// The list window under the dial panel. It opens as a glass drop that falls from the panel and spreads into
 /// the window, and closes the same way in reverse.
 @MainActor
 final class ListWindowController {
-    static let spring = Animation.spring(response: 0.6, dampingFraction: 0.78)
-    private static let closeDelay: TimeInterval = 0.4
 
     private let window: NSPanel
     private let hosting: NSHostingView<ListDropletView>
@@ -113,7 +183,7 @@ final class ListWindowController {
             .store(in: &cancellables)
     }
 
-    var isShown: Bool { window.isVisible && state.open }
+    var isShown: Bool { window.isVisible && state.isOpen }
     var frame: NSRect { window.frame }
 
     func toggle(below parent: NSWindow) {
@@ -131,11 +201,10 @@ final class ListWindowController {
         }
         place()
         parent.addChildWindow(window, ordered: .above)
+        state.hide()
         window.orderFront(nil)
-        state.open = false
-        DispatchQueue.main.async {
-            withAnimation(Self.spring) { self.state.open = true }
-        }
+        // Let the empty window reach the screen first, so the drop's first frame is seen.
+        DispatchQueue.main.async { self.state.open() }
     }
 
     func close(animated: Bool) {
@@ -143,12 +212,9 @@ final class ListWindowController {
             finishClosing()
             return
         }
-        withAnimation(Self.spring) { state.open = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeDelay) { [weak self] in
-            guard let self, !self.state.open else { return }
-            self.finishClosing()
-        }
+        state.close { [weak self] in self?.finishClosing() }
     }
+
 
     /// Escape: closes the list if it is open, and says so (so the panel stays).
     func handleEscape() -> Bool {
@@ -158,13 +224,13 @@ final class ListWindowController {
     }
 
     private func finishClosing() {
-        state.open = false
+        state.hide()
         parent?.removeChildWindow(window)
         window.orderOut(nil)
     }
 
     private func contentChanged(_ content: ListContent) {
-        guard window.isVisible, state.open else { return }
+        guard window.isVisible, state.isOpen else { return }
         if case .nothing = content {
             close(animated: true)
             return
@@ -217,6 +283,9 @@ final class ListWindowController {
 // MARK: - The droplet
 
 struct ListDropletView: View {
+    /// The drop as it forms at the panel's edge, then stretched as it falls.
+    static let dropSize: CGFloat = 16
+
     @ObservedObject var state: DropletState
     @ObservedObject var model: ListModel
     let nowPlaying: NowPlaying
@@ -226,21 +295,25 @@ struct ListDropletView: View {
     var body: some View {
         GlassEffectContainer(spacing: 24) {
             ZStack(alignment: .top) {
-                if state.open {
+                if state.phase == .open {
                     ListBody(model: model, nowPlaying: nowPlaying)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
                         .glassEffectID("list", in: glass)
+                        .padding(.top, topInset)
                 } else {
-                    // The drop, about to fall from the panel's bottom edge.
+                    // The drop, inside the window's top gap, right under the panel's bottom edge.
+                    let falling = state.phase == .falling
                     Color.clear
-                        .frame(width: 34, height: 34)
-                        .glassEffect(.regular, in: Circle())
+                        .frame(width: Self.dropSize, height: falling ? Self.dropSize * 1.35 : Self.dropSize)
+                        .glassEffect(.regular, in: Capsule())
                         .glassEffectID("list", in: glass)
-                        .offset(y: -26)
+                        .scaleEffect(state.phase == .hidden ? 0.2 : 1, anchor: .top)
+                        .opacity(state.phase == .hidden ? 0 : 1)
+                        .offset(y: falling ? topInset + 8 : 0)
                 }
             }
-            .padding(.top, topInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 }
