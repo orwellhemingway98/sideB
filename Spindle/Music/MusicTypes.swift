@@ -71,7 +71,7 @@ protocol MusicSource: AnyObject {
 }
 
 extension MusicSource {
-    // Spotify's scripting can't list albums or playlists (that needs its Web API).
+    // Sources that can't list albums or playlists.
     func contextKey() throws -> String? { nil }
     func context() throws -> MusicContext? { nil }
     func play(trackID: String, in context: MusicContext) throws {}

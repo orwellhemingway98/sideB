@@ -12,6 +12,7 @@ enum ListContent {
 
     static let nothingToList = "Nothing to list for this song."
     static let couldNotRead = "Couldn't read the album from Music."
+    static let couldNotReadSpotify = "Couldn't read the album from Spotify."
     static let noDescription = "No description."
 
     /// What the list is about. The window closes when this changes to something else; loading doesn't count.
@@ -37,7 +38,8 @@ enum ListContent {
         switch mode {
         case .podcast: return "Episodes \u{2304}"
         case .music:
-            if source == .spotify { return "Spotify \u{2304}" }
+            // Signed out of Spotify, there is no list, only the song's details.
+            if source == .spotify, contextKind == nil { return "Spotify \u{2304}" }
             return contextKind == .playlist ? "Playlist \u{2304}" : "Album \u{2304}"
         }
     }
@@ -56,7 +58,7 @@ enum ListContent {
         switch mode {
         case .podcast: return "Show episodes"
         case .music:
-            if source == .spotify { return "Show song details" }
+            if source == .spotify, contextKind == nil { return "Show song details" }
             return contextKind == .playlist ? "Show playlist" : "Show album"
         }
     }

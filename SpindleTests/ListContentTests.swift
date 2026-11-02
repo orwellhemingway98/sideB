@@ -137,6 +137,54 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(track.title, "Blue Hour Drive")
     }
 
+    private func signedInSpotify() -> SpotifyAccount {
+        let store = MemoryTokenStore()
+        store.save(SpotifyTokens(accessToken: "A", refreshToken: "R", expiresAt: .distantFuture))
+        return SpotifyAccount(store: store, transport: FakeTransport(), defaults: UserDefaults(suiteName: "ListContentTests")!,
+                              authenticate: { _ in throw CancellationError() })
+    }
+
+    func testSignedInSpotifyListsItsAlbum() async {
+        spotify.contextResult = .success(album("S", ["spotify:track:s1", "spotify:track:s2"]))
+        spotify.contextKeyValue = "album:S|Northern Static"
+        spotify.play("Blue Hour Drive", id: "spotify:track:s2")
+        await remote.refresh()
+        let list = ListModel(nowPlaying: nowPlaying, library: library, spotify: signedInSpotify())
+        await list.reload()
+        guard case .music(let context, let current) = list.content else { return XCTFail("got \(list.content)") }
+        XCTAssertEqual(context.title, "S")
+        XCTAssertEqual(current, "spotify:track:s2")
+    }
+
+    func testSpotifyReadFailureNamesSpotify() async {
+        spotify.contextResult = .failure(.scriptFailed("offline"))
+        spotify.play("Song", id: "spotify:track:s1")
+        await remote.refresh()
+        let list = ListModel(nowPlaying: nowPlaying, library: library, spotify: signedInSpotify())
+        await list.reload()
+        guard case .musicMessage(_, let text) = list.content else { return XCTFail("got \(list.content)") }
+        XCTAssertEqual(text, "Couldn't read the album from Spotify.")
+    }
+
+    func testSigningOutGoesBackToDetails() async {
+        spotify.contextResult = .success(album("S", ["spotify:track:s1"]))
+        spotify.play("Song", id: "spotify:track:s1")
+        await remote.refresh()
+        let account = signedInSpotify()
+        let list = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
+        await list.reload()
+        account.signOut()
+        XCTAssertTrue(list.needsReload, "signing in or out changes what the list shows")
+        await list.reload()
+        guard case .spotify = list.content else { return XCTFail("got \(list.content)") }
+    }
+
+    func testSignedInSpotifyHints() {
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: .album), "Album \u{2304}")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: .playlist), "Playlist \u{2304}")
+        XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .spotify, contextKind: .album), "Show album")
+    }
+
     func testHints() {
         XCTAssertEqual(ListContent.hint(mode: .podcast, source: nil, contextKind: nil), "Episodes \u{2304}")
         XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: .playlist), "Playlist \u{2304}")
