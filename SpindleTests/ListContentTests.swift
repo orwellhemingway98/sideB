@@ -192,4 +192,14 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .appleMusic, contextKind: nil), "Show album")
         XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .spotify, contextKind: nil), "Show song details")
     }
+
+    func testEpisodeDatesDropThisYear() {
+        let gb = Locale(identifier: "en_GB")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        func date(_ y: Int, _ m: Int, _ d: Int) -> Date { calendar.date(from: DateComponents(year: y, month: m, day: d, hour: 12))! }
+        let now = date(2026, 11, 2)
+        XCTAssertEqual(ListContent.episodeDate(date(2026, 10, 31), now: now, locale: gb, calendar: calendar), "31 Oct")
+        XCTAssertEqual(ListContent.episodeDate(date(2025, 12, 30), now: now, locale: gb, calendar: calendar), "30 Dec 2025")
+    }
 }

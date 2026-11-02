@@ -66,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,
                                         onLibrary: { [weak self] in self?.showLibrary() },
                                         onPopOut: { [weak self] in self?.popOutDial() },
+                                        placement: placement,
                                         onCover: { [weak self] in self?.toggleList() },
                                         list: listModel)
         panel.escapeHandler = { [weak listWindow] in listWindow?.handleEscape() ?? false }
@@ -120,9 +121,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         listWindow.toggle(below: panel.window)
     }
 
+    /// The panel's pill: pops the dial out, or puts it back when it is already out.
     private func popOutDial() {
-        panel?.close()
-        floatingDial?.show()
+        guard let floatingDial else { return }
+        if floatingDial.isShown {
+            floatingDial.putBack()
+        } else {
+            panel?.close()
+            floatingDial.show()
+        }
     }
 
     /// Opens (creating once) the Library window and brings Spindle forward.

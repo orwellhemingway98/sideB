@@ -20,10 +20,14 @@ enum ListPlacement {
         return NSRect(x: panel.maxX + gap, y: panel.maxY - h, width: width, height: h)
     }
 
+    static let oneLineRow: CGFloat = 30
+    /// An episode: its title, with the date and length underneath.
+    static let twoLineRow: CGFloat = 44
+
     /// Rows plus the title bar, capped.
-    static func height(rows: Int) -> CGFloat {
+    static func height(rows: Int, rowHeight: CGFloat = oneLineRow) -> CGFloat {
         guard rows < 1_000 else { return maxHeight }
-        return min(maxHeight, 56 + CGFloat(max(rows, 1)) * 30 + 12)
+        return min(maxHeight, 56 + CGFloat(max(rows, 1)) * rowHeight + 12)
     }
 }
 
@@ -170,7 +174,9 @@ final class ListWindowController {
     private func place() {
         guard let parent else { return }
         let visible = parent.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
-        var frame = ListPlacement.frame(panel: parent.frame, height: ListPlacement.height(rows: rowCount), visible: visible)
+        let rowHeight = isEpisodeList ? ListPlacement.twoLineRow : ListPlacement.oneLineRow
+        var frame = ListPlacement.frame(panel: parent.frame, height: ListPlacement.height(rows: rowCount, rowHeight: rowHeight),
+                                        visible: visible)
         placedBelow = frame.maxY <= parent.frame.minY
         if placedBelow { frame.size.height += ListPlacement.gap }
         window.setFrame(frame, display: true)
@@ -178,10 +184,16 @@ final class ListWindowController {
             ListDropletView(state: state, model: model, nowPlaying: nowPlaying, topInset: placedBelow ? ListPlacement.gap : 0)
     }
 
+    private var isEpisodeList: Bool {
+        if case .podcast = model.content { return model.tab == .episodes }
+        return false
+    }
+
     private var rowCount: Int {
         switch model.content {
         case .podcast(let episodes, _, let chapters, _, _):
-            return model.tab == .episodes ? episodes.count : max(chapters.count, 4)
+            if model.tab == .episodes { return episodes.count }
+            return chapters.isEmpty ? .max : chapters.count   // no chapters: the description, given the full height
         case .music(let context, _): return context.tracks.count + (context.totalCount > context.tracks.count ? 1 : 0)
         case .spotify: return 5
         case .musicLoading: return .max     // size for the tallest list while it loads
@@ -237,31 +249,27 @@ private struct ListBody: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 if model.tab == .episodes {
-                    rows(episodes, isCurrent: { $0 === current }) { episode in
-                        row(title: episode.title, detail: Self.episodeDetail(episode)) { nowPlaying.play(episode) }
+                    rows(episodes, id: \.persistentModelID, currentID: current.persistentModelID) { episode in
+                        episodeRow(episode, current: episode === current) { nowPlaying.play(episode) }
                     }
                 } else if chapters.isEmpty {
                     ScrollView { Text(description).font(.system(size: 12)).frame(maxWidth: .infinity, alignment: .leading) }
+                        .scrollEdgeEffectStyle(.soft, for: .all)
                 } else {
-                    rows(chapters, id: \.start, isCurrent: { $0 == currentChapter }) { chapter in
-                        row(title: chapter.title, detail: TimeFormat.clock(chapter.start)) { nowPlaying.jump(to: chapter.start) }
+                    rows(chapters, id: \.start, currentID: currentChapter?.start) { chapter in
+                        row(title: chapter.title, detail: TimeFormat.clock(chapter.start),
+                            current: chapter == currentChapter) { nowPlaying.jump(to: chapter.start) }
                     }
                 }
             case .music(let context, let currentTrackID):
                 title("\(context.title) \u{00B7} \(context.totalCount) song\(context.totalCount == 1 ? "" : "s")")
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(context.tracks) { song in
-                            row(title: song.title, detail: TimeFormat.clock(song.duration),
-                                number: context.kind == .album ? song.number : nil,
-                                current: song.id == currentTrackID) {
-                                nowPlaying.music?.play(contextTrack: song, in: context)
-                            }
-                        }
-                        if context.totalCount > context.tracks.count {
-                            Text("and \(context.totalCount - context.tracks.count) more")
-                                .font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 6)
-                        }
+                rows(context.tracks, id: \.id, currentID: currentTrackID,
+                     footer: context.totalCount > context.tracks.count
+                        ? "and \(context.totalCount - context.tracks.count) more" : nil) { song in
+                    row(title: song.title, detail: TimeFormat.clock(song.duration),
+                        number: context.kind == .album ? song.number : nil,
+                        current: song.id == currentTrackID) {
+                        nowPlaying.music?.play(contextTrack: song, in: context)
                     }
                 }
             case .musicLoading:
@@ -297,21 +305,25 @@ private struct ListBody: View {
         Text(text).font(.system(size: 12)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func rows<Item, ID: Hashable, Row: View>(_ items: [Item], id: KeyPath<Item, ID>, isCurrent: @escaping (Item) -> Bool,
+    /// A scrolling list that opens on the current item and fades at its edges rather than cutting rows.
+    private func rows<Item, ID: Hashable, Row: View>(_ items: [Item], id: KeyPath<Item, ID>, currentID: ID?,
+                                                    footer: String? = nil,
                                                     @ViewBuilder row: @escaping (Item) -> Row) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(items, id: id) { item in
-                    row(item).background(isCurrent(item) ? Color.white.opacity(0.18) : .clear,
-                                         in: RoundedRectangle(cornerRadius: 8))
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(items, id: id) { item in row(item) }
+                    if let footer {
+                        Text(footer).font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 6)
+                    }
                 }
             }
+            .scrollEdgeEffectStyle(.soft, for: .all)
+            .onAppear { if let currentID { proxy.scrollTo(currentID, anchor: .center) } }
+            .onChange(of: currentID) { _, id in
+                if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+            }
         }
-    }
-
-    private func rows<Row: View>(_ episodes: [Episode], isCurrent: @escaping (Episode) -> Bool,
-                                 @ViewBuilder row: @escaping (Episode) -> Row) -> some View {
-        rows(episodes, id: \.persistentModelID, isCurrent: isCurrent, row: row)
     }
 
     private func row(title: String, detail: String, number: Int? = nil, current: Bool = false,
@@ -333,9 +345,24 @@ private struct ListBody: View {
         .buttonStyle(.plain)
     }
 
+    private func episodeRow(_ episode: Episode, current: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(episode.title).font(.system(size: 12)).fontWeight(current ? .semibold : .regular).lineLimit(1)
+                Text(Self.episodeDetail(episode)).font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 6)
+            .frame(maxWidth: .infinity, minHeight: ListPlacement.twoLineRow, alignment: .leading)
+            .background(current ? Color.white.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     private static func episodeDetail(_ episode: Episode) -> String {
         var parts: [String] = []
-        if let published = episode.published { parts.append(published.formatted(date: .abbreviated, time: .omitted)) }
+        if let published = episode.published { parts.append(ListContent.episodeDate(published)) }
         if let duration = episode.duration {
             parts.append(!episode.played && episode.position > 0
                          ? "\(TimeFormat.clock(max(0, duration - episode.position))) left" : TimeFormat.clock(duration))

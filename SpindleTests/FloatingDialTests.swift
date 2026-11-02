@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import Spindle
 
@@ -40,5 +41,16 @@ final class FloatingDialTests: XCTestCase {
         XCTAssertFalse(dial.isShown)
         XCTAssertFalse(placement.isPoppedOut)
         XCTAssertEqual(putBack, 1)
+    }
+
+    func testPoppingOutIsAnnounced() {
+        // The panel's Pop out / Put back pill follows it.
+        let placement = DialPlacement(defaults: defaults)
+        var seen: [Bool] = []
+        let watch = placement.$isPoppedOut.dropFirst().sink { seen.append($0) }
+        placement.isPoppedOut = true
+        placement.isPoppedOut = false
+        watch.cancel()
+        XCTAssertEqual(seen, [true, false])
     }
 }

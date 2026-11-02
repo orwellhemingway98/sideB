@@ -10,16 +10,20 @@ struct DialPanelView: View {
     @ObservedObject var library: LibraryStore
     @ObservedObject var artwork: ArtworkCache
     let onLibrary: () -> Void
-    /// Pops the disc out into the floating dial; nil hides the pill.
+    /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
     let onPopOut: (() -> Void)?
+    /// Whether the dial is out, so the pill reads Pop out or Put back.
+    let placement: DialPlacement?
     /// Clicking the cover opens or closes the list window.
     let onCover: (() -> Void)?
     /// Tells the cover's hint whether a Music song plays from an album or a playlist.
     let list: ListModel?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, onCover: (() -> Void)? = nil, list: ListModel? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil) {
         self.onPopOut = onPopOut
+        self.placement = placement
         self.onCover = onCover
         self.list = list
         self.nowPlaying = nowPlaying
@@ -258,8 +262,31 @@ struct DialPanelView: View {
         HStack {
             pill("Library", action: onLibrary)
             Spacer(minLength: 0)
-            if let onPopOut { pill("Pop out \u{2197}", action: onPopOut) }
+            if let onPopOut {
+                if let placement { PopOutPill(placement: placement, action: onPopOut) }
+                else { pill("Pop out \u{2197}", action: onPopOut) }
+            }
         }
+    }
+}
+
+/// Pop out while the dial lives in the panel, Put back while it floats.
+private struct PopOutPill: View {
+    @ObservedObject var placement: DialPlacement
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(placement.isPoppedOut ? "Put back \u{2199}" : "Pop out \u{2197}")
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .contentShape(Capsule())
+                .glassEffect(.regular.interactive(), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -296,7 +323,8 @@ final class DialPanelController {
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, onCover: (() -> Void)? = nil, list: ListModel? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil) {
         panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
@@ -309,7 +337,7 @@ final class DialPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
-                                 onPopOut: onPopOut, onCover: onCover, list: list)
+                                 onPopOut: onPopOut, placement: placement, onCover: onCover, list: list)
         let hosting = NSHostingView(rootView: root)
         panel.contentView = hosting
     }

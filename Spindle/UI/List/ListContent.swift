@@ -42,6 +42,15 @@ enum ListContent {
         }
     }
 
+    /// "31 Oct" this year, "30 Dec 2025" before it.
+    static func episodeDate(_ date: Date, now: Date = Date(), locale: Locale = .current,
+                            calendar: Calendar = .current) -> String {
+        var style = Date.FormatStyle(date: .omitted, time: .omitted, locale: locale, calendar: calendar,
+                                     timeZone: calendar.timeZone).day().month(.abbreviated)
+        if calendar.component(.year, from: date) != calendar.component(.year, from: now) { style = style.year() }
+        return date.formatted(style)
+    }
+
     /// What VoiceOver says for the cover: the hint without its arrow glyph, as an action.
     static func spokenHint(mode: PlaybackMode, source: MusicSourceID?, contextKind: MusicContext.Kind?) -> String {
         switch mode {
