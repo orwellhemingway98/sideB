@@ -121,7 +121,7 @@ final class StatusStripController: NSObject {
         guard let button = statusItem.button else { return }
         panel.close()
         let menu = StatusMenu.menu(floatingDial: floatingDial?.isShown, launchAtLogin: loginItem.isEnabled,
-                                   spotifySignedIn: spotify?.isSignedIn == true) { [weak self] in
+                                   spotifySignedIn: spotify?.isSignedIn) { [weak self] in
             self?.perform($0)
         }
         statusItem.menu = menu
@@ -142,6 +142,9 @@ final class StatusStripController: NSObject {
                 alert.runModal()
             }
         case .signOutOfSpotify: spotify?.signOut()
+        case .signInToSpotify:
+            guard let spotify, let id = spotify.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
+            Task { await spotify.signIn(clientID: id) }
         case .quit: NSApp.terminate(nil)
         }
     }
