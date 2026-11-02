@@ -34,13 +34,19 @@ struct DialPanelView: View {
         self.onLibrary = onLibrary
     }
 
+    /// Between the panel's rows, and the extra room round the disc so it doesn't crowd the text above and
+    /// the pills below (22 pt from the halo's edge in all).
+    static let rowSpacing: CGFloat = 14
+    static let discBreathing: CGFloat = 8
+
     var body: some View {
         // No GlassEffectContainer: it draws all its glass as one layer, which merged the disc's button into
         // the disc and drew the ring and the pill glyphs underneath.
-        VStack(spacing: 14) {
+        VStack(spacing: Self.rowSpacing) {
             if let display = nowPlaying.display {
                 header(display)
                 discRow(display)
+                    .padding(.vertical, Self.discBreathing)
                 if display.kind == .podcast, let failure = player.failure {
                     Text(failure).font(.system(size: 11, weight: .semibold)).frame(maxWidth: .infinity)
                 }
@@ -57,6 +63,7 @@ struct DialPanelView: View {
             }
         }
         .padding(16)
+        .padding(.bottom, 2)
         .onHover { hovering = $0 }
         .frame(width: Self.width)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
@@ -140,6 +147,8 @@ struct DialPanelView: View {
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
+        // The halo reaches past the disc; reserve it, so the gaps above and below are real.
+        .frame(height: DialGeometry.haloSide)
         .font(.system(size: 11).monospacedDigit())
         .foregroundStyle(.secondary)
     }

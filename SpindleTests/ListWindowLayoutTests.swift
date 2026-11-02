@@ -127,6 +127,16 @@ final class ListWindowLayoutTests: XCTestCase {
         // The times, skip buttons and footer live in the disc and the cover's corners, not rows of their own.
         let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
                                                          onLibrary: {}, onPopOut: {}, onCover: {}))
-        XCTAssertLessThanOrEqual(view.fittingSize.height, 500)
+        XCTAssertLessThanOrEqual(view.fittingSize.height, 530)
+    }
+
+    func testTheDiscHasRoomForItsHalo() {
+        // The halo reaches 5 pt past the disc on each side; the panel reserves it plus breathing room,
+        // so the artist line and the pills sit 22 pt from the halo's edge.
+        XCTAssertEqual(DialGeometry.haloSide, DialGeometry.discSize + 10)
+        XCTAssertEqual(DialPanelView.rowSpacing + DialPanelView.discBreathing, 22)
+        let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
+        XCTAssertGreaterThanOrEqual(view.fittingSize.height, 500, "roomier than the 479 pt it was")
     }
 }
