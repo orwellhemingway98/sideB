@@ -94,7 +94,8 @@ final class ListWindowController: NSObject, NSPopoverDelegate {
         // Show what's already known (the cached album, the episodes) at its size, then read the rest.
         model.showNow(force: true)
         popover.contentSize = size
-        popover.show(relativeTo: DialPanelView.coverRect(in: view.bounds, flipped: view.isFlipped), of: view,
+        popover.show(relativeTo: DialPanelView.coverRect(in: view.bounds, flipped: view.isFlipped,
+                                                        margin: DialPanelController.shadowMargin), of: view,
                      preferredEdge: .minX)
         Task { await model.reload(force: true) }
     }
