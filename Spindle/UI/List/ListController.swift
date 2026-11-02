@@ -153,6 +153,13 @@ struct ListBody: View {
                 note(nowPlaying.music?.source == .spotify ? "Reading Spotify\u{2026}" : "Reading Music\u{2026}")
             case .musicMessage(_, let text):
                 note(text)
+                if model.content.canTryAgain {
+                    Button { Task { await model.tryAgain() } } label: {
+                        Text("Try Again").font(.system(size: 12, weight: .medium))
+                            .padding(.horizontal, 14).padding(.vertical, 7)
+                    }
+                    .buttonStyle(.glass)
+                }
             case .spotify(let track):
                 title(track.title)
                 VStack(alignment: .leading, spacing: 4) {

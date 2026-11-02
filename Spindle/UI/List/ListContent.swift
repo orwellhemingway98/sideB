@@ -28,6 +28,12 @@ enum ListContent {
         }
     }
 
+    /// A read that failed, as opposed to an album with nothing in it: worth trying again.
+    var canTryAgain: Bool {
+        guard case .musicMessage(_, let text) = self else { return false }
+        return text == Self.couldNotRead || text == Self.couldNotReadSpotify
+    }
+
     var isLoading: Bool {
         if case .musicLoading = self { return true }
         return false

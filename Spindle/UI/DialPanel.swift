@@ -87,7 +87,15 @@ struct DialPanelView: View {
                     .padding(.vertical, Self.discBreathing)
                 if let lesson { LessonCaption(lesson: lesson, kind: display.kind) }
                 if display.kind == .podcast, let failure = player.failure {
-                    Text(failure).font(.system(size: 11, weight: .semibold)).frame(maxWidth: .infinity)
+                    VStack(spacing: 8) {
+                        Text(Self.failureMessage(failure))
+                            .font(.system(size: Self.subtitleSize))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        // Play reloads the episode after a failure.
+                        pill("Try Again") { player.play() }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 if display.kind == .podcast, !nowPlaying.chapters.isEmpty { chapterMenu }
                 if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumePill(paused) }
@@ -336,6 +344,15 @@ struct DialPanelView: View {
     }
 
     // MARK: Footer
+
+    /// What a podcast failure says under the disc; the Try Again under it plays, which reloads the episode.
+    static func failureMessage(_ failure: String) -> String {
+        switch failure {
+        case "Offline": return "You're offline. Spindle kept your place."
+        case "Unavailable": return "This episode couldn't be played."
+        default: return failure
+        }
+    }
 
     /// The empty panel: a first run, or nothing at all to play (after that, the last episode reopens paused).
     static let emptyTitle = "Nothing playing"

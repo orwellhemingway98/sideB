@@ -164,6 +164,26 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(text, "Couldn't read the album from Music.")
     }
 
+    func testAFailedReadOffersToTryAgainAndTryingAgainReadsIt() async {
+        music.contextResult = .failure(.scriptFailed("timeout"))
+        music.contextKeyValue = "album:A|Northern Static"
+        music.play("t1", id: "t1")
+        await remote.refresh()
+        let list = model()
+        await list.reload()
+        XCTAssertTrue(list.content.canTryAgain)
+        music.contextResult = .success(album("A", ["t1", "t2"]))
+        await list.tryAgain()
+        guard case .music(let context, _) = list.content else { return XCTFail("got \(list.content)") }
+        XCTAssertEqual(context.title, "A")
+        XCTAssertFalse(list.content.canTryAgain)
+    }
+
+    func testNothingToListIsNotSomethingToTryAgain() {
+        XCTAssertFalse(ListContent.musicMessage(trackID: "t", text: ListContent.nothingToList).canTryAgain)
+        XCTAssertTrue(ListContent.musicMessage(trackID: "t", text: ListContent.couldNotReadSpotify).canTryAgain)
+    }
+
     func testStaleContextIsDropped() async {
         music.play("t1", id: "t1")
         await remote.refresh()

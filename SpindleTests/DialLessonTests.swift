@@ -41,3 +41,11 @@ final class DialLessonTests: XCTestCase {
         XCTAssertEqual(DialPanelView.emptyLine, "Play something in Music or Spotify and it shows up here. Or follow a podcast.")
     }
 }
+
+final class PlaybackFailureCopyTests: XCTestCase {
+    func testAFailureSaysWhatHappenedAndThatPlayTriesAgain() {
+        XCTAssertEqual(DialPanelView.failureMessage("Offline"), "You're offline. Spindle kept your place.")
+        XCTAssertEqual(DialPanelView.failureMessage("Unavailable"), "This episode couldn't be played.")
+        XCTAssertEqual(DialPanelView.failureMessage("Something else"), "Something else")
+    }
+}

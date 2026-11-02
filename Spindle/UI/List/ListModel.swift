@@ -117,6 +117,11 @@ final class ListModel: ObservableObject {
         }
     }
 
+    /// Reads the album or playlist again after a failed read.
+    func tryAgain() async {
+        await reload(force: true)
+    }
+
     /// Shows what needs no reading: a podcast's episodes, Spotify's details while signed out, or the album or
     /// playlist already read for this song. Returns the song whose list still has to be read from the app.
     @discardableResult

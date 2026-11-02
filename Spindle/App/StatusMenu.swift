@@ -4,7 +4,7 @@ import ServiceManagement
 /// The menu bar icon's right-click menu: Library, the floating dial, Launch at Login, signing out of Spotify
 /// and Quit.
 enum StatusMenu {
-    enum Command: Equatable { case library, floatingDial, launchAtLogin, signOutOfSpotify, quit }
+    enum Command: Equatable { case library, floatingDial, launchAtLogin, signInToSpotify, signOutOfSpotify, quit }
 
     struct Row: Equatable {
         let title: String
@@ -13,14 +13,18 @@ enum StatusMenu {
     }
 
     /// The rows top to bottom; nil is a separator. `floatingDial` is whether it is out (nil: no floating dial).
-    /// Signed in to Spotify, the menu offers to sign out (the list on the back of the cover has no account controls).
-    static func rows(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool = false) -> [Row?] {
+    /// The menu offers to sign in to Spotify or out of it (nil: no Spotify account to offer).
+    static func rows(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil) -> [Row?] {
         var rows: [Row?] = [Row(title: "Open Library\u{2026}", command: .library, isOn: false)]
         if let out = floatingDial {
             rows.append(Row(title: out ? "Put Dial Back" : "Show Floating Dial", command: .floatingDial, isOn: false))
         }
         rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil]
-        if spotifySignedIn { rows += [Row(title: "Sign Out of Spotify", command: .signOutOfSpotify, isOn: false), nil] }
+        switch spotifySignedIn {
+        case true?: rows += [Row(title: "Sign Out of Spotify", command: .signOutOfSpotify, isOn: false), nil]
+        case false?: rows += [Row(title: "Sign In to Spotify\u{2026}", command: .signInToSpotify, isOn: false), nil]
+        case nil: break
+        }
         rows.append(Row(title: "Quit Spindle", command: .quit, isOn: false))
         return rows
     }
@@ -31,7 +35,7 @@ enum StatusMenu {
     }
 
     @MainActor
-    static func menu(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool = false,
+    static func menu(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil,
                      perform: @escaping (Command) -> Void) -> NSMenu {
         let menu = NSMenu()
         for row in rows(floatingDial: floatingDial, launchAtLogin: launchAtLogin, spotifySignedIn: spotifySignedIn) {
