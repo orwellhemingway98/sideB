@@ -185,4 +185,11 @@ final class ListContentTests: XCTestCase {
         guard case .music(_, let current) = list.content else { return XCTFail("got \(list.content)") }
         XCTAssertEqual(current, "lib2")
     }
+
+    func testSpokenHintsHaveNoArrow() {
+        XCTAssertEqual(ListContent.spokenHint(mode: .podcast, source: nil, contextKind: nil), "Show episodes")
+        XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .appleMusic, contextKind: .playlist), "Show playlist")
+        XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .appleMusic, contextKind: nil), "Show album")
+        XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .spotify, contextKind: nil), "Show song details")
+    }
 }

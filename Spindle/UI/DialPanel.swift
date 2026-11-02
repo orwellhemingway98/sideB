@@ -63,7 +63,7 @@ struct DialPanelView: View {
     private func header(_ display: NowPlayingDisplay) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             CoverButton(artwork: artwork, display: display, image: nowPlaying.musicArtwork,
-                        hint: coverHint, action: onCover)
+                        hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
             VStack(alignment: .leading, spacing: 2) {
                 Text(display.title)
                     .font(.system(size: 14, weight: .semibold))
@@ -85,6 +85,11 @@ struct DialPanelView: View {
     private var coverHint: String {
         ListContent.hint(mode: nowPlaying.mode, source: nowPlaying.music?.source,
                          contextKind: nowPlaying.music?.contextKind)
+    }
+
+    private var spokenCoverHint: String {
+        ListContent.spokenHint(mode: nowPlaying.mode, source: nowPlaying.music?.source,
+                               contextKind: nowPlaying.music?.contextKind)
     }
 
     // MARK: Times
@@ -400,6 +405,7 @@ private struct CoverButton: View {
     let display: NowPlayingDisplay
     let image: NSImage?
     let hint: String
+    let spokenHint: String
     let action: (() -> Void)?
     @State private var hovering = false
     /// Resets itself if the press is interrupted (the panel closes mid-press).
@@ -431,7 +437,8 @@ private struct CoverButton: View {
                 })
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Cover. \(hint)")
+            .accessibilityLabel("Cover")
+            .accessibilityHint(spokenHint)
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { action?() }
     }
