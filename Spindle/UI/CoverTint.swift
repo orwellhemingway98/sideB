@@ -55,4 +55,13 @@ enum CoverTint {
         cache.setObject(colour, forKey: image)
         return colour
     }
+
+    /// How strongly the window glass takes the cover's colour: a tint, not paint, so the desktop still shows.
+    static let glassStrength: CGFloat = 0.35
+
+    /// The panel's and floating dial's glass for this cover: the back's colour, lightly. Nil keeps plain glass.
+    static func glassTint(for image: NSImage?) -> NSColor? {
+        guard let image, let colour = backColour(for: image) else { return nil }
+        return colour.withAlphaComponent(glassStrength)
+    }
 }

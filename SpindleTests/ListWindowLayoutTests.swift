@@ -178,6 +178,18 @@ final class WindowGlassTests: XCTestCase {
         ((view as? NSGlassEffectView).map { [$0] } ?? []) + view.subviews.flatMap { glassViews(in: $0) }
     }
 
+    func testWindowGlassCarriesItsTint() throws {
+        let view = NSHostingView(rootView: WindowGlass(cornerRadius: 30, tint: .systemPink).frame(width: 100, height: 100))
+        view.frame = NSRect(x: 0, y: 0, width: 100, height: 100)
+        view.layoutSubtreeIfNeeded()
+        let glass = try XCTUnwrap(glassViews(in: view).first)
+        XCTAssertEqual(glass.tintColor, .systemPink)
+        let plain = NSHostingView(rootView: WindowGlass(cornerRadius: 30).frame(width: 100, height: 100))
+        plain.frame = NSRect(x: 0, y: 0, width: 100, height: 100)
+        plain.layoutSubtreeIfNeeded()
+        XCTAssertNil(try XCTUnwrap(glassViews(in: plain).first).tintColor)
+    }
+
     func testThePanelIsWindowGlassThatSeesTheDesktop() async throws {
         // SwiftUI's glass only sees inside its own window, which is clear, so it rendered flat grey.
         let feed = URL(string: "https://example.com/feed")!

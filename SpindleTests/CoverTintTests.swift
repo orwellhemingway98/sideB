@@ -39,4 +39,19 @@ final class CoverTintTests: XCTestCase {
         XCTAssertEqual(average.g, 0.4, accuracy: 0.02)
         XCTAssertEqual(average.b, 0.8, accuracy: 0.02)
     }
+
+    func testTheWindowGlassTakesTheCoversColourLightly() throws {
+        let image = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in
+            NSColor(srgbRed: 0.8, green: 0.2, blue: 0.6, alpha: 1).setFill()
+            rect.fill()
+            return true
+        }
+        let glass = try XCTUnwrap(CoverTint.glassTint(for: image))
+        let back = try XCTUnwrap(CoverTint.backColour(for: image))
+        XCTAssertEqual(glass.alphaComponent, CoverTint.glassStrength, accuracy: 0.001)
+        XCTAssertGreaterThan(CoverTint.glassStrength, 0.2)
+        XCTAssertLessThanOrEqual(CoverTint.glassStrength, 0.5, "a tint, not paint: the desktop still shows through")
+        XCTAssertEqual(glass.withAlphaComponent(1), back, "the same colour as the back of the cover")
+        XCTAssertNil(CoverTint.glassTint(for: nil), "no artwork, plain glass")
+    }
 }

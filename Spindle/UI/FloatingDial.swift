@@ -29,7 +29,7 @@ final class FloatingDialController {
     private let onPutBack: () -> Void
 
     init(nowPlaying: NowPlaying, placement: DialPlacement, onPutBack: @escaping () -> Void,
-         onLibrary: @escaping () -> Void) {
+         onLibrary: @escaping () -> Void, artwork: ArtworkCache? = nil) {
         self.placement = placement
         self.onPutBack = onPutBack
         panel = NSPanel(contentRect: NSRect(origin: .zero, size: Self.size),
@@ -43,7 +43,7 @@ final class FloatingDialController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
-        let root = FloatingDialView(nowPlaying: nowPlaying,
+        let root = FloatingDialView(nowPlaying: nowPlaying, artwork: artwork ?? ArtworkCache(),
                                     onPutBack: { [weak self] in self?.putBack() },
                                     onLibrary: onLibrary)
         let hosting = NSHostingView(rootView: root)
@@ -74,15 +74,23 @@ final class FloatingDialController {
 }
 
 private struct FloatingDialView: View {
-    let nowPlaying: NowPlaying
+    @ObservedObject var nowPlaying: NowPlaying
+    @ObservedObject var artwork: ArtworkCache
     let onPutBack: () -> Void
     let onLibrary: () -> Void
+
+    /// The cover's picture: the dial's glass takes its colour, as the panel's does.
+    private var coverImage: NSImage? {
+        guard let display = nowPlaying.display else { return nil }
+        return (display.kind == .music ? nowPlaying.musicArtwork : nil) ?? artwork.image(for: display.artworkURL)
+    }
 
     var body: some View {
         VStack(spacing: 4) {
             DiscView(nowPlaying: nowPlaying, host: .floating)
                 .padding(DialGeometry.floatingPadding)
-                .background(WindowGlass(cornerRadius: DialGeometry.discSize / 2 + DialGeometry.floatingPadding))
+                .background(WindowGlass(cornerRadius: DialGeometry.discSize / 2 + DialGeometry.floatingPadding,
+                                        tint: CoverTint.glassTint(for: coverImage)))
             // A slim bar to look at, with a taller area to grab.
             Capsule()
                 .fill(.clear)
