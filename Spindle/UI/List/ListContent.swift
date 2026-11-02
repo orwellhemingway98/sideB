@@ -44,14 +44,14 @@ enum ListContent {
         hasChapters ? "Chapters" : "Notes"
     }
 
-    /// The glass hint on the cover.
+    /// The glass hint's word on the cover; the turn mark is drawn after it.
     static func hint(mode: PlaybackMode, source: MusicSourceID?, contextKind: MusicContext.Kind?) -> String {
         switch mode {
-        case .podcast: return "Episodes \u{2304}"
+        case .podcast: return "Episodes"
         case .music:
             // Signed out of Spotify, there is no list, only the song's details.
-            if source == .spotify, contextKind == nil { return "Spotify \u{2304}" }
-            return contextKind == .playlist ? "Playlist \u{2304}" : "Album \u{2304}"
+            if source == .spotify, contextKind == nil { return "Spotify" }
+            return contextKind == .playlist ? "Playlist" : "Album"
         }
     }
 

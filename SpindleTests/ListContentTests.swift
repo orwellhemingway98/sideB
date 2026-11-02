@@ -237,8 +237,8 @@ final class ListContentTests: XCTestCase {
     }
 
     func testSignedInSpotifyHints() {
-        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: .album), "Album \u{2304}")
-        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: .playlist), "Playlist \u{2304}")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: .album), "Album")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: .playlist), "Playlist")
         XCTAssertEqual(ListContent.spokenHint(mode: .music, source: .spotify, contextKind: .album), "Show album")
     }
 
@@ -291,10 +291,10 @@ final class ListContentTests: XCTestCase {
     }
 
     func testHints() {
-        XCTAssertEqual(ListContent.hint(mode: .podcast, source: nil, contextKind: nil), "Episodes \u{2304}")
-        XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: .playlist), "Playlist \u{2304}")
-        XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: nil), "Album \u{2304}")
-        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: nil), "Spotify \u{2304}")
+        XCTAssertEqual(ListContent.hint(mode: .podcast, source: nil, contextKind: nil), "Episodes")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: .playlist), "Playlist")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: nil), "Album")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: nil), "Spotify")
     }
 
     func testPlainTextFromHTML() {
@@ -354,5 +354,24 @@ final class ListContentTests: XCTestCase {
         let now = date(2026, 11, 2)
         XCTAssertEqual(ListContent.episodeDate(date(2026, 10, 31), now: now, locale: gb, calendar: calendar), "31 Oct")
         XCTAssertEqual(ListContent.episodeDate(date(2025, 12, 30), now: now, locale: gb, calendar: calendar), "30 Dec 2025")
+    }
+}
+
+/// The mark after the hint's word: an arc going round, drawn in code, not a drop-down arrow.
+final class TurnMarkTests: XCTestCase {
+    func testTheMarkStaysInsideItsBox() {
+        let box = CGRect(x: 0, y: 0, width: 11, height: 9)
+        for mirrored in [false, true] {
+            let bounds = TurnMark(mirrored: mirrored).path(in: box).boundingRect
+            XCTAssertFalse(bounds.isEmpty)
+            XCTAssertTrue(box.insetBy(dx: -0.01, dy: -0.01).contains(bounds), "\(bounds)")
+        }
+    }
+
+    func testTheBacksMarkTurnsTheOtherWay() {
+        let box = CGRect(x: 0, y: 0, width: 11, height: 9)
+        let front = TurnMark(mirrored: false).path(in: box).boundingRect
+        let back = TurnMark(mirrored: true).path(in: box).boundingRect
+        XCTAssertEqual(front.minX, box.width - back.maxX, accuracy: 0.01, "a mirror image")
     }
 }

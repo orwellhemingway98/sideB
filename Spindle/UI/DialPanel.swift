@@ -629,8 +629,7 @@ private struct CoverButton: View {
             .shadow(color: .black.opacity(0.35), radius: 15, y: 10)
             .overlay(alignment: .bottomTrailing) {
                 if action != nil {
-                    Text(hint)
-                        .font(.system(size: 10, weight: .semibold))
+                    TurnHint(word: hint)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .glassEffect(.regular, in: Capsule())
@@ -772,9 +771,7 @@ private struct CoverBack: View {
             ListBody(model: list, nowPlaying: nowPlaying)
                 .frame(width: 240, height: 240, alignment: .top)
             Button { turnBack?() } label: {
-                Text("Cover \u{2303}")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color(nsColor: .labelColor))
+                TurnHint(word: "Cover", mirrored: true)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .glassEffect(.regular.interactive(), in: Capsule())
