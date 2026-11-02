@@ -51,6 +51,7 @@ final class ListWindowController {
     private static let closeDelay: TimeInterval = 0.4
 
     private let window: NSPanel
+    private let hosting: NSHostingView<ListDropletView>
     private let model: ListModel
     private let nowPlaying: NowPlaying
     private let state = DropletState()
@@ -69,9 +70,15 @@ final class ListWindowController {
         window.hasShadow = false
         window.hidesOnDeactivate = false
         window.isReleasedWhenClosed = false
-        let hosting = NSHostingView(rootView: ListDropletView(state: state, model: model, nowPlaying: nowPlaying))
+        hosting = NSHostingView(rootView: ListDropletView(state: state, model: model, nowPlaying: nowPlaying))
         hosting.sizingOptions = []
-        window.contentView = hosting
+        // A hosting view that is the window's content view resizes the window to follow animated content,
+        // which the droplet's spring turned into a layout loop that crashed. Inside a plain view it can't.
+        let container = NSView(frame: window.contentLayoutRect)
+        hosting.frame = container.bounds
+        hosting.autoresizingMask = [.width, .height]
+        container.addSubview(hosting)
+        window.contentView = container
 
         // Close when what the list is about changes (a new show, album or playlist); follow songs within it.
         model.$content.sink { [weak self] content in
@@ -94,6 +101,7 @@ final class ListWindowController {
     }
 
     var isShown: Bool { window.isVisible && state.open }
+    var frame: NSRect { window.frame }
 
     func toggle(below parent: NSWindow) {
         if isShown { close(animated: true) } else { show(below: parent) }
@@ -166,7 +174,7 @@ final class ListWindowController {
         placedBelow = frame.maxY <= parent.frame.minY
         if placedBelow { frame.size.height += ListPlacement.gap }
         window.setFrame(frame, display: true)
-        (window.contentView as? NSHostingView<ListDropletView>)?.rootView =
+        hosting.rootView =
             ListDropletView(state: state, model: model, nowPlaying: nowPlaying, topInset: placedBelow ? ListPlacement.gap : 0)
     }
 
