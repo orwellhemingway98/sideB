@@ -172,3 +172,26 @@ final class PanelProportionsTests: XCTestCase {
         XCTAssertEqual(DialPanelView.subtitleSize, 12)
     }
 }
+
+@MainActor
+final class WindowGlassTests: XCTestCase {
+    private func glassViews(in view: NSView) -> [NSGlassEffectView] {
+        ((view as? NSGlassEffectView).map { [$0] } ?? []) + view.subviews.flatMap { glassViews(in: $0) }
+    }
+
+    func testThePanelIsWindowGlassThatSeesTheDesktop() async throws {
+        // SwiftUI's glass only sees inside its own window, which is clear, so it rendered flat grey.
+        let feed = URL(string: "https://example.com/feed")!
+        let library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
+        let player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
+        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        let content = try XCTUnwrap(panel.window.contentView)
+        content.frame = NSRect(x: 0, y: 0, width: 320, height: 600)
+        content.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let glass = try XCTUnwrap(glassViews(in: content).first, "an NSGlassEffectView behind the panel")
+        XCTAssertEqual(glass.cornerRadius, DialPanelView.panelCornerRadius)
+    }
+}

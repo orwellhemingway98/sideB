@@ -95,7 +95,7 @@ struct DialPanelView: View {
         .padding(.bottom, 2)
         .onHover { hovering = $0 }
         .frame(width: Self.width)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Self.panelCornerRadius, style: .continuous))
+        .background(WindowGlass(cornerRadius: Self.panelCornerRadius))
     }
 
     // MARK: Header
