@@ -8,6 +8,7 @@ colors:
   halo-track: "rgba(255, 255, 255, 0.14)"
   hairline: "rgba(255, 255, 255, 0.18)"
   card-back: "rgba(0, 0, 0, 0.22)"
+  key-outline: "rgba(255, 255, 255, 0.55)"
   segment-track: "rgba(255, 255, 255, 0.10)"
   segment-selected: "rgba(255, 255, 255, 0.22)"
   source-spotify: "#1ED760"
@@ -132,7 +133,12 @@ artwork and two tiny source dots.
 - **Row Light** (`row-highlight`): the current song, episode or chapter in a list.
 - **Halo Track** (`halo-track`): the unlit part of the halo round the disc.
 - **Glass Hairline** (`hairline`): the 0.5 pt edge on the cover and its back.
-- **Smoked Glass** (`card-back`): the back of the cover, so its list reads over any artwork-tinted glass.
+- **Cover Tint**: the back of the cover takes the cover's own colour: the artwork's average, kept to its hue but
+  held to HSB brightness 0.14–0.32 and saturation ≤ 0.65, drawn at 85%. Even a white cover gives a back that white
+  text reads on at 7:1, so it is the other side of the same object, not a new surface.
+- **Smoked Glass** (`card-back`): the back of the cover when there is no artwork to take a tint from.
+- **Key Outline** (`key-outline`): the 1.5 pt outline on the row the arrow keys have reached. An outline, never a
+  fill, so it can't be mistaken for Row Light on what's playing.
 - **Segment Track / Segment Light** (`segment-track`, `segment-selected`): the Episodes | Notes switch.
 
 ### Tertiary
@@ -204,8 +210,10 @@ hairlines, never solid borders.
 ## Components
 
 ### Hint Pill
-Small glass capsule on the cover's bottom-right corner: "Episodes ⌄", "Album ⌄", "Playlist ⌄", "Spotify ⌄" on the
-front; "Cover ⌃" on the back. Label type, 4 × 8 pt padding.
+Small glass capsule on the cover's bottom-right corner: "Episodes", "Album", "Playlist" or "Spotify" on the front,
+"Cover" on the back, each followed by the **turn mark**: an arc round a flat ellipse with an arrowhead (a coin seen
+edge-on, turning), 11 × 9 pt, stroked 1.3 pt in Glass Ink, mirrored on the back. Drawn in code; VoiceOver skips it
+and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding.
 
 ### Resume Pill
 Soft glass capsule under the disc while music interrupts a podcast: a 22 pt show artwork (6 pt corners), "Resume" in
@@ -213,6 +221,9 @@ Quiet Ink, then the episode title in regular weight. Interactive glass that give
 
 ### List Rows
 Plain rows, 30 pt (songs, chapters) or 44 pt (episodes), 8 pt corners; the current one gets Row Light and semibold.
+The row the arrow keys have reached gets the Key Outline. The heading is the album or playlist name alone (label
+type); the count sits at the foot of the list in caption type: "11 songs", or "500 of 812 songs" when only part
+could be read. No account controls on the back: Sign Out of Spotify lives in the menu bar menu.
 Number (albums only) in Quiet Ink, title, duration right-aligned in caption digits. Lists open centred on the
 current item and fade softly at their scroll edges.
 
@@ -232,7 +243,13 @@ centre shows the number for a second.
 pressed (0.97). New artwork **develops in**: from blurred, 96% and transparent to sharp, full and solid on a soft
 spring (response 0.45, damping 0.9); the title rises 6 pt and fades in with it, and the old cover stays until the new
 one is ready. Clicking it **turns it over** (a 3D flip about the vertical axis, spring response 0.5, damping 0.86)
-to the list on Smoked Glass; each face shows only while it faces you.
+to the list on the Cover Tint; each face shows only while it faces you, and VoiceOver reads only that face and
+moves to it after the turn. Library and Pop out sit in its top corners at 35% at rest and full under the pointer.
+
+### Keys
+While the panel is open: Space plays or pauses, ← and → go back and forward (a song, or 15 and 30 seconds), Return
+turns the cover, ⌘L opens the Library, Escape turns the cover back and then closes the panel. On the back, ↑ and ↓
+move the Key Outline and Return plays that row. Keys held with ⌘, ⌥ or ⌃ (other than ⌘L) are left to macOS.
 
 ### Source Dot
 A 6 pt circle after the artist name in Spotify Green or Music Red; hover shows the source's name, VoiceOver reads it.
@@ -254,5 +271,8 @@ A 6 pt circle after the artist name in Spotify Green or Music Red; hover shows t
 - **Don't** use Apple logos, product artwork or SF Symbols in Spindle's own controls.
 - **Don't** shrink one of a pair of values (elapsed and remaining time) to make it fit.
 - **Don't** add a window shadow to the panel; the glass carries its own.
+- **Don't** use up and down arrows (⌄ ⌃) on the cover's hint: the cover turns sideways, it doesn't drop down.
+- **Don't** put account controls on the back of the cover.
+- **Don't** hide controls entirely until hover; show them faintly at rest.
 - **Don't** open a second window for something the panel can show in place (the list lives on the back of the cover).
 - **Don't** paint surfaces with Spindle's own colour.
