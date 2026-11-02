@@ -74,6 +74,8 @@ struct DiscView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Dial")
+        .accessibilityValue(Self.spokenValue(isPlaying: nowPlaying.display?.isPlaying,
+                                             position: nowPlaying.displayPosition, duration: duration))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { nowPlaying.toggle() }
         .accessibilityActions {
@@ -90,6 +92,14 @@ struct DiscView: View {
             @unknown default: break
             }
         }
+    }
+
+    /// What VoiceOver says the dial is at: "Playing, 12:04 of 48:10".
+    static func spokenValue(isPlaying: Bool?, position: TimeInterval, duration: TimeInterval?) -> String {
+        guard let isPlaying else { return "Nothing playing" }
+        let state = isPlaying ? "Playing" : "Paused"
+        guard let duration, duration > 0 else { return state }
+        return "\(state), \(TimeFormat.clock(position)) of \(TimeFormat.clock(duration))"
     }
 
     private func installScroll() {
