@@ -9,6 +9,8 @@ final class PodcastPlayer: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var position: TimeInterval = 0
     @Published private(set) var rate: Float = 1
+    /// Spindle's own volume for podcasts, 0...100 (the Mac's volume stays on the keyboard).
+    @Published private(set) var volume = 100
     /// "Offline" or "Unavailable".
     @Published private(set) var failure: String?
     /// The engine's duration once the stream reports it (nil until then, and after each load), so the
@@ -131,6 +133,11 @@ final class PodcastPlayer: ObservableObject {
     func enqueue(_ episode: Episode) {
         guard episode !== self.episode else { return }
         library.enqueue(episode)
+    }
+
+    func setVolume(_ percent: Int) {
+        volume = min(100, max(0, percent))
+        engine.volume = Float(volume) / 100
     }
 
     func cycleRate() {

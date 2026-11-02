@@ -69,6 +69,8 @@ protocol MusicSource: AnyObject {
     func next() throws
     func previous() throws
     func setPosition(_ seconds: Double) throws
+    /// The app's own volume, 0...100.
+    func setVolume(_ percent: Int) throws
     /// Which album or playlist the current song plays from ("playlist:<id>" / "album:<album>|<artist>"),
     /// cheaply, without reading its songs; nil when the app can't say.
     func contextKey() throws -> String?

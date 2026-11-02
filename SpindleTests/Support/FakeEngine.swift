@@ -9,6 +9,7 @@ final class FakeEngine: AudioEngine {
     private(set) var seeks: [TimeInterval] = []
 
     var rate: Float = 1
+    var volume: Float = 1
     var currentTime: TimeInterval = 0
     var duration: TimeInterval?
 

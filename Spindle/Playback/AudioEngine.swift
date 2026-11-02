@@ -7,6 +7,8 @@ protocol AudioEngine: AnyObject {
     func pause()
     func seek(to time: TimeInterval)
     var rate: Float { get set }
+    /// 0...1.
+    var volume: Float { get set }
     var currentTime: TimeInterval { get }
     var duration: TimeInterval? { get }
     /// About every 0.5 s while playing.

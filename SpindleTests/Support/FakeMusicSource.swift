@@ -4,7 +4,7 @@ import Foundation
 /// A music app the test drives: whether it runs, what it reports, and which commands it got.
 /// MusicRemote calls it off the main actor, so its state is locked.
 final class FakeMusicSource: MusicSource, @unchecked Sendable {
-    enum Command: Equatable { case playPause, pause, next, previous, setPosition(Double) }
+    enum Command: Equatable { case playPause, pause, next, previous, setPosition(Double), setVolume(Int) }
 
     let id: MusicSourceID
     var displayName: String { id.displayName }
@@ -21,6 +21,7 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     private var _contextKey: String?
     private var _contextKeyCalls = 0
     private var _playedInContext: [(trackID: String, contextID: String)] = []
+    private var _ignoresVolume = false
 
     init(_ id: MusicSourceID) { self.id = id }
 
@@ -39,6 +40,8 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     var contextKeyValue: String? { get { lock.withLock { _contextKey } } set { lock.withLock { _contextKey = newValue } } }
     var contextKeyCalls: Int { lock.withLock { _contextKeyCalls } }
     var playedInContext: [(trackID: String, contextID: String)] { lock.withLock { _playedInContext } }
+    /// Like an app slow to report a new volume: keeps reporting the old one.
+    var ignoresVolume: Bool { get { lock.withLock { _ignoresVolume } } set { lock.withLock { _ignoresVolume = newValue } } }
 
     /// Reports a track in the given state.
     func play(_ title: String, id trackID: String = "t1", state: MusicPlayerState = .playing,
@@ -87,4 +90,8 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     func next() throws { record(.next) }
     func previous() throws { record(.previous) }
     func setPosition(_ seconds: Double) throws { record(.setPosition(seconds)) }
+    func setVolume(_ percent: Int) throws {
+        record(.setVolume(percent))
+        lock.withLock { if !_ignoresVolume { _snapshot.volume = percent } }
+    }
 }

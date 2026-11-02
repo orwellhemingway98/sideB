@@ -24,6 +24,11 @@ final class AVPlayerEngine: AudioEngine {
         }
     }
 
+    var volume: Float {
+        get { player.volume }
+        set { player.volume = newValue }
+    }
+
     init() {
         player.automaticallyWaitsToMinimizeStalling = true
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),

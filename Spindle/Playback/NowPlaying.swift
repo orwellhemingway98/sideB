@@ -1,5 +1,5 @@
 import Combine
-import Foundation
+import AppKit
 
 /// Who the dial is steering: the podcast, or whatever Apple Music or Spotify is playing.
 enum PlaybackMode: Equatable {
@@ -11,6 +11,10 @@ enum PlaybackMode: Equatable {
 @MainActor
 final class NowPlaying: ObservableObject {
     static let commitDelay: TimeInterval = 0.15
+    /// Turning with Option held: one full turn goes from silent to full.
+    static let degreesPerPercent = 3.6
+    /// How long the volume stays on the disc after the last turn.
+    static let volumeShownFor: TimeInterval = 1
 
     let player: PodcastPlayer
     let music: MusicRemote?
@@ -23,17 +27,24 @@ final class NowPlaying: ObservableObject {
     private var dial = DialEngine()
     private var limiter = HapticLimiter()
     private var generation = 0
+    private let optionHeld: () -> Bool
+    private var volumeGeneration = 0
+    /// Part of a percent turned but not yet applied.
+    private var volumeRemainder = 0.0
     private var chapterTask: Task<Void, Never>?
     private var cancellables: Set<AnyCancellable> = []
 
     @Published private(set) var chapters: [Chapter] = []
     @Published private(set) var scrubPosition: TimeInterval?
     @Published private(set) var mode: PlaybackMode = .podcast
+    /// The volume being set with Option + turn, shown on the disc for a moment; nil otherwise.
+    @Published private(set) var volumeShown: Int?
 
     init(player: PodcastPlayer, media: MediaCenterPublishing, haptics: HapticPerforming,
          schedule: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> Void,
          now: @escaping () -> TimeInterval, loadChapters: @escaping (Episode) async -> [Chapter],
-         music: MusicRemote? = nil) {
+         music: MusicRemote? = nil, optionHeld: @escaping () -> Bool = { NSEvent.modifierFlags.contains(.option) }) {
+        self.optionHeld = optionHeld
         self.player = player
         self.music = music
         self.media = media
@@ -144,6 +155,7 @@ final class NowPlaying: ObservableObject {
 
     func turn(degrees: Double) {
         guard hasSomethingToSteer else { return }
+        if optionHeld() { return turnVolume(degrees: degrees) }
         let time = now()
         let position = displayPosition
         let step = dial.turn(degrees: degrees, at: time, position: position, duration: displayDuration,
@@ -155,6 +167,47 @@ final class NowPlaying: ObservableObject {
         schedule(Self.commitDelay) { [weak self] in
             guard let self, self.generation == mine else { return }
             self.commit()
+        }
+    }
+
+    /// The volume of whatever the dial steers: Spindle's own for a podcast, the app's for music.
+    private var currentVolume: Int? {
+        mode == .music ? music?.volume : player.volume
+    }
+
+    /// Option + turn: a tick every 10%, a firmer stop at 0 and 100. A podcast's volume follows at once;
+    /// a music app's is set once the turning pauses, so a fast turn isn't one script per percent.
+    private func turnVolume(degrees: Double) {
+        guard let base = volumeShown ?? currentVolume else { return }
+        volumeRemainder += degrees / Self.degreesPerPercent
+        let steps = Int(volumeRemainder.rounded(.towardZero))
+        volumeRemainder -= Double(steps)
+        let target = min(100, max(0, base + steps))
+        if target != base {
+            if target == 0 || target == 100 {
+                haptics.perform(.chapter)
+            } else {
+                let passed = target > base ? Array(base + 1...target) : Array(target...base - 1)
+                if passed.contains(where: { $0 % 10 == 0 }) { haptics.perform(.tick) }
+            }
+        }
+        // Turning further past an end is dropped, so turning back responds at once.
+        if (target == 100 && volumeRemainder > 0) || (target == 0 && volumeRemainder < 0) { volumeRemainder = 0 }
+        volumeShown = target
+        volumeGeneration += 1
+        let mine = volumeGeneration
+        if mode == .music {
+            schedule(Self.commitDelay) { [weak self] in
+                guard let self, self.volumeGeneration == mine else { return }
+                self.music?.setVolume(target)
+            }
+        } else {
+            player.setVolume(target)
+        }
+        schedule(Self.volumeShownFor) { [weak self] in
+            guard let self, self.volumeGeneration == mine else { return }
+            self.volumeShown = nil
+            self.volumeRemainder = 0
         }
     }
 
