@@ -33,6 +33,11 @@ enum ListContent {
         return false
     }
 
+    /// The podcast list's second tab: an episode without chapters only has its notes to show.
+    static func secondTabTitle(hasChapters: Bool) -> String {
+        hasChapters ? "Chapters" : "Notes"
+    }
+
     /// The glass hint on the cover.
     static func hint(mode: PlaybackMode, source: MusicSourceID?, contextKind: MusicContext.Kind?) -> String {
         switch mode {

@@ -50,6 +50,7 @@ final class AppleMusicSource: AppleScriptMusicSource, MusicSource {
     func next() throws { try tell("next track") }
     func previous() throws { try tell("previous track") }
     func setPosition(_ seconds: Double) throws { try tell("set player position to \(String(format: "%.2f", max(0, seconds)))") }
+    func setVolume(_ percent: Int) throws { try tell("set sound volume to \(min(100, max(0, percent)))") }
 
     // MARK: Album or playlist
 

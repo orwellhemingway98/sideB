@@ -14,6 +14,8 @@ final class MusicRemote: ObservableObject {
     @Published private(set) var track: MusicTrack?
     @Published private(set) var isPlaying = false
     @Published private(set) var artwork: NSImage?
+    /// The playing app's own volume, 0...100.
+    @Published private(set) var volume: Int?
     /// The last album or playlist read failed (permission, Music quit, timeout).
     @Published private(set) var contextFailed = false
     /// Which album or playlist the current song plays from (worked out once per song, cheaply).
@@ -35,6 +37,8 @@ final class MusicRemote: ObservableObject {
     private var lastActive: MusicSourceID?
     private var declined: Set<MusicSourceID> = []
     private var pendingSeek: (trackID: String, seconds: Double, pollsLeft: Int)?
+    /// A volume we set, believed over polls that may still report the old one.
+    private var pendingVolume: (percent: Int, pollsLeft: Int)?
     private var artworkTrackID: String?
     /// Albums and playlists already read, by context id ("playlist:…" / "album:…").
     private var contexts: [String: MusicContext] = [:]
@@ -88,6 +92,14 @@ final class MusicRemote: ObservableObject {
     func pause() { command { try $0.pause() } }
     func next() { command { try $0.next() } }
     func previous() { command { try $0.previous() } }
+
+    func setVolume(_ percent: Int) {
+        guard track != nil else { return }
+        let target = min(100, max(0, percent))
+        pendingVolume = (target, Self.pollsToIgnoreAfterSeek)
+        if volume != target { volume = target }
+        command { try $0.setVolume(target) }
+    }
 
     func setPosition(_ seconds: Double) {
         guard var current = track else { return }
@@ -207,6 +219,16 @@ final class MusicRemote: ObservableObject {
             pendingSeek = nil
         }
         if track != newTrack { track = newTrack }
+        var newVolume = newTrack == nil ? nil : snapshot?.volume
+        if let pending = pendingVolume {
+            if newVolume == pending.percent || pending.pollsLeft == 0 || newTrack == nil {
+                pendingVolume = nil
+            } else {
+                newVolume = pending.percent
+                pendingVolume = (pending.percent, pending.pollsLeft - 1)
+            }
+        }
+        if volume != newVolume { volume = newVolume }
         if newTrack == nil, contextKey != nil {
             contextKey = nil
             keyTrackID = nil

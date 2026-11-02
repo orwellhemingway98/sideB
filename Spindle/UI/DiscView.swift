@@ -106,9 +106,11 @@ struct DiscView: View {
     }
 
     /// The time, as a thin band of light just outside the disc's edge: a faint track, lit from 12 o'clock to
-    /// now, with a small gap where each chapter starts.
+    /// now, with a small gap where each chapter starts. While Option + turn sets the volume, it shows that.
     private var ring: some View {
-        let progress = progress, chapters = chapterFractions
+        let volume = nowPlaying.volumeShown
+        let progress = volume.map { Double($0) / 100 } ?? progress
+        let chapters = volume == nil ? chapterFractions : []
         let r = DialGeometry.haloRadius, w = DialGeometry.haloWidth
         let side = 2 * (r + w)
         return Canvas { context, size in
@@ -193,13 +195,24 @@ struct DiscView: View {
         }
     }
 
+    /// Play/pause, or the volume while Option + turn sets it.
     private var centreButton: some View {
-        PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
-            .fill(Color(nsColor: .labelColor))
-            .frame(width: 18, height: 20)
-            .opacity(nowPlaying.display == nil ? 0.35 : 1)
-            .frame(width: Self.buttonSize, height: Self.buttonSize)
-            .glassEffect(.regular.interactive(), in: Circle())
+        Group {
+            if let volume = nowPlaying.volumeShown {
+                Text("\(volume)")
+                    .font(.system(size: 17, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(Color(nsColor: .labelColor))
+                    .contentTransition(.numericText(value: Double(volume)))
+                    .accessibilityLabel("Volume \(volume) percent")
+            } else {
+                PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
+                    .fill(Color(nsColor: .labelColor))
+                    .frame(width: 18, height: 20)
+                    .opacity(nowPlaying.display == nil ? 0.35 : 1)
+            }
+        }
+        .frame(width: Self.buttonSize, height: Self.buttonSize)
+        .glassEffect(.regular.interactive(), in: Circle())
     }
 
     // MARK: Gestures

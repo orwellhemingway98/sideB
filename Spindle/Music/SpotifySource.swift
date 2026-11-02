@@ -43,6 +43,7 @@ final class SpotifySource: AppleScriptMusicSource, MusicSource {
     func next() throws { try tell("next track") }
     func previous() throws { try tell("previous track") }
     func setPosition(_ seconds: Double) throws { try tell("set player position to \(String(format: "%.2f", max(0, seconds)))") }
+    func setVolume(_ percent: Int) throws { try tell("set sound volume to \(min(100, max(0, percent)))") }
 
     // Spotify's scripting can't list albums or playlists; its Web API can, once signed in.
     func contextKey() throws -> String? { try api?.contextKey() }

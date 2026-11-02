@@ -53,7 +53,7 @@ struct StatusStripView: View {
     }
 }
 
-/// The menu bar item. A click toggles the dial panel; a right-click shows "Open Library…" and "Quit Spindle";
+/// The menu bar item. A click toggles the dial panel; a right-click shows the `StatusMenu`;
 /// scrolling over it scrubs without opening anything.
 @MainActor
 final class StatusStripController: NSObject {
@@ -62,11 +62,13 @@ final class StatusStripController: NSObject {
     private let panel: DialPanelController
     private let onLibrary: () -> Void
     private let floatingDial: FloatingDialController?
+    private let loginItem: LoginItem
     private var cancellables: Set<AnyCancellable> = []
 
     init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void,
-         floatingDial: FloatingDialController? = nil) {
+         floatingDial: FloatingDialController? = nil, loginItem: LoginItem = MainAppLoginItem()) {
         self.floatingDial = floatingDial
+        self.loginItem = loginItem
         self.nowPlaying = nowPlaying
         self.panel = panel
         self.onLibrary = onLibrary
@@ -115,28 +117,33 @@ final class StatusStripController: NSObject {
     private func showMenu() {
         guard let button = statusItem.button else { return }
         panel.close()
-        let menu = NSMenu()
-        let library = NSMenuItem(title: "Open Library\u{2026}", action: #selector(openLibrary), keyEquivalent: "")
-        library.target = self
-        menu.addItem(library)
-        if let floatingDial {
-            let title = floatingDial.isShown ? "Put Dial Back" : "Show Floating Dial"
-            let dial = NSMenuItem(title: title, action: #selector(toggleFloatingDial), keyEquivalent: "")
-            dial.target = self
-            menu.addItem(dial)
+        let menu = StatusMenu.menu(floatingDial: floatingDial?.isShown, launchAtLogin: loginItem.isEnabled) { [weak self] in
+            self?.perform($0)
         }
-        menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Spindle", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        quit.target = NSApp
-        menu.addItem(quit)
         statusItem.menu = menu
         button.performClick(nil)
         statusItem.menu = nil
     }
 
-    @objc private func openLibrary() { onLibrary() }
+    private func perform(_ command: StatusMenu.Command) {
+        switch command {
+        case .library: openLibrary()
+        case .floatingDial: toggleFloatingDial()
+        case .launchAtLogin:
+            StatusMenu.toggle(loginItem) { error in
+                let alert = NSAlert()
+                alert.messageText = "Spindle couldn't change Launch at Login."
+                alert.informativeText = error.localizedDescription
+                NSApp.forceActivate()
+                alert.runModal()
+            }
+        case .quit: NSApp.terminate(nil)
+        }
+    }
 
-    @objc private func toggleFloatingDial() {
+    private func openLibrary() { onLibrary() }
+
+    private func toggleFloatingDial() {
         guard let floatingDial else { return }
         if floatingDial.isShown { floatingDial.putBack() } else { floatingDial.show() }
     }

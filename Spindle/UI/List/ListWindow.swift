@@ -255,7 +255,7 @@ private struct ListBody: View {
             case .podcast(let episodes, let current, let chapters, let currentChapter, let description):
                 Picker("", selection: $model.tab) {
                     Text("Episodes").tag(PodcastTab.episodes)
-                    Text("Chapters").tag(PodcastTab.chapters)
+                    Text(ListContent.secondTabTitle(hasChapters: !chapters.isEmpty)).tag(PodcastTab.chapters)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

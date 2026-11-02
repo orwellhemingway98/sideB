@@ -31,6 +31,7 @@ final class NowPlayingDisplayTests: XCTestCase {
         XCTAssertEqual(display?.title, episode.title)
         XCTAssertEqual(display?.subtitle, "The Long Quiet")
         XCTAssertNil(display?.sourceLabel)
+        XCTAssertNil(display?.source)
         XCTAssertEqual(display?.duration, 3120)
         XCTAssertEqual(display?.isPlaying, true)
         XCTAssertNil(nowPlaying.musicArtwork)
@@ -44,11 +45,18 @@ final class NowPlayingDisplayTests: XCTestCase {
         XCTAssertEqual(display?.title, "Blue Hour Drive")
         XCTAssertEqual(display?.subtitle, "Northern Static")
         XCTAssertEqual(display?.sourceLabel, "Spotify")
+        XCTAssertEqual(display?.source, .spotify, "shown as a coloured mark, not the word")
         XCTAssertEqual(display?.duration, 240)
         XCTAssertEqual(display?.isPlaying, true)
     }
 
     func testNothingOpenIsNil() {
         XCTAssertNil(nowPlaying.display)
+    }
+
+    func testEachSourceHasItsOwnMarkColour() {
+        XCTAssertEqual(MusicSourceID.spotify.markHex, 0x1ED760)
+        XCTAssertEqual(MusicSourceID.appleMusic.markHex, 0xFA2D48)
+        XCTAssertNotEqual(MusicSourceID.spotify.markHex, MusicSourceID.appleMusic.markHex)
     }
 }
