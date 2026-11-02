@@ -58,6 +58,8 @@ enum DialGeometry {
     /// The time shows as a thin band of light just outside the disc's edge, as if from beneath it.
     static let haloWidth: CGFloat = 3
     static let haloRadius: CGFloat = discSize / 2 + 2 + haloWidth / 2
+    /// The halo's outer edge, side to side: what the disc really takes up in a layout.
+    static let haloSide: CGFloat = 2 * (haloRadius + haloWidth / 2)
     /// The glass the floating dial puts round its disc.
     static let floatingPadding: CGFloat = 10
 }
