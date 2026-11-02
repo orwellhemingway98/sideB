@@ -50,13 +50,15 @@ enum DropletPhase: Equatable {
 /// cancels the steps still pending from the last one.
 @MainActor
 final class DropletState: ObservableObject {
-    static let formDuration: TimeInterval = 0.12
-    static let fallDuration: TimeInterval = 0.16
+    static let formDuration: TimeInterval = 0.16
+    static let fallDuration: TimeInterval = 0.2
     static let gatherDuration: TimeInterval = 0.22
     static let riseDuration: TimeInterval = 0.12
     static let spread = Animation.spring(response: 0.55, dampingFraction: 0.78)
 
     @Published private(set) var phase: DropletPhase = .hidden
+    /// The room above the list: the gap to the panel when the list hangs below it, where the drop forms.
+    @Published var topInset: CGFloat = ListPlacement.gap
     var isOpen: Bool { phase == .open }
 
     private let after: (TimeInterval, @escaping @MainActor () -> Void) -> Void
@@ -195,11 +197,11 @@ final class ListWindowController {
         lastIdentity = nil
         window.level = parent.level
         window.collectionBehavior = parent.collectionBehavior
-        Task {
-            await model.reload(force: true)
-            place()
-        }
+        // Show what's already known (the cached album, the episodes) and size the window for it before the drop
+        // starts, so the drop spreads into the real window rather than one that jumps once the songs are read.
+        model.showNow(force: true)
         place()
+        Task { await model.reload(force: true) }
         parent.addChildWindow(window, ordered: .above)
         state.hide()
         window.orderFront(nil)
@@ -254,9 +256,12 @@ final class ListWindowController {
                                         visible: visible)
         placedBelow = frame.maxY <= parent.frame.minY
         if placedBelow { frame.size.height += ListPlacement.gap }
-        window.setFrame(frame, display: true)
-        hosting.rootView =
-            ListDropletView(state: state, model: model, nowPlaying: nowPlaying, topInset: placedBelow ? ListPlacement.gap : 0)
+        guard frame != window.frame else { return }
+        // Once open, a list that grows (a re-read that found more songs) eases to its new size.
+        window.setFrame(frame, display: true, animate: isShown)
+        // The content stays the same view: replacing it would cut the glass motion short.
+        let inset = placedBelow ? ListPlacement.gap : 0
+        if state.topInset != inset { state.topInset = inset }
     }
 
     private var isEpisodeList: Bool {
@@ -284,13 +289,14 @@ final class ListWindowController {
 
 struct ListDropletView: View {
     /// The drop as it forms at the panel's edge, then stretched as it falls.
-    static let dropSize: CGFloat = 16
+    static let dropSize: CGFloat = 20
 
     @ObservedObject var state: DropletState
     @ObservedObject var model: ListModel
     let nowPlaying: NowPlaying
-    var topInset: CGFloat = ListPlacement.gap
     @Namespace private var glass
+
+    private var topInset: CGFloat { state.topInset }
 
     var body: some View {
         GlassEffectContainer(spacing: 24) {

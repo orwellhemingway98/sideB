@@ -166,6 +166,12 @@ final class MusicRemote: ObservableObject {
         }
     }
 
+    /// The list already read for the song now playing, without asking the app again; nil if there is none yet.
+    func cachedContext(for track: MusicTrack) -> MusicContext? {
+        guard contextSource == track.source else { return nil }
+        return contexts[contextKey ?? "song:" + track.trackID]
+    }
+
     /// Only announce a change when there is one: every announcement wakes the list.
     private func setContextFailed(_ value: Bool) {
         if contextFailed != value { contextFailed = value }
