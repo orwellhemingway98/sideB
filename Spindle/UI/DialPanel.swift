@@ -22,14 +22,17 @@ struct DialPanelView: View {
     let onCover: (() -> Void)?
     /// Tells the cover's hint whether a Music song plays from an album or a playlist.
     let list: ListModel?
+    /// The one-time caption that teaches the turn.
+    let lesson: DialLesson?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
          onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
-         list: ListModel? = nil) {
+         list: ListModel? = nil, lesson: DialLesson? = nil) {
         self.onPopOut = onPopOut
         self.placement = placement
         self.onCover = onCover
         self.list = list
+        self.lesson = lesson
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.library = library
@@ -82,6 +85,7 @@ struct DialPanelView: View {
                 header(display)
                 discRow(display)
                     .padding(.vertical, Self.discBreathing)
+                if let lesson { LessonCaption(lesson: lesson, kind: display.kind) }
                 if display.kind == .podcast, let failure = player.failure {
                     Text(failure).font(.system(size: 11, weight: .semibold)).frame(maxWidth: .infinity)
                 }
@@ -91,10 +95,15 @@ struct DialPanelView: View {
             } else {
                 DiscView(nowPlaying: nowPlaying)
                     .padding(.top, 6)
-                Text("Find a show in Library")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                footer
+                VStack(spacing: 4) {
+                    Text(Self.emptyTitle).font(.system(size: Self.titleSize, weight: .semibold))
+                    Text(Self.emptyLine)
+                        .font(.system(size: Self.subtitleSize))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                pill("Find a Show\u{2026}", action: onLibrary)
             }
         }
         .padding(Self.panelPadding)
@@ -328,12 +337,28 @@ struct DialPanelView: View {
 
     // MARK: Footer
 
-    private var footer: some View {
-        HStack {
-            pill("Library", action: onLibrary)
-            Spacer(minLength: 0)
-            if let onPopOut { pill("Pop out \u{2197}", action: onPopOut) }
+    /// The empty panel: a first run, or nothing at all to play (after that, the last episode reopens paused).
+    static let emptyTitle = "Nothing playing"
+    static let emptyLine = "Play something in Music or Spotify and it shows up here. Or follow a podcast."
+}
+
+/// The one-time caption under the disc that teaches the turn; it fades away after the first turn.
+private struct LessonCaption: View {
+    @ObservedObject var lesson: DialLesson
+    let kind: NowPlayingDisplay.Kind
+
+    var body: some View {
+        Group {
+            if !lesson.learned {
+                Text(DialLesson.caption(for: kind))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeOut(duration: 0.4), value: lesson.learned)
     }
 }
 
@@ -463,7 +488,7 @@ final class DialPanelController {
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
          onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
-         list: ListModel? = nil) {
+         list: ListModel? = nil, lesson: DialLesson? = nil) {
         self.nowPlaying = nowPlaying
         self.onLibrary = onLibrary
         self.onCover = onCover
@@ -482,7 +507,8 @@ final class DialPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
-                                 onPopOut: onPopOut, placement: placement, onCover: onCover, list: list)
+                                 onPopOut: onPopOut, placement: placement, onCover: onCover, list: list,
+                                 lesson: lesson)
         let m = Self.shadowMargin
         let hosting = NSHostingView(rootView: root.padding(EdgeInsets(top: m.top, leading: m.left,
                                                                        bottom: m.bottom, trailing: m.right)))

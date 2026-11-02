@@ -69,7 +69,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                         onPopOut: { [weak self] in self?.popOutDial() },
                                         placement: placement,
                                         onCover: { [weak self] in self?.toggleList() },
-                                        list: listModel)
+                                        list: listModel,
+                                        lesson: DialLesson(turned: nowPlaying.turned))
         panel.escapeHandler = { [weak list] in list?.handleEscape() ?? false }
         self.list = list
         let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
