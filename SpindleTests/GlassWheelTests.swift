@@ -11,10 +11,15 @@ final class GlassWheelTests: XCTestCase {
         XCTAssertEqual(WheelLight.opacity(atFraction: 0.6), 1, accuracy: 0.001)
     }
 
-    func testTheLightSitsInsideTheGlassEdge() {
-        XCTAssertLessThan(WheelLight.radius + WheelLight.width / 2, DialGeometry.discSize / 2)
-        XCTAssertGreaterThan(WheelLight.radius - WheelLight.width / 2, DialGeometry.ringBand.lowerBound,
-                             "still on the ring you turn")
+    func testTheLightSitsJustOutsideTheGlassEdge() {
+        XCTAssertGreaterThan(WheelLight.radius - WheelLight.width / 2, DialGeometry.discSize / 2)
+        XCTAssertLessThanOrEqual(WheelLight.radius + WheelLight.width / 2, DialGeometry.haloSide / 2,
+                                 "within the room the panel keeps round the disc")
+    }
+
+    func testBackAndForwardAreFaintAtRestAndFullOverTheWheel() {
+        XCTAssertEqual(DiscView.controlOpacity(pointerNear: false), 0.35)
+        XCTAssertEqual(DiscView.controlOpacity(pointerNear: true), 1)
     }
 
     func testPlayMorphsIntoPause() {

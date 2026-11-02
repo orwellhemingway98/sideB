@@ -1,10 +1,11 @@
 import CoreGraphics
 
-/// The wheel in Liquid Glass: progress is light caught inside the glass rim, fading in from 12 o'clock.
+/// The wheel in Liquid Glass: progress is a band of light just outside the glass edge, fading in from
+/// 12 o'clock, with no track.
 enum WheelLight {
-    /// The light's band, just inside the disc's edge (still on the ring you turn).
-    static let radius: CGFloat = DialGeometry.discSize / 2 - 4.5
-    static let width: CGFloat = 3
+    /// The light's band, just outside the disc's edge, where the halo always sat.
+    static let radius: CGFloat = DialGeometry.haloRadius
+    static let width: CGFloat = DialGeometry.haloWidth
     /// The share of the circle over which the light fades in from 12 o'clock, instead of starting with a cap.
     static let fadeLength = 0.07
 

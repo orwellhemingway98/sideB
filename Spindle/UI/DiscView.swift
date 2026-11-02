@@ -137,13 +137,14 @@ struct DiscView: View {
             .allowsHitTesting(false)
     }
 
-    /// The time, as light caught inside the glass rim: it fades in from 12 o'clock and runs to now, with a
-    /// small break where each chapter starts. While Option + turn sets the volume, it shows that. No track.
+    /// The time, as a band of light just outside the glass edge: it fades in from 12 o'clock and runs to now,
+    /// with a small break where each chapter starts. While Option + turn sets the volume, it shows that. No track.
     private var ring: some View {
         let volume = nowPlaying.volumeShown
         let progress = volume.map { Double($0) / 100 } ?? progress
         let chapters = volume == nil ? chapterFractions : []
-        let r = WheelLight.radius, w = WheelLight.width + (isTurning ? 1 : 0)
+        // Thicker while turning, growing inward so it stays within the room round the disc.
+        let w = WheelLight.width + (isTurning ? 1 : 0), r = WheelLight.radius - (isTurning ? 0.5 : 0)
         let brightness = isTurning ? 1.0 : 0.85
         let side = DialGeometry.haloSide
         return Canvas { context, size in
@@ -188,8 +189,12 @@ struct DiscView: View {
 
     private var speedShown: Bool { showsControls && !isMusic && player.episode != nil }
 
-    /// Back and forward fade in while the pointer is over the wheel and out when it leaves; at rest the wheel
-    /// is just the wheel. Their spots work either way.
+    /// Back and forward sit faintly on the wheel at rest and come up fully while the pointer is over it, like
+    /// the cover's corners.
+    static func controlOpacity(pointerNear: Bool) -> Double {
+        DialPanelView.cornerOpacity(hovering: pointerNear)
+    }
+
     private var controls: some View {
         let ink = Color(nsColor: .labelColor)
         let shown = pointerNear && nowPlaying.display != nil
@@ -387,14 +392,14 @@ struct TrackSkipGlyph: Shape {
     }
 }
 
-/// A control fading in while the pointer is over the wheel.
+/// A control, faint at rest and full while the pointer is over the wheel.
 private struct Bud: ViewModifier {
     let shown: Bool
     let reduceMotion: Bool
 
     func body(content: Content) -> some View {
         content
-            .opacity(shown ? 1 : 0)
+            .opacity(DiscView.controlOpacity(pointerNear: shown))
             .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.2), value: shown)
     }
 }
