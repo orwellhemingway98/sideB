@@ -135,12 +135,12 @@ struct TransportControls: View {
                 Image(systemName: symbols.back).font(.system(size: 20 * scale, weight: .regular))
             }
             Button { nowPlaying.toggle() } label: {
+                // No glass circle: a plain symbol, a size up from back and forward.
                 Image(systemName: symbols.playPause)
-                    .font(.system(size: 22 * scale, weight: .regular))
+                    .font(.system(size: 30 * scale, weight: .regular))
                     .contentTransition(.symbolEffect(.replace))
                     .frame(width: playSize, height: playSize)
-                    .contentShape(Circle())
-                    .glassEffect(.regular.interactive(), in: Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(playing ? "Pause" : "Play")

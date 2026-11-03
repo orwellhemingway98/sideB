@@ -202,7 +202,7 @@ the glass's own shadow fades out instead of being cut off. The mini player's win
 
 Continuous (squircle) corners throughout, nested so curves run parallel: the panel at 30 pt, the cover and its back
 at 14 pt (30 pt less the 16 pt padding), list rows and the tab switch at 8 pt, small artwork and selected segments at
-6 pt. Pills and the progress line are capsules; the play button and the source dot are circles. Edges are 0.5 pt glass
+6 pt. Pills and the progress line are capsules; the source dot is a circle. Edges are 0.5 pt glass
 hairlines, never solid borders.
 
 **The Parallel Corners Rule.** An inner radius is the outer radius less the gap between them.
@@ -238,16 +238,16 @@ ends in caption digits. Drag it to move through the song or episode, or scroll o
 ticks the dial had (Option + scroll sets the volume: the line shows the level and the times read "Volume 40%").
 Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
 
-Under it, centred, in Apple's SF Symbols at 20 pt: back, a 52 pt glass play/pause button whose symbol swaps with
-the system's replace effect, and forward (`backward.fill` / `forward.fill` for music, `gobackward.15` /
+Under it, centred, in Apple's SF Symbols at 20 pt: back, play/pause (a plain 30 pt symbol, no glass circle) whose symbol
+swaps with the system's replace effect, and forward (`backward.fill` / `forward.fill` for music, `gobackward.15` /
 `goforward.30` for podcasts). A podcast's speed sits at the right as a quiet text button.
 
 ### Mini Player
 The floating window is a small Now Playing card in the panel's language: 340 × 164 pt of window glass tinted with
 the cover's colour, with 26 pt corners (the cover's 12 plus the 14 pt padding). Top: the 56 pt cover with its
 hairline and a small lift (the One Lift rule holds: only the cover casts a shadow), the title (15 pt semibold) and
-the artist line with its source (13 pt). Then the times either side of a 6 pt progress line. Then back, a 44 pt
-glass play/pause and forward, the panel's controls at a smaller size. Drag it by the cover or titles; right-click for
+the artist line with its source (13 pt). Then the times either side of a 6 pt progress line. Then back,
+play/pause and forward, the panel's plain symbols at a smaller size. Drag it by the cover or titles; right-click for
 Put Back, the Library and Quit.
 
 ### The Cover (signature)
