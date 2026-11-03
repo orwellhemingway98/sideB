@@ -242,7 +242,9 @@ in over the first 7% of the circle from 12 o'clock (no cap there) and runs at 85
 round end and a small break at each chapter start it has passed; chapters still ahead are 2.5 pt marks at 35% on
 the line the light will follow. While the wheel is turned it eases to 4 pt (growing inward) and full white, and
 eases back when the scrub lands. During Option + turn it shows the volume whole, with no fade-in (a low volume must
-still show), and the centre shows the number for a second.
+still show), and the centre shows the number for a second. While playing, the light glides on between the player's ticks at the
+playback speed (never more than 1.5 s past the last known place), and every 7 s a soft glint travels along it from
+12 o'clock to now in 2.4 s, as light moving through glass; Reduce Motion drops the glint.
 
 Back and forward sit at 9 and 3 o'clock (drawn skip glyphs for music, "−15" and "+30" for podcasts) at 35% at rest
 and full while the pointer is over the wheel; their spots work either way. The podcast speed (10 pt) sits under the

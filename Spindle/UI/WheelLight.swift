@@ -1,4 +1,4 @@
-import CoreGraphics
+import Foundation
 
 /// The wheel in Liquid Glass: progress is a band of light just outside the glass edge, fading in from
 /// 12 o'clock, with no track.
@@ -28,5 +28,29 @@ enum WheelLight {
     static func chapters(_ starts: [Double], progress: Double) -> (breaks: [Double], ahead: [Double]) {
         let starts = starts.filter { $0 > 0 }
         return (starts.filter { $0 < progress }, starts.filter { $0 >= progress })
+    }
+
+    /// Between ticks of the player the light glides on at the playback speed, so it flows rather than steps;
+    /// it never runs more than this many seconds past the last known place, in case the ticks stop.
+    static let maxGlide: TimeInterval = 1.5
+
+    static func flowingProgress(position: TimeInterval, elapsed: TimeInterval, rate: Double, duration: TimeInterval,
+                                playing: Bool) -> Double {
+        guard duration > 0 else { return 0 }
+        let glide = playing ? min(max(0, elapsed) * rate, maxGlide) : 0
+        return min(1, max(0, (position + glide) / duration))
+    }
+
+    /// Now and then, while playing, a soft glint travels along the light from 12 o'clock to now, as light moves
+    /// through glass: it takes `glintTravel` seconds and comes round every `glintPeriod`.
+    static let glintTravel: TimeInterval = 2.4
+    static let glintPeriod: TimeInterval = 7
+
+    /// Where the glint is along the light (0 at 12 o'clock, 1 at now), or nil while it rests.
+    static func glint(at time: TimeInterval) -> Double? {
+        let phase = time.truncatingRemainder(dividingBy: glintPeriod)
+        guard phase >= 0, phase <= glintTravel else { return nil }
+        let t = phase / glintTravel
+        return t * t * (3 - 2 * t)
     }
 }

@@ -21,6 +21,8 @@ struct DiscView: View {
     /// The pointer is over the wheel: back and forward bud out of the glass.
     @State private var pointerNear = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// When the player last said where it was, so the light can glide on from there between ticks.
+    @State private var positionStamp = (position: 0.0, at: Date())
 
     /// Which window the disc is in; only the panel's disc follows the panel's notifications.
     let host: DiscHost
@@ -142,14 +144,28 @@ struct DiscView: View {
     /// that, whole. No track.
     private var ring: some View {
         let volume = nowPlaying.volumeShown
-        return HaloLight(progress: volume.map { Double($0) / 100 } ?? progress,
-                         chapters: volume == nil ? chapterFractions : [],
-                         fades: volume == nil,
-                         turn: isTurning ? 1 : 0)
-            .frame(width: DialGeometry.haloSide, height: DialGeometry.haloSide)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isTurning)
-            .allowsHitTesting(false)
-            .opacity(nowPlaying.display == nil ? 0.5 : 1)
+        let flowing = volume == nil && !isTurning && nowPlaying.display?.isPlaying == true && duration != nil
+        return TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !flowing)) { timeline in
+            let now = timeline.date
+            let shown = volume.map { Double($0) / 100 } ?? (flowing
+                ? WheelLight.flowingProgress(position: positionStamp.position,
+                                             elapsed: now.timeIntervalSince(positionStamp.at),
+                                             rate: isMusic ? 1 : Double(player.rate), duration: duration ?? 0,
+                                             playing: true)
+                : progress)
+            HaloLight(progress: shown,
+                      chapters: volume == nil ? chapterFractions : [],
+                      fades: volume == nil,
+                      turn: isTurning ? 1 : 0,
+                      glint: flowing && !reduceMotion ? WheelLight.glint(at: now.timeIntervalSinceReferenceDate) : nil)
+        }
+        .frame(width: DialGeometry.haloSide, height: DialGeometry.haloSide)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isTurning)
+        .allowsHitTesting(false)
+        .opacity(nowPlaying.display == nil ? 0.5 : 1)
+        .onChange(of: nowPlaying.displayPosition, initial: true) { _, position in
+            positionStamp = (position, Date())
+        }
     }
 
     /// Where the chapters start, as shares of the episode (podcasts only).
@@ -383,6 +399,8 @@ private struct HaloLight: View, Animatable {
     let chapters: [Double]
     let fades: Bool
     var turn: Double
+    /// Where a passing glint is along the light (0 at 12 o'clock, 1 at now), if one is passing.
+    var glint: Double? = nil
 
     var animatableData: Double {
         get { turn }
@@ -420,6 +438,19 @@ private struct HaloLight: View, Animatable {
             if progress > fadeEnd {
                 context.stroke(arc(fadeEnd, progress), with: .color(.white.opacity(brightness)),
                                style: StrokeStyle(lineWidth: w, lineCap: .round))
+            }
+            // A soft glint travelling along the light: a short brighter stretch, fading at both ends.
+            if let glint, progress > WheelLight.fadeLength {
+                let centre = progress * glint, half = 0.035
+                let pieces = 8
+                for i in 0..<pieces {
+                    let a = centre - half + 2 * half * Double(i) / Double(pieces)
+                    let b = a + 2 * half / Double(pieces)
+                    guard b > WheelLight.fadeLength / 2, a < progress else { continue }
+                    let strength = 1 - abs(Double(i) + 0.5 - Double(pieces) / 2) / (Double(pieces) / 2)
+                    context.stroke(arc(max(a, 0), min(b, progress) + 0.001),
+                                   with: .color(.white.opacity(0.55 * strength)), lineWidth: w + 1)
+                }
             }
             context.blendMode = .destinationOut
             for f in marks.breaks {
