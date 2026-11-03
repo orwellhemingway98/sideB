@@ -61,7 +61,7 @@ final class FloatingDialTests: XCTestCase {
         let mini = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: defaults),
                                           onPutBack: {}, onLibrary: {})
         XCTAssertEqual(mini.window.frame.size, MiniPlayer.size, "a small Now Playing card")
-        XCTAssertEqual(MiniPlayer.size, CGSize(width: 340, height: 160))
+        XCTAssertEqual(MiniPlayer.size, CGSize(width: 340, height: 164))
         XCTAssertEqual(MiniPlayer.cornerRadius, 26, "the cover's 12 pt corners plus the 14 pt padding")
     }
 

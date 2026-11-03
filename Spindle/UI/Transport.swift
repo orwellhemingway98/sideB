@@ -113,16 +113,13 @@ struct TransportControls: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
     var playSize: CGFloat = 52
-    /// Plain: big white glyphs with no glass circle and skips without their bar, as on a Now Playing card.
-    var plain = false
     /// The skip glyphs scale with the play button.
     private var scale: CGFloat { playSize / 52 }
 
-    init(nowPlaying: NowPlaying, playSize: CGFloat = 52, plain: Bool = false) {
+    init(nowPlaying: NowPlaying, playSize: CGFloat = 52) {
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.playSize = playSize
-        self.plain = plain
     }
 
     private var isMusic: Bool { nowPlaying.mode == .music }
@@ -130,32 +127,30 @@ struct TransportControls: View {
     var body: some View {
         let ink = Color(nsColor: .labelColor)
         let enabled = nowPlaying.display != nil
-        HStack(spacing: (plain ? 34 : 26) * scale) {
+        HStack(spacing: 26 * scale) {
             button(isMusic ? "Previous track" : "Back 15 seconds", action: nowPlaying.back) {
                 if isMusic {
-                    TrackSkipGlyph(forward: false, bar: !plain).fill(ink)
-                        .frame(width: (plain ? 28 : 21) * scale, height: (plain ? 18 : 14) * scale)
+                    TrackSkipGlyph(forward: false).fill(ink).frame(width: 21 * scale, height: 14 * scale)
                 } else {
-                    Text("\u{2212}15").font(.system(size: (plain ? 17 : 14) * scale, weight: .semibold).monospacedDigit())
+                    Text("\u{2212}15").font(.system(size: 14 * scale, weight: .semibold).monospacedDigit())
                 }
             }
             Button { nowPlaying.toggle() } label: {
                 PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
                     .fill(ink)
-                    .frame(width: playSize * (plain ? 0.44 : 0.3), height: playSize * (plain ? 0.56 : 0.34))
+                    .frame(width: playSize * 0.3, height: playSize * 0.34)
                     .animation(.spring(response: 0.3, dampingFraction: 0.78), value: nowPlaying.display?.isPlaying ?? false)
                     .frame(width: playSize, height: playSize)
                     .contentShape(Circle())
-                    .glassEffect(plain ? .identity : .regular.interactive(), in: Circle())
+                    .glassEffect(.regular.interactive(), in: Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(nowPlaying.display?.isPlaying == true ? "Pause" : "Play")
             button(isMusic ? "Next track" : "Forward 30 seconds", action: nowPlaying.forward) {
                 if isMusic {
-                    TrackSkipGlyph(forward: true, bar: !plain).fill(ink)
-                        .frame(width: (plain ? 28 : 21) * scale, height: (plain ? 18 : 14) * scale)
+                    TrackSkipGlyph(forward: true).fill(ink).frame(width: 21 * scale, height: 14 * scale)
                 } else {
-                    Text("+30").font(.system(size: (plain ? 17 : 14) * scale, weight: .semibold).monospacedDigit())
+                    Text("+30").font(.system(size: 14 * scale, weight: .semibold).monospacedDigit())
                 }
             }
         }
@@ -236,14 +231,12 @@ struct PlayPauseGlyph: Shape {
     }
 }
 
-/// ⏮ / ⏭ drawn in code: two triangles tip to base, then a bar (or, without it, just the two triangles, as
-/// the mini player draws them); ⏮ is the mirror image of ⏭.
+/// ⏮ / ⏭ drawn in code: two triangles tip to base, then a bar; ⏮ is the mirror image of ⏭.
 struct TrackSkipGlyph: Shape {
     var forward: Bool
-    var bar = true
 
     func path(in rect: CGRect) -> Path {
-        let bar = self.bar ? rect.width * 0.14 : 0
+        let bar = rect.width * 0.14
         let half = (rect.width - bar) / 2
         var path = Path()
         for start in [rect.minX, rect.minX + half] {
@@ -252,7 +245,7 @@ struct TrackSkipGlyph: Shape {
             path.addLine(to: CGPoint(x: start, y: rect.maxY))
             path.closeSubpath()
         }
-        if bar > 0 { path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height)) }
+        path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height))
         guard !forward else { return path }
         return path.applying(CGAffineTransform(translationX: rect.minX + rect.maxX, y: 0).scaledBy(x: -1, y: 1))
     }

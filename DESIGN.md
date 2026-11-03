@@ -242,11 +242,12 @@ Under it, centred: back, a 52 pt glass play/pause button whose glyph morphs betw
 drawn skip glyphs for music, "−15" and "+30" at 14 pt for podcasts). A podcast's speed sits at the right as a quiet text button.
 
 ### Mini Player
-The floating window is a small Now Playing card, 340 × 160 pt of glass tinted with the cover's colour, with 26 pt
-corners (the cover's 12 plus the 14 pt padding). Top: the 56 pt cover with the title (15 pt semibold) and the artist
-line with its source (13 pt). Then the times either side of a 6 pt progress line. Then back, play/pause and forward
-in a row of their own: big plain white glyphs with no glass, the skips as two triangles without their bar (or
-"−15" and "+30" for podcasts). Drag it by the cover or titles; right-click for Put Back, the Library and Quit.
+The floating window is a small Now Playing card in the panel's language: 340 × 164 pt of window glass tinted with
+the cover's colour, with 26 pt corners (the cover's 12 plus the 14 pt padding). Top: the 56 pt cover with its
+hairline and a small lift (the One Lift rule holds: only the cover casts a shadow), the title (15 pt semibold) and
+the artist line with its source (13 pt). Then the times either side of a 6 pt progress line. Then back, a 44 pt
+glass play/pause and forward, the panel's controls at a smaller size. Drag it by the cover or titles; right-click for
+Put Back, the Library and Quit.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when

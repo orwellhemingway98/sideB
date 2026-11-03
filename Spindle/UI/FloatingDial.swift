@@ -100,10 +100,10 @@ private struct FloatingDialView: View {
     }
 }
 
-/// A small Now Playing card: the cover with the title and the artist and its source; the times either side of
-/// the progress line; then back, play/pause and forward, big and plain, in a row of their own.
+/// A small Now Playing card in the panel's glass language: the cover, lifted, with the title and the artist and
+/// its source; the times either side of the progress line; then back, the glass play/pause and forward.
 struct MiniPlayer: View {
-    static let size = CGSize(width: 340, height: 160)
+    static let size = CGSize(width: 340, height: 164)
     private static let padding: CGFloat = 14
     private static let coverSide: CGFloat = 56
     private static let coverRadius: CGFloat = 12
@@ -151,7 +151,7 @@ struct MiniPlayer: View {
             }
             .font(.system(size: 11, weight: .medium).monospacedDigit())
             .foregroundStyle(.secondary)
-            TransportControls(nowPlaying: nowPlaying, playSize: 40, plain: true)
+            TransportControls(nowPlaying: nowPlaying, playSize: 44)
         }
         .padding(Self.padding)
         .frame(width: Self.size.width, height: Self.size.height, alignment: .top)
@@ -174,6 +174,10 @@ struct MiniPlayer: View {
                 ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
                             size: Self.coverSide, cornerRadius: Self.coverRadius,
                             image: display.kind == .music ? nowPlaying.musicArtwork : nil)
+                    .overlay(RoundedRectangle(cornerRadius: Self.coverRadius, style: .continuous)
+                        .strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+                    // The panel's cover lift, scaled down: only the cover sits above the glass.
+                    .shadow(color: .black.opacity(0.3), radius: 6, y: 4)
             } else {
                 RoundedRectangle(cornerRadius: Self.coverRadius, style: .continuous)
                     .fill(.white.opacity(0.12))
