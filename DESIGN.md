@@ -49,7 +49,6 @@ spacing:
   inner: "10pt"
   rows: "14pt"
   panel: "16pt"
-  around-disc: "22pt"
 components:
   hint-pill:
     textColor: "{colors.ink}"
@@ -103,9 +102,9 @@ it hangs at the edge of the author's work in the menu bar, is touched for a mome
 exact.
 
 The material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows
-behind show through the panel and the floating dial, so Spindle takes its colour from where it sits and from the
+behind show through the panel and the mini player, so Spindle takes its colour from where it sits and from the
 artwork it shows: the glass itself is tinted with the cover's colour. Spindle adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
-240 pt cover, a title, the 150 pt disc and, when needed, one pill.
+240 pt cover, a title, the progress line and its controls and, when needed, one pill.
 
 The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to
 show what's inside. No Apple assets or logos appear; the playback buttons use Apple's SF Symbols so they read as the Mac's own,
@@ -116,7 +115,7 @@ and every other glyph is drawn in code.
 - Colour comes from artwork and the desktop; Spindle's own ink is white at a few opacities.
 - System type (SF Pro) at small, exact sizes; tabular digits for every time.
 - Soft springs for every change; Reduce Motion always gets a plain crossfade.
-- One gesture per thing: turn the disc, press its centre, click the cover.
+- One gesture per thing: drag or scroll the progress line, press play, click the cover.
 
 ## Colors
 
@@ -124,14 +123,14 @@ A monochrome glass palette: white ink at a few strengths over translucent glass,
 artwork and two tiny source dots.
 
 ### Primary
-- **Glass Ink** (`ink`): titles, glyphs on the disc, the lit halo, pill text. Always drawn with the system label
+- **Glass Ink** (`ink`): titles, the playback buttons, the progress line's fill, pill text. Always drawn with the system label
   colour (`NSColor.labelColor`) rather than SwiftUI's `.primary` or `.foreground`, which render grey on glass.
 
 ### Neutral
-- **Quiet Ink** (`ink-secondary`): artist or show line, times beside the disc, "Resume" in the Resume pill, list
+- **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, "Resume" in the Resume pill, list
   details, the podcast speed.
 - **Row Light** (`row-highlight`): the current song, episode or chapter in a list.
-- **Glass Tint**: the window glass of the panel and floating dial takes the cover's hue, lighter and livelier than
+- **Glass Tint**: the window glass of the panel and the mini player takes the cover's hue, lighter and livelier than
   the Cover Tint (HSB brightness 0.5–0.72, saturation up to 0.8), at 35% so the desktop still shows through. It eases
   in over about half a second when the cover changes; with no artwork the glass stays plain.
 - **Glass Hairline** (`hairline`): the 0.5 pt edge on the cover and its back.
@@ -164,15 +163,15 @@ artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or t
 
 ### Hierarchy
 - **Title** (semibold, 16 pt): the episode or song title under the cover, up to two lines.
-- **Volume** (semibold, 17 pt, tabular digits): the volume number in the centre of the disc during Option + turn.
+- **Volume** (caption, tabular digits): "Volume 40%" in place of the elapsed time during Option + scroll.
 - **Body** (regular, 12 pt): the artist or show line, list rows, descriptions.
-- **Caption** (regular, 11 pt, tabular digits): times beside the disc, row durations and dates, pill text.
+- **Caption** (regular, 11 pt, tabular digits): times under the progress line, row durations and dates, pill text.
 - **Label** (semibold, 10 pt, 1 pt tracking, uppercase for list headings): the cover's hint pill, "UP NEXT", the
-  album heading on the back of the cover. The podcast speed under the disc's centre is 9 pt semibold.
+  album heading on the back of the cover. The podcast speed beside the controls is 11 pt semibold.
 
 ### Named Rules
 **The Same Size Rule.** Paired values keep one size: elapsed and remaining times never shrink independently;
-when space runs out, move them (they sit in the disc row's lower corners) rather than scale them.
+when space runs out, move them rather than scale them.
 
 ## Layout
 
@@ -190,20 +189,20 @@ date and length).
 
 Depth comes from the glass itself and one ambient shadow under the cover. The panel window draws no shadow of its
 own (it would outline the square window past the rounded glass); the window keeps a clear margin round the glass so
-the glass's own shadow fades out instead of being cut off.
+the glass's own shadow fades out instead of being cut off. The mini player's window does the same.
 
 ### Shadow Vocabulary
 - **Cover lift** (black 35%, radius 15 pt, y 10 pt): under the cover, so it sits above the panel glass.
 - **Back lift** (black 25%, radius 12 pt, y 8 pt): under the back of the cover.
 
 ### Named Rules
-**The One Lift Rule.** Only the cover lifts. Pills, rows and the disc sit in the glass, not on it.
+**The One Lift Rule.** Only the cover lifts. Pills, rows, the progress line and the buttons sit in the glass, not on it.
 
 ## Shapes
 
 Continuous (squircle) corners throughout, nested so curves run parallel: the panel at 30 pt, the cover and its back
 at 14 pt (30 pt less the 16 pt padding), list rows and the tab switch at 8 pt, small artwork and selected segments at
-6 pt. Pills are capsules; the disc, its centre button and the source dot are circles. Edges are 0.5 pt glass
+6 pt. Pills and the progress line are capsules; the play button and the source dot are circles. Edges are 0.5 pt glass
 hairlines, never solid borders.
 
 **The Parallel Corners Rule.** An inner radius is the outer radius less the gap between them.
@@ -217,7 +216,7 @@ edge-on, turning), 11 × 9 pt, stroked 1.3 pt in Glass Ink, mirrored on the back
 and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding.
 
 ### Resume Pill
-Soft glass capsule under the disc while music interrupts a podcast: a 22 pt show artwork (6 pt corners), "Resume" in
+Soft glass capsule under the controls while music interrupts a podcast: a 22 pt show artwork (6 pt corners), "Resume" in
 Quiet Ink, then the episode title in regular weight. Interactive glass that gives under the pointer.
 
 ### List Rows
@@ -273,9 +272,9 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 
 ### Do:
 - **Do** put window glass (`NSGlassEffectView`) behind every surface that should see the desktop: the panel and the
-  floating dial, tinted with the cover's colour.
+  mini player, tinted with the cover's colour.
 - **Do** draw white ink with `NSColor.labelColor`.
-- **Do** keep the panel and the floating dial in the dark appearance (`darkAqua`), so that ink stays white in
+- **Do** keep the panel and the mini player in the dark appearance (`darkAqua`), so that ink stays white in
   Light mode too.
 - **Do** nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.
 - **Do** use tabular digits for every time and number.

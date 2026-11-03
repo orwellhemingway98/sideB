@@ -41,7 +41,7 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 ## Operating Context
 
 - Used in short glances between other work, mostly by mouse/trackpad; the panel drops from the menu bar strip and
-  closes when you click elsewhere. It can also be popped out as a floating dial.
+  closes when you click elsewhere. It can also be popped out as a mini player.
 - Music apps are controlled through AppleScript; Spindle never launches an app that isn't running.
 - Podcasts come from RSS feeds the author follows (search Apple's podcast directory, paste a feed, or import OPML),
   with downloads for offline listening.
@@ -49,14 +49,15 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 ## Capabilities and Constraints
 
 - **Panel:** big cover (turns over to show the album, playlist or episodes on its back), title and artist/show with
-  a small coloured source dot, the 150 pt glass disc with back/forward and podcast speed, times in the row's lower
-  corners, Resume pill when music interrupts a podcast, Up Next, chapter menu.
-- **Dial input:** two-finger rotate, scroll, or drag round the ring; Option + turn sets volume (tick every 10%).
+  a small coloured source dot and its name, a progress line with the times under it, back, play/pause and
+  forward (and a podcast's speed), Resume pill when music interrupts a podcast, Up Next, chapter menu.
+- **Progress input:** drag the line, or scroll over it to scrub with haptic ticks; Option + scroll sets volume
+  (tick every 10%).
 - **Podcasts:** chapters (feed, Podcasting 2.0 JSON, in-file), speed, resume, Up Next, downloads, hourly refresh,
   OPML import, Library window.
 - **Music:** Apple Music albums and playlists read through AppleScript; Spotify albums and the user's own
   playlists through the Web API after a personal sign-in (PKCE, `spindle://callback`).
-- **Menu bar menu:** Open Library, floating dial, Launch at Login, Quit.
+- **Menu bar menu:** Open Library, the mini player, Launch at Login, Spotify sign-in or sign-out, Quit.
 - **Haptics** need a Force Touch trackpad; everything else works without one.
 - **Repo:** private (`orwellhemingway98/spindle`); nothing is pushed or published unless the author asks.
 - **Undecided for a public release:** signing and notarisation (builds are ad-hoc signed today); Spotify — the
@@ -91,6 +92,6 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 
 ## Accessibility & Inclusion
 
-Keep what's there: VoiceOver labels and actions on the dial and controls, Reduce Motion fallbacks (crossfades
+Keep what's there: VoiceOver labels and actions on the progress line and controls, Reduce Motion fallbacks (crossfades
 instead of the cover develop-in, the cover flip and other motion), and keyboard dismissal with Escape. No further
 standard has been set.

@@ -22,6 +22,13 @@ final class DialPlacement: ObservableObject {
 @MainActor
 final class FloatingDialController {
     static let autosaveName = "SpindleFloatingDial"
+    /// Clear room round the glass inside the window, as the panel keeps, so the glass's own shadow fades out
+    /// instead of being cut off square at the window's edges.
+    static let shadowMargin = NSEdgeInsets(top: 16, left: 24, bottom: 28, right: 24)
+    private static var windowSize: NSSize {
+        let m = shadowMargin
+        return NSSize(width: MiniPlayer.size.width + m.left + m.right, height: MiniPlayer.size.height + m.top + m.bottom)
+    }
 
     private let panel: NSPanel
     private let placement: DialPlacement
@@ -31,11 +38,12 @@ final class FloatingDialController {
          onLibrary: @escaping () -> Void, artwork: ArtworkCache? = nil) {
         self.placement = placement
         self.onPutBack = onPutBack
-        panel = NSPanel(contentRect: NSRect(origin: .zero, size: MiniPlayer.size),
+        panel = NSPanel(contentRect: NSRect(origin: .zero, size: Self.windowSize),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        // The glass carries its own depth; a window shadow is drawn around the square frame, past the corners.
+        panel.hasShadow = false
         // White ink on glass, like the panel: dark in Light mode too.
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = .floating
@@ -45,16 +53,18 @@ final class FloatingDialController {
         let root = FloatingDialView(nowPlaying: nowPlaying, artwork: artwork ?? ArtworkCache(),
                                     onPutBack: { [weak self] in self?.putBack() },
                                     onLibrary: onLibrary)
-        let hosting = NSHostingView(rootView: root)
+        let m = Self.shadowMargin
+        let hosting = NSHostingView(rootView: root.padding(EdgeInsets(top: m.top, leading: m.left,
+                                                                       bottom: m.bottom, trailing: m.right)))
         hosting.sizingOptions = []
-        hosting.frame = NSRect(origin: .zero, size: MiniPlayer.size)
+        hosting.frame = NSRect(origin: .zero, size: Self.windowSize)
         panel.contentView = hosting
         if !panel.setFrameUsingName(Self.autosaveName), let screen = NSScreen.main?.visibleFrame {
-            panel.setFrameOrigin(NSPoint(x: screen.midX - MiniPlayer.size.width / 2, y: screen.midY - MiniPlayer.size.height / 2))
+            panel.setFrameOrigin(NSPoint(x: screen.midX - Self.windowSize.width / 2, y: screen.midY - Self.windowSize.height / 2))
         }
         panel.setFrameAutosaveName(Self.autosaveName)
-        // A saved frame from the round dial keeps its place but takes the mini player's size.
-        panel.setContentSize(MiniPlayer.size)
+        // A saved frame from an earlier version keeps its place but takes the mini player's size.
+        panel.setContentSize(Self.windowSize)
     }
 
     var isShown: Bool { panel.isVisible }
@@ -88,15 +98,9 @@ private struct FloatingDialView: View {
 
     var body: some View {
         MiniPlayer(nowPlaying: nowPlaying, artwork: artwork)
-            .background(GrabArea())
+            .background(GrabArea(menu: { MiniPlayer.menu(onPutBack: onPutBack, onLibrary: onLibrary) }))
             .background(WindowGlass(cornerRadius: MiniPlayer.cornerRadius, tint: CoverTint.glassTint(for: coverImage)))
             .frame(width: MiniPlayer.size.width, height: MiniPlayer.size.height)
-            .contextMenu {
-                Button("Put Back", action: onPutBack)
-                Button("Open Library\u{2026}", action: onLibrary)
-                Divider()
-                Button("Quit Spindle") { NSApp.terminate(nil) }
-            }
     }
 }
 
@@ -112,6 +116,17 @@ struct MiniPlayer: View {
 
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject var artwork: ArtworkCache
+
+    /// The right-click menu: Put Back, the Library and Quit.
+    @MainActor
+    static func menu(onPutBack: @escaping () -> Void, onLibrary: @escaping () -> Void) -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(ActionItem("Put Back", run: onPutBack))
+        menu.addItem(ActionItem("Open Library\u{2026}", run: onLibrary))
+        menu.addItem(.separator())
+        menu.addItem(ActionItem("Quit Spindle") { NSApp.terminate(nil) })
+        return menu
+    }
 
     /// Where along a line of `width` a pointer at `x` lands, held to the line's ends.
     static func fraction(atX x: CGFloat, width: CGFloat) -> Double {
@@ -189,11 +204,39 @@ struct MiniPlayer: View {
 }
 
 /// Behind the mini player: dragging anywhere that isn't a control moves the window.
+/// Right-clicking it gives the mini player's menu, wherever the click lands.
 private struct GrabArea: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { DragView() }
-    func updateNSView(_ view: NSView, context: Context) {}
+    let menu: () -> NSMenu
+
+    func makeNSView(context: Context) -> NSView { DragView(menu: menu) }
+    func updateNSView(_ view: NSView, context: Context) { (view as? DragView)?.makeMenu = menu }
 
     private final class DragView: NSView {
+        var makeMenu: () -> NSMenu
+
+        init(menu: @escaping () -> NSMenu) {
+            makeMenu = menu
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { fatalError("not used") }
+
         override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+        override func menu(for event: NSEvent) -> NSMenu? { makeMenu() }
     }
+}
+
+/// A menu item that runs a closure.
+private final class ActionItem: NSMenuItem {
+    private let run: () -> Void
+
+    init(_ title: String, run: @escaping () -> Void) {
+        self.run = run
+        super.init(title: title, action: #selector(fire), keyEquivalent: "")
+        target = self
+    }
+
+    required init(coder: NSCoder) { fatalError("not used") }
+
+    @objc private func fire() { run() }
 }

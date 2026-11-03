@@ -43,7 +43,7 @@ struct EpisodeRow: View {
             }
             Spacer(minLength: 8)
             Button { model.nowPlaying.play(episode) } label: {
-                PlayPauseGlyph(isPlaying: false).frame(width: 10, height: 12)
+                Image(systemName: "play.fill").font(.system(size: 11))
             }
             .help("Play")
             if offersEnqueue { Button("+ Up Next") { model.nowPlaying.player.enqueue(episode) } }
