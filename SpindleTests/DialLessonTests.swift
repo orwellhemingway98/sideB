@@ -49,3 +49,10 @@ final class PlaybackFailureCopyTests: XCTestCase {
         XCTAssertEqual(DialPanelView.failureMessage("Something else"), "Something else")
     }
 }
+
+final class ChapterMenuTitleTests: XCTestCase {
+    func testBeforeTheFirstChapterTheMenuSaysChapters() {
+        XCTAssertEqual(DialPanelView.chapterMenuTitle(current: nil), "Chapters")
+        XCTAssertEqual(DialPanelView.chapterMenuTitle(current: Chapter(start: 60, title: "Signal")), "Signal")
+    }
+}

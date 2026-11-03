@@ -21,6 +21,8 @@ struct DiscView: View {
     /// The pointer is over the wheel: back and forward bud out of the glass.
     @State private var pointerNear = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// When the player last said where it was, so the light can glide on from there between ticks.
+    @State private var positionStamp = (position: 0.0, at: Date())
 
     /// Which window the disc is in; only the panel's disc follows the panel's notifications.
     let host: DiscHost
@@ -138,45 +140,32 @@ struct DiscView: View {
     }
 
     /// The time, as a band of light just outside the glass edge: it fades in from 12 o'clock and runs to now,
-    /// with a small break where each chapter starts. While Option + turn sets the volume, it shows that. No track.
+    /// with chapter starts as breaks behind it and small marks ahead. While Option + turn sets the volume, it shows
+    /// that, whole. No track.
     private var ring: some View {
         let volume = nowPlaying.volumeShown
-        let progress = volume.map { Double($0) / 100 } ?? progress
-        let chapters = volume == nil ? chapterFractions : []
-        // Thicker while turning, growing inward so it stays within the room round the disc.
-        let w = WheelLight.width + (isTurning ? 1 : 0), r = WheelLight.radius - (isTurning ? 0.5 : 0)
-        let brightness = isTurning ? 1.0 : 0.85
-        let side = DialGeometry.haloSide
-        return Canvas { context, size in
-            let c = CGPoint(x: size.width / 2, y: size.height / 2)
-            func arc(_ from: Double, _ to: Double) -> Path {
-                Path { p in
-                    p.addArc(center: c, radius: r, startAngle: .degrees(from * 360 - 90),
-                             endAngle: .degrees(to * 360 - 90), clockwise: false)
-                }
-            }
-            guard progress > 0 else { return }
-            // The fade-in, in short steps, then the rest at full strength with a round end at now.
-            let fadeEnd = min(progress, WheelLight.fadeLength)
-            let steps = 14
-            for i in 0..<steps {
-                let a = fadeEnd * Double(i) / Double(steps), b = fadeEnd * Double(i + 1) / Double(steps)
-                context.stroke(arc(a, b + 0.001), with: .color(.white.opacity(brightness * WheelLight.opacity(atFraction: b))),
-                               lineWidth: w)
-            }
-            if progress > fadeEnd {
-                context.stroke(arc(fadeEnd, progress), with: .color(.white.opacity(brightness)),
-                               style: StrokeStyle(lineWidth: w, lineCap: .round))
-            }
-            context.blendMode = .destinationOut
-            for f in chapters where f > 0 && f < progress {
-                context.stroke(arc(f - 0.004, f + 0.004), with: .color(.black), lineWidth: w + 2)
-            }
+        let flowing = volume == nil && !isTurning && nowPlaying.display?.isPlaying == true && duration != nil
+        return TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !flowing)) { timeline in
+            let now = timeline.date
+            let shown = volume.map { Double($0) / 100 } ?? (flowing
+                ? WheelLight.flowingProgress(position: positionStamp.position,
+                                             elapsed: now.timeIntervalSince(positionStamp.at),
+                                             rate: isMusic ? 1 : Double(player.rate), duration: duration ?? 0,
+                                             playing: true)
+                : progress)
+            HaloLight(progress: shown,
+                      chapters: volume == nil ? chapterFractions : [],
+                      fades: volume == nil,
+                      turn: isTurning ? 1 : 0,
+                      glint: flowing && !reduceMotion ? WheelLight.glint(at: now.timeIntervalSinceReferenceDate) : nil)
         }
-        .frame(width: side, height: side)
+        .frame(width: DialGeometry.haloSide, height: DialGeometry.haloSide)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: isTurning)
         .allowsHitTesting(false)
         .opacity(nowPlaying.display == nil ? 0.5 : 1)
+        .onChange(of: nowPlaying.displayPosition, initial: true) { _, position in
+            positionStamp = (position, Date())
+        }
     }
 
     /// Where the chapters start, as shares of the episode (podcasts only).
@@ -401,5 +390,72 @@ private struct Bud: ViewModifier {
         content
             .opacity(DiscView.controlOpacity(pointerNear: shown))
             .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.2), value: shown)
+    }
+}
+
+/// The halo's light, drawn so that turning eases it thicker and brighter instead of snapping.
+private struct HaloLight: View, Animatable {
+    let progress: Double
+    let chapters: [Double]
+    let fades: Bool
+    var turn: Double
+    /// Where a passing glint is along the light (0 at 12 o'clock, 1 at now), if one is passing.
+    var glint: Double? = nil
+
+    var animatableData: Double {
+        get { turn }
+        set { turn = newValue }
+    }
+
+    var body: some View {
+        let r = WheelLight.lineRadius(turn: turn), w = WheelLight.lineWidth(turn: turn)
+        let brightness = WheelLight.brightness(turn: turn)
+        let marks = WheelLight.chapters(chapters, progress: progress)
+        return Canvas { context, size in
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            func arc(_ from: Double, _ to: Double) -> Path {
+                Path { p in
+                    p.addArc(center: c, radius: r, startAngle: .degrees(from * 360 - 90),
+                             endAngle: .degrees(to * 360 - 90), clockwise: false)
+                }
+            }
+            // Chapters still ahead: small marks on the line the light will follow.
+            for f in marks.ahead {
+                let angle = (f * 360 - 90) * .pi / 180
+                let point = CGPoint(x: c.x + r * cos(angle), y: c.y + r * sin(angle))
+                context.fill(Path(ellipseIn: CGRect(x: point.x - 1.25, y: point.y - 1.25, width: 2.5, height: 2.5)),
+                             with: .color(.white.opacity(0.35)))
+            }
+            guard progress > 0 else { return }
+            // The fade-in, in short steps, then the rest at full strength with a round end at now.
+            let fadeEnd = fades ? min(progress, WheelLight.fadeLength) : 0
+            let steps = 14
+            for i in 0..<(fadeEnd > 0 ? steps : 0) {
+                let a = fadeEnd * Double(i) / Double(steps), b = fadeEnd * Double(i + 1) / Double(steps)
+                context.stroke(arc(a, b + 0.001), with: .color(.white.opacity(brightness * WheelLight.opacity(atFraction: b))),
+                               lineWidth: w)
+            }
+            if progress > fadeEnd {
+                context.stroke(arc(fadeEnd, progress), with: .color(.white.opacity(brightness)),
+                               style: StrokeStyle(lineWidth: w, lineCap: .round))
+            }
+            // A soft glint travelling along the light: a short brighter stretch, fading at both ends.
+            if let glint, progress > WheelLight.fadeLength {
+                let centre = progress * glint, half = 0.035
+                let pieces = 8
+                for i in 0..<pieces {
+                    let a = centre - half + 2 * half * Double(i) / Double(pieces)
+                    let b = a + 2 * half / Double(pieces)
+                    guard b > WheelLight.fadeLength / 2, a < progress else { continue }
+                    let strength = 1 - abs(Double(i) + 0.5 - Double(pieces) / 2) / (Double(pieces) / 2)
+                    context.stroke(arc(max(a, 0), min(b, progress) + 0.001),
+                                   with: .color(.white.opacity(0.55 * strength)), lineWidth: w + 1)
+                }
+            }
+            context.blendMode = .destinationOut
+            for f in marks.breaks {
+                context.stroke(arc(f - 0.004, f + 0.004), with: .color(.black), lineWidth: w + 2)
+            }
+        }
     }
 }

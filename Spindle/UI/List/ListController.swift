@@ -187,6 +187,7 @@ struct ListBody: View {
             .tracking(1)
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            .help(text)     // a long name is cut short; the pointer reads it whole
     }
 
     private func note(_ text: String) -> some View {

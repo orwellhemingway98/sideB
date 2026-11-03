@@ -147,7 +147,8 @@ struct DialPanelView: View {
                     insertion: .opacity.combined(with: .offset(y: 6)), removal: .opacity))
         }
         .animation(CoverButton.develop, value: display.title + "\u{1F}" + display.subtitle)
-        .foregroundStyle(.primary)
+        // Label ink: `.primary` renders grey on glass.
+        .foregroundStyle(Color(nsColor: .labelColor))
         .onAppear { settledDisplay = current }
         .onChange(of: settled ? current : nil) { _, now in
             if let now { settledDisplay = now }
@@ -207,7 +208,7 @@ struct DialPanelView: View {
                 if let placement {
                     PopOutCorner(placement: placement, action: onPopOut)
                 } else {
-                    CornerButton(label: "Pop out", action: onPopOut) { Text("\u{2197}") }
+                    CornerButton(label: "Pop out", action: onPopOut) { PopOutArrow(back: false) }
                 }
             }
         }
@@ -270,13 +271,18 @@ struct DialPanelView: View {
         .accessibilityLabel("Resume podcast: \(episode.title)")
     }
 
+    /// The chapter pill names the chapter playing; before the first one starts, it just says "Chapters".
+    static func chapterMenuTitle(current: Chapter?) -> String {
+        current?.title ?? "Chapters"
+    }
+
     private var chapterMenu: some View {
         Menu {
             ForEach(Array(nowPlaying.chapters.enumerated()), id: \.offset) { _, chapter in
                 Button("\(TimeFormat.clock(chapter.start))  \(chapter.title)") { nowPlaying.jump(to: chapter.start) }
             }
         } label: {
-            Text(nowPlaying.currentChapter?.title ?? nowPlaying.chapters[0].title)
+            Text(Self.chapterMenuTitle(current: nowPlaying.currentChapter))
                 .font(.system(size: 11, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -412,8 +418,39 @@ private struct PopOutCorner: View {
 
     var body: some View {
         CornerButton(label: placement.isPoppedOut ? "Put back" : "Pop out", action: action) {
-            Text(placement.isPoppedOut ? "\u{2199}" : "\u{2197}")
+            PopOutArrow(back: placement.isPoppedOut)
         }
+    }
+}
+
+/// Pop out (up and away) or Put back (down and in), drawn in code like the Library's spines.
+struct PopOutGlyph: Shape {
+    var back: Bool
+
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + x * rect.width, y: rect.minY + y * rect.height)
+        }
+        var path = Path()
+        path.move(to: p(0.15, 0.85))
+        path.addLine(to: p(0.85, 0.15))
+        if back {
+            path.move(to: p(0.15, 0.4)); path.addLine(to: p(0.15, 0.85)); path.addLine(to: p(0.6, 0.85))
+        } else {
+            path.move(to: p(0.4, 0.15)); path.addLine(to: p(0.85, 0.15)); path.addLine(to: p(0.85, 0.6))
+        }
+        return path
+    }
+}
+
+/// The Pop out / Put back glyph at the size and stroke of the corner buttons.
+private struct PopOutArrow: View {
+    let back: Bool
+
+    var body: some View {
+        PopOutGlyph(back: back)
+            .stroke(Color(nsColor: .labelColor), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+            .frame(width: 10, height: 10)
     }
 }
 

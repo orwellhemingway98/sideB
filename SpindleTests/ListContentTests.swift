@@ -58,6 +58,7 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(list.keyRow, 0, "stops at the first row")
         XCTAssertTrue(list.playKeyRow())
         XCTAssertTrue(player.episode === episodes[0])
+        XCTAssertNil(list.keyRow, "played, the outline goes, so the next Return turns the cover back")
     }
 
     func testReturnPlaysTheOutlinedSongInItsAlbum() async {
