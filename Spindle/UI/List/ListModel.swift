@@ -75,6 +75,7 @@ final class ListModel: ObservableObject {
         default:
             return false
         }
+        keyRow = nil
         return true
     }
 

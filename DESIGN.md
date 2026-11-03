@@ -239,9 +239,10 @@ play/pause glyph, drawn in code, whose triangle halves slide and square off into
 
 The **halo** is a 3 pt band of light 2 pt outside the disc's edge, with nothing for the part still to play: it fades
 in over the first 7% of the circle from 12 o'clock (no cap there) and runs at 85% white to the current time, with a
-round end and a small break at each chapter start. While the wheel is turned it thickens to 4 pt (growing inward)
-and goes full white, settling back when the scrub lands. During Option + turn it shows the volume and the centre
-shows the number for a second.
+round end and a small break at each chapter start it has passed; chapters still ahead are 2.5 pt marks at 35% on
+the line the light will follow. While the wheel is turned it eases to 4 pt (growing inward) and full white, and
+eases back when the scrub lands. During Option + turn it shows the volume whole, with no fade-in (a low volume must
+still show), and the centre shows the number for a second.
 
 Back and forward sit at 9 and 3 o'clock (drawn skip glyphs for music, "−15" and "+30" for podcasts) at 35% at rest
 and full while the pointer is over the wheel; their spots work either way. The podcast speed (10 pt) sits under the
@@ -276,7 +277,7 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 - **Do** nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.
 - **Do** use tabular digits for every time and number.
 - **Do** give every motion a Reduce Motion crossfade.
-- **Do** draw glyphs in code (play, pause, skip, library).
+- **Do** draw glyphs in code (play, pause, skip, library, pop out and put back), never Unicode arrows.
 
 ### Don't:
 - **Don't** use SwiftUI `.glassEffect` for a whole window's surface: it only sees inside its own clear window and

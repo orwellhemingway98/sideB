@@ -22,6 +22,37 @@ final class GlassWheelTests: XCTestCase {
         XCTAssertEqual(DiscView.controlOpacity(pointerNear: true), 1)
     }
 
+    func testTurningEasesTheLightThickerAndBrighter() {
+        XCTAssertEqual(WheelLight.lineWidth(turn: 0), 3)
+        XCTAssertEqual(WheelLight.lineWidth(turn: 1), 4)
+        XCTAssertEqual(WheelLight.lineWidth(turn: 0.5), 3.5, "in between while it eases")
+        XCTAssertEqual(WheelLight.brightness(turn: 0), 0.85, accuracy: 0.001)
+        XCTAssertEqual(WheelLight.brightness(turn: 1), 1, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(WheelLight.lineRadius(turn: 1) + WheelLight.lineWidth(turn: 1) / 2,
+                                 DialGeometry.haloSide / 2, "the thicker band still fits its room")
+    }
+
+    func testTheVolumeLevelDoesNotFadeIn() {
+        // A level, not a journey: 3% volume must show, not vanish in the fade from 12 o'clock.
+        XCTAssertEqual(WheelLight.opacity(atFraction: 0.03, fades: false), 1)
+        XCTAssertLessThan(WheelLight.opacity(atFraction: 0.03, fades: true), 0.5)
+    }
+
+    func testChaptersAheadAreMarkedAndThosePassedAreBreaks() {
+        let split = WheelLight.chapters([0, 0.2, 0.5, 0.8], progress: 0.4)
+        XCTAssertEqual(split.breaks, [0.2], "cut into the light already played; none at 12 o'clock")
+        XCTAssertEqual(split.ahead, [0.5, 0.8], "small marks where the light hasn't reached")
+    }
+
+    func testPopOutAndPutBackAreDrawnArrows() {
+        let box = CGRect(x: 0, y: 0, width: 10, height: 10)
+        for back in [false, true] {
+            let bounds = PopOutGlyph(back: back).path(in: box).boundingRect
+            XCTAssertFalse(bounds.isEmpty)
+            XCTAssertTrue(box.insetBy(dx: -0.01, dy: -0.01).contains(bounds))
+        }
+    }
+
     func testPlayMorphsIntoPause() {
         let box = CGRect(x: 0, y: 0, width: 18, height: 20)
         let play = PlayPauseGlyph(morph: 0).path(in: box).boundingRect
