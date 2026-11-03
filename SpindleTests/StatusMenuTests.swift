@@ -14,7 +14,7 @@ final class StatusMenuTests: XCTestCase {
 
     func testRowsTopToBottom() {
         let rows = StatusMenu.rows(floatingDial: false, launchAtLogin: false)
-        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", "Show Floating Dial", nil, "Launch at Login", nil,
+        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", "Show Mini Player", nil, "Launch at Login", nil,
                                                 "Quit Spindle"])
         XCTAssertEqual(rows.compactMap { $0?.command }, [.library, .floatingDial, .launchAtLogin, .quit])
     }
@@ -36,7 +36,7 @@ final class StatusMenuTests: XCTestCase {
     func testTheTickFollowsTheLoginItem() {
         XCTAssertEqual(StatusMenu.rows(floatingDial: nil, launchAtLogin: true).compactMap { $0?.isOn },
                        [false, true, false])
-        XCTAssertEqual(StatusMenu.rows(floatingDial: true, launchAtLogin: false)[1]?.title, "Put Dial Back")
+        XCTAssertEqual(StatusMenu.rows(floatingDial: true, launchAtLogin: false)[1]?.title, "Hide Mini Player")
     }
 
     func testChoosingItTurnsLaunchAtLoginOnAndOff() {

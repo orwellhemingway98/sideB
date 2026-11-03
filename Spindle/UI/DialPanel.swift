@@ -65,26 +65,15 @@ struct DialPanelView: View {
         return NSRect(x: x, y: y, width: side, height: side)
     }
     static let subtitleSize: CGFloat = 12
-    /// The times sit in the lower corners of the disc's row, where the circle curves away, so even
-    /// "−1:13:32" fits at the same size as "0:14".
+    /// The times under the progress line, at one size however long the episode.
     static let timeFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    static var timeColumnWidth: CGFloat {
-        let radius = DialGeometry.haloSide / 2
-        let textHeight = ceil(timeFont.ascender - timeFont.descender + timeFont.leading)
-        // How far the halo reaches sideways at the top of the text line, plus a small gap.
-        let reach = sqrt(radius * radius - pow(radius - textHeight, 2))
-        return (width - 32) / 2 - reach - 4
-    }
-    static let discBreathing: CGFloat = 8
 
     var body: some View {
-        // No GlassEffectContainer: it draws all its glass as one layer, which merged the disc's button into
-        // the disc and drew the ring and the pill glyphs underneath.
+        // No GlassEffectContainer: it draws all its glass as one layer, merging separate controls into one.
         VStack(spacing: Self.rowSpacing) {
             if let display = nowPlaying.display {
                 header(display)
-                discRow(display)
-                    .padding(.vertical, Self.discBreathing)
+                playbackRow(display)
                 if let lesson { LessonCaption(lesson: lesson, kind: display.kind) }
                 if display.kind == .podcast, let failure = player.failure {
                     VStack(spacing: 8) {
@@ -101,8 +90,6 @@ struct DialPanelView: View {
                 if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumePill(paused) }
                 upNext
             } else {
-                DiscView(nowPlaying: nowPlaying)
-                    .padding(.top, 6)
                 VStack(spacing: 4) {
                     Text(Self.emptyTitle).font(.system(size: Self.titleSize, weight: .semibold))
                     Text(Self.emptyLine)
@@ -220,28 +207,46 @@ struct DialPanelView: View {
     // MARK: Disc and times
 
     /// The times sit in the row's lower corners, either side of the disc, like the ends of a scrubber.
-    private func discRow(_ display: NowPlayingDisplay) -> some View {
-        ZStack {
-            DiscView(nowPlaying: nowPlaying, showsControls: true)
-            Text(TimeFormat.clock(nowPlaying.displayPosition))
+    /// The progress line with the times under it, then back, play/pause and forward (and a podcast's speed).
+    private func playbackRow(_ display: NowPlayingDisplay) -> some View {
+        VStack(spacing: 10) {
+            VStack(spacing: 2) {
+                ProgressLine(nowPlaying: nowPlaying)
+                HStack {
+                    if let volume = nowPlaying.volumeShown {
+                        // Option + scroll sets the volume; the line shows the level for a second.
+                        Text("Volume \(volume)%")
+                            .contentTransition(.numericText(value: Double(volume)))
+                    } else {
+                        Text(TimeFormat.clock(nowPlaying.displayPosition))
+                    }
+                    Spacer(minLength: 8)
+                    if let duration = display.duration, nowPlaying.volumeShown == nil {
+                        Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
+                    }
+                }
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .allowsHitTesting(false)   // the disc under them keeps every click and turn
-            Group {
-                if let duration = display.duration {
-                    Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
-                } else {
-                    Text("")
+                .font(Font(Self.timeFont))
+                .foregroundStyle(.secondary)
+            }
+            ZStack {
+                TransportControls(nowPlaying: nowPlaying)
+                if display.kind == .podcast, player.episode != nil {
+                    Button { nowPlaying.cycleRate() } label: {
+                        Text(Self.rateLabel(player.rate))
+                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Playback speed")
+                    .accessibilityLabel("Speed \(Self.rateLabel(player.rate))")
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
-            .lineLimit(1)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .allowsHitTesting(false)
         }
-        // The halo reaches past the disc; reserve it, so the gaps above and below are real.
-        .frame(height: DialGeometry.haloSide)
-        .font(Font(Self.timeFont))
-        .foregroundStyle(.secondary)
     }
 
     // MARK: Pills
@@ -749,6 +754,7 @@ private struct CoverButton: View {
 /// colour alone. The artist gives way first when the line is short of room.
 struct SourceMark: View {
     let source: MusicSourceID
+    var size: CGFloat = DialPanelView.subtitleSize
 
     var body: some View {
         HStack(spacing: 4) {
@@ -757,7 +763,7 @@ struct SourceMark: View {
                             blue: Double(source.markHex & 0xFF) / 255))
                 .frame(width: 6, height: 6)
             Text(source.shortName)
-                .font(.system(size: DialPanelView.subtitleSize))
+                .font(.system(size: size))
                 .foregroundStyle(.secondary)
         }
         .fixedSize()

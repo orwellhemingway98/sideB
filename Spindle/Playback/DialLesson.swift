@@ -21,6 +21,6 @@ final class DialLesson: ObservableObject {
     }
 
     static func caption(for kind: NowPlayingDisplay.Kind) -> String {
-        "Turn the dial to move through the \(kind == .music ? "song" : "episode") \u{00B7} \u{2325} + turn for volume"
+        "Scroll over the line to move through the \(kind == .music ? "song" : "episode") \u{00B7} \u{2325} + scroll for volume"
     }
 }

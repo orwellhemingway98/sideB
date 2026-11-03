@@ -4,17 +4,17 @@ import XCTest
 @testable import Spindle
 
 final class DialSpokenValueTests: XCTestCase {
-    func testTheDialSaysWhetherItIsPlayingAndWhere() {
-        XCTAssertEqual(DiscView.spokenValue(isPlaying: true, position: 724, duration: 2890), "Playing, 12:04 of 48:10")
-        XCTAssertEqual(DiscView.spokenValue(isPlaying: false, position: 0, duration: 200), "Paused, 0:00 of 3:20")
+    func testTheLineSaysWhetherItIsPlayingAndWhere() {
+        XCTAssertEqual(Transport.spokenValue(isPlaying: true, position: 724, duration: 2890), "Playing, 12:04 of 48:10")
+        XCTAssertEqual(Transport.spokenValue(isPlaying: false, position: 0, duration: 200), "Paused, 0:00 of 3:20")
     }
 
     func testWithoutALengthItSaysOnlyTheState() {
-        XCTAssertEqual(DiscView.spokenValue(isPlaying: true, position: 30, duration: nil), "Playing")
+        XCTAssertEqual(Transport.spokenValue(isPlaying: true, position: 30, duration: nil), "Playing")
     }
 
     func testWithNothingLoadedItSaysSo() {
-        XCTAssertEqual(DiscView.spokenValue(isPlaying: nil, position: 0, duration: nil), "Nothing playing")
+        XCTAssertEqual(Transport.spokenValue(isPlaying: nil, position: 0, duration: nil), "Nothing playing")
     }
 }
 
