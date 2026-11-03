@@ -66,8 +66,9 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 ## Brand Commitments
 
 - **Name:** Spindle. **App icon:** the author's own click-wheel icon (`Spindle/Resources/AppIcon.icon`).
-- **No Apple assets:** original or system-provided artwork only; no Apple logos, product artwork or icons, and no
-  SF Symbols in Spindle's own controls (glyphs are drawn in code). Liquid Glass, as a system material, is allowed.
+- **No Apple assets:** original or system-provided artwork only; no Apple logos or product artwork. Liquid Glass, as
+  a system material, is allowed, and so are SF Symbols for the playback buttons (back, play/pause, forward and the
+  podcast skips), which the author chose so they read as the Mac's own; other glyphs stay drawn in code.
 - **Glass is the look:** the author wants the see-through window glass (AppKit `NSGlassEffectView`, as in the
   native popover) to be the look and feel of the whole app.
 - **iPod lineage** without imitation: the dial, the cover that turns over, the tactile clicks.

@@ -108,7 +108,8 @@ artwork it shows: the glass itself is tinted with the cover's colour. Spindle ad
 240 pt cover, a title, the 150 pt disc and, when needed, one pill.
 
 The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to
-show what's inside. No Apple assets, logos or SF Symbols appear in Spindle's own controls; glyphs are drawn in code.
+show what's inside. No Apple assets or logos appear; the playback buttons use Apple's SF Symbols so they read as the Mac's own,
+and every other glyph is drawn in code.
 
 **Key Characteristics:**
 - Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.
@@ -238,8 +239,9 @@ ends in caption digits. Drag it to move through the song or episode, or scroll o
 ticks the dial had (Option + scroll sets the volume: the line shows the level and the times read "Volume 40%").
 Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
 
-Under it, centred: back, a 52 pt glass play/pause button whose glyph morphs between the two, and forward (21 pt
-drawn skip glyphs for music, "−15" and "+30" at 14 pt for podcasts). A podcast's speed sits at the right as a quiet text button.
+Under it, centred, in Apple's SF Symbols at 20 pt: back, a 52 pt glass play/pause button whose symbol swaps with
+the system's replace effect, and forward (`backward.fill` / `forward.fill` for music, `gobackward.15` /
+`goforward.30` for podcasts). A podcast's speed sits at the right as a quiet text button.
 
 ### Mini Player
 The floating window is a small Now Playing card in the panel's language: 340 × 164 pt of window glass tinted with
@@ -278,12 +280,14 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 - **Do** nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.
 - **Do** use tabular digits for every time and number.
 - **Do** give every motion a Reduce Motion crossfade.
-- **Do** draw glyphs in code (play, pause, skip, library, pop out and put back), never Unicode arrows.
+- **Do** use SF Symbols for the playback buttons (`backward.fill`, `play.fill` / `pause.fill` with the symbol
+  replace transition, `forward.fill`; `gobackward.15` and `goforward.30` for podcasts) and draw the other glyphs in
+  code (library, pop out and put back, the turn mark), never Unicode arrows.
 
 ### Don't:
 - **Don't** use SwiftUI `.glassEffect` for a whole window's surface: it only sees inside its own clear window and
   renders flat grey.
-- **Don't** use Apple logos, product artwork or SF Symbols in Spindle's own controls.
+- **Don't** use Apple logos or product artwork; keep SF Symbols to the playback buttons.
 - **Don't** shrink one of a pair of values (elapsed and remaining time) to make it fit.
 - **Don't** add a window shadow to the panel; the glass carries its own.
 - **Don't** use up and down arrows (⌄ ⌃) on the cover's hint: the cover turns sideways, it doesn't drop down.

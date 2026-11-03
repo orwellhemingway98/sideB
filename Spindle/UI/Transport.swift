@@ -108,7 +108,8 @@ struct ProgressLine: View {
     }
 }
 
-/// Back, play/pause and forward under the line: skip glyphs for music, −15 and +30 for podcasts.
+/// Back, play/pause and forward under the line, in Apple's own symbols: skip back and forward for music,
+/// 15 seconds back and 30 on for podcasts.
 struct TransportControls: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
@@ -127,31 +128,24 @@ struct TransportControls: View {
     var body: some View {
         let ink = Color(nsColor: .labelColor)
         let enabled = nowPlaying.display != nil
+        let playing = nowPlaying.display?.isPlaying ?? false
+        let symbols = Transport.Symbols(isMusic: isMusic, isPlaying: playing)
         HStack(spacing: 26 * scale) {
             button(isMusic ? "Previous track" : "Back 15 seconds", action: nowPlaying.back) {
-                if isMusic {
-                    TrackSkipGlyph(forward: false).fill(ink).frame(width: 21 * scale, height: 14 * scale)
-                } else {
-                    Text("\u{2212}15").font(.system(size: 14 * scale, weight: .semibold).monospacedDigit())
-                }
+                Image(systemName: symbols.back).font(.system(size: 20 * scale, weight: .regular))
             }
             Button { nowPlaying.toggle() } label: {
-                PlayPauseGlyph(isPlaying: nowPlaying.display?.isPlaying ?? false)
-                    .fill(ink)
-                    .frame(width: playSize * 0.3, height: playSize * 0.34)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.78), value: nowPlaying.display?.isPlaying ?? false)
+                Image(systemName: symbols.playPause)
+                    .font(.system(size: 22 * scale, weight: .regular))
+                    .contentTransition(.symbolEffect(.replace))
                     .frame(width: playSize, height: playSize)
                     .contentShape(Circle())
                     .glassEffect(.regular.interactive(), in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(nowPlaying.display?.isPlaying == true ? "Pause" : "Play")
+            .accessibilityLabel(playing ? "Pause" : "Play")
             button(isMusic ? "Next track" : "Forward 30 seconds", action: nowPlaying.forward) {
-                if isMusic {
-                    TrackSkipGlyph(forward: true).fill(ink).frame(width: 21 * scale, height: 14 * scale)
-                } else {
-                    Text("+30").font(.system(size: 14 * scale, weight: .semibold).monospacedDigit())
-                }
+                Image(systemName: symbols.forward).font(.system(size: 20 * scale, weight: .regular))
             }
         }
         .foregroundStyle(ink)
@@ -173,6 +167,25 @@ struct TransportControls: View {
 }
 
 enum Transport {
+    /// The SF Symbols the playback buttons use.
+    struct Symbols: Equatable {
+        let back: String
+        let playPause: String
+        let forward: String
+
+        init(back: String, playPause: String, forward: String) {
+            self.back = back
+            self.playPause = playPause
+            self.forward = forward
+        }
+
+        init(isMusic: Bool, isPlaying: Bool) {
+            back = isMusic ? "backward.fill" : "gobackward.15"
+            playPause = isPlaying ? "pause.fill" : "play.fill"
+            forward = isMusic ? "forward.fill" : "goforward.30"
+        }
+    }
+
     /// What VoiceOver says the line is at: "Playing, 12:04 of 48:10".
     static func spokenValue(isPlaying: Bool?, position: TimeInterval, duration: TimeInterval?) -> String {
         guard let isPlaying else { return "Nothing playing" }
@@ -228,25 +241,5 @@ struct PlayPauseGlyph: Shape {
             path.closeSubpath()
         }
         return path
-    }
-}
-
-/// ⏮ / ⏭ drawn in code: two triangles tip to base, then a bar; ⏮ is the mirror image of ⏭.
-struct TrackSkipGlyph: Shape {
-    var forward: Bool
-
-    func path(in rect: CGRect) -> Path {
-        let bar = rect.width * 0.14
-        let half = (rect.width - bar) / 2
-        var path = Path()
-        for start in [rect.minX, rect.minX + half] {
-            path.move(to: CGPoint(x: start, y: rect.minY))
-            path.addLine(to: CGPoint(x: start + half, y: rect.midY))
-            path.addLine(to: CGPoint(x: start, y: rect.maxY))
-            path.closeSubpath()
-        }
-        path.addRect(CGRect(x: rect.maxX - bar, y: rect.minY, width: bar, height: rect.height))
-        guard !forward else { return path }
-        return path.applying(CGAffineTransform(translationX: rect.minX + rect.maxX, y: 0).scaledBy(x: -1, y: 1))
     }
 }

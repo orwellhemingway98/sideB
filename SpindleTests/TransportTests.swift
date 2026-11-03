@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import XCTest
 @testable import Spindle
@@ -14,6 +15,17 @@ final class TransportTests: XCTestCase {
                        0.1 + Transport.maxGlide / 1000, accuracy: 0.0001, "if ticks stop, it doesn't run away")
         XCTAssertEqual(Transport.flowingProgress(position: 999, elapsed: 1, rate: 1, duration: 1000, playing: true),
                        1, accuracy: 0.0001)
+    }
+
+    func testTheButtonsUseApplesOwnSymbols() {
+        XCTAssertEqual(Transport.Symbols(isMusic: true, isPlaying: false),
+                       Transport.Symbols(back: "backward.fill", playPause: "play.fill", forward: "forward.fill"))
+        XCTAssertEqual(Transport.Symbols(isMusic: true, isPlaying: true).playPause, "pause.fill")
+        XCTAssertEqual(Transport.Symbols(isMusic: false, isPlaying: false),
+                       Transport.Symbols(back: "gobackward.15", playPause: "play.fill", forward: "goforward.30"))
+        for name in ["backward.fill", "forward.fill", "play.fill", "pause.fill", "gobackward.15", "goforward.30"] {
+            XCTAssertNotNil(NSImage(systemSymbolName: name, accessibilityDescription: nil), name)
+        }
     }
 
     func testPlayMorphsIntoPause() {
