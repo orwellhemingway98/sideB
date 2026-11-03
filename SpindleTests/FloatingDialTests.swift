@@ -60,7 +60,11 @@ final class FloatingDialTests: XCTestCase {
                                     schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
         let mini = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: defaults),
                                           onPutBack: {}, onLibrary: {})
-        XCTAssertEqual(mini.window.frame.size, MiniPlayer.size, "a small Now Playing card")
+        let m = FloatingDialController.shadowMargin
+        XCTAssertEqual(mini.window.frame.size, CGSize(width: MiniPlayer.size.width + m.left + m.right,
+                                                      height: MiniPlayer.size.height + m.top + m.bottom),
+                       "the card plus clear room round it, so the glass's own shadow fades out")
+        XCTAssertFalse(mini.window.hasShadow, "no window shadow tracing the square window, as in the panel")
         XCTAssertEqual(MiniPlayer.size, CGSize(width: 340, height: 164))
         XCTAssertEqual(MiniPlayer.cornerRadius, 26, "the cover's 12 pt corners plus the 14 pt padding")
     }
@@ -70,5 +74,12 @@ final class FloatingDialTests: XCTestCase {
         XCTAssertEqual(MiniPlayer.fraction(atX: -10, width: 200), 0, "held at the start")
         XCTAssertEqual(MiniPlayer.fraction(atX: 260, width: 200), 1, "held at the end")
         XCTAssertEqual(MiniPlayer.fraction(atX: 10, width: 0), 0)
+    }
+
+    func testRightClickingAnywhereOnTheMiniPlayerOffersItsMenu() {
+        // The cover and titles pass clicks to the drag area beneath, so the menu must live there too.
+        let menu = MiniPlayer.menu(onPutBack: {}, onLibrary: {})
+        XCTAssertEqual(menu.items.map { $0.title }, ["Put Back", "Open Library\u{2026}", "", "Quit Spindle"])
+        XCTAssertTrue(menu.items[2].isSeparatorItem)
     }
 }

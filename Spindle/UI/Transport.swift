@@ -135,12 +135,12 @@ struct TransportControls: View {
                 Image(systemName: symbols.back).font(.system(size: 20 * scale, weight: .regular))
             }
             Button { nowPlaying.toggle() } label: {
+                // No glass circle: a plain symbol, a size up from back and forward.
                 Image(systemName: symbols.playPause)
-                    .font(.system(size: 22 * scale, weight: .regular))
+                    .font(.system(size: 30 * scale, weight: .regular))
                     .contentTransition(.symbolEffect(.replace))
                     .frame(width: playSize, height: playSize)
-                    .contentShape(Circle())
-                    .glassEffect(.regular.interactive(), in: Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(playing ? "Pause" : "Play")
@@ -203,43 +203,5 @@ enum Transport {
         guard duration > 0 else { return 0 }
         let glide = playing ? min(max(0, elapsed) * rate, maxGlide) : 0
         return min(1, max(0, (position + glide) / duration))
-    }
-}
-
-/// Pause bars, or a play triangle, that morph into each other: each is two four-sided pieces, so the
-/// triangle's halves slide and square off into the bars. `morph` 0 is play, 1 is pause.
-struct PlayPauseGlyph: Shape {
-    var morph: Double
-
-    init(morph: Double) { self.morph = morph }
-    init(isPlaying: Bool) { morph = isPlaying ? 1 : 0 }
-
-    var animatableData: Double {
-        get { morph }
-        set { morph = newValue }
-    }
-
-    // In a unit box. The triangle is nudged right so it looks centred.
-    private static let play: [CGPoint] = [
-        CGPoint(x: 0.12, y: 0), CGPoint(x: 0.62, y: 0.25), CGPoint(x: 0.62, y: 0.75), CGPoint(x: 0.12, y: 1),
-        CGPoint(x: 0.62, y: 0.25), CGPoint(x: 1.12, y: 0.5), CGPoint(x: 1.12, y: 0.5), CGPoint(x: 0.62, y: 0.75),
-    ]
-    private static let pause: [CGPoint] = [
-        CGPoint(x: 0.08, y: 0), CGPoint(x: 0.40, y: 0), CGPoint(x: 0.40, y: 1), CGPoint(x: 0.08, y: 1),
-        CGPoint(x: 0.60, y: 0), CGPoint(x: 0.92, y: 0), CGPoint(x: 0.92, y: 1), CGPoint(x: 0.60, y: 1),
-    ]
-
-    func path(in rect: CGRect) -> Path {
-        let t = min(1, max(0, morph))
-        let points = zip(Self.play, Self.pause).map { a, b in
-            CGPoint(x: rect.minX + (a.x + (b.x - a.x) * t) * rect.width,
-                    y: rect.minY + (a.y + (b.y - a.y) * t) * rect.height)
-        }
-        var path = Path()
-        for piece in [points[0..<4], points[4..<8]] {
-            path.addLines(Array(piece))
-            path.closeSubpath()
-        }
-        return path
     }
 }

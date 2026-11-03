@@ -28,17 +28,6 @@ final class TransportTests: XCTestCase {
         }
     }
 
-    func testPlayMorphsIntoPause() {
-        let box = CGRect(x: 0, y: 0, width: 18, height: 20)
-        let play = PlayPauseGlyph(morph: 0).path(in: box).boundingRect
-        let pause = PlayPauseGlyph(morph: 1).path(in: box).boundingRect
-        XCTAssertEqual(PlayPauseGlyph(isPlaying: true).path(in: box).boundingRect, pause)
-        XCTAssertEqual(PlayPauseGlyph(isPlaying: false).path(in: box).boundingRect, play)
-        let halfway = PlayPauseGlyph(morph: 0.5).path(in: box).boundingRect
-        XCTAssertNotEqual(halfway, play)
-        XCTAssertNotEqual(halfway, pause)
-    }
-
     func testPopOutAndPutBackAreDrawnArrows() {
         let box = CGRect(x: 0, y: 0, width: 10, height: 10)
         for back in [false, true] {
