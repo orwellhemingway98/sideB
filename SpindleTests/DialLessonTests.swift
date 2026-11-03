@@ -32,8 +32,8 @@ final class DialLessonTests: XCTestCase {
     }
 
     func testTheCaptionNamesWhatTheDialMovesThrough() {
-        XCTAssertEqual(DialLesson.caption(for: .music), "Turn the dial to move through the song \u{00B7} \u{2325} + turn for volume")
-        XCTAssertEqual(DialLesson.caption(for: .podcast), "Turn the dial to move through the episode \u{00B7} \u{2325} + turn for volume")
+        XCTAssertEqual(DialLesson.caption(for: .music), "Scroll over the line to move through the song \u{00B7} \u{2325} + scroll for volume")
+        XCTAssertEqual(DialLesson.caption(for: .podcast), "Scroll over the line to move through the episode \u{00B7} \u{2325} + scroll for volume")
     }
 
     func testTheEmptyPanelNamesEverySource() {

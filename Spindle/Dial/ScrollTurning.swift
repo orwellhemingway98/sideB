@@ -26,6 +26,12 @@ final class ScrollMonitor {
     /// The disc's own view, which gives its window and its frame.
     weak var anchor: NSView?
     private var monitor: Any?
+    /// A round anchor (the disc) takes scrolls inside its circle; a flat one (the progress line) anywhere in it.
+    private let round: Bool
+
+    init(round: Bool = true) {
+        self.round = round
+    }
 
     /// True when the disc is in a window that is showing.
     var anchorIsOnScreen: Bool { anchor?.window?.isVisible == true }
@@ -38,10 +44,13 @@ final class ScrollMonitor {
             let degrees = ScrollTurning.degrees(for: event)
             let used = MainActor.assumeIsolated { () -> Bool in
                 guard let anchor = self?.anchor, let discWindow = anchor.window else { return false }
-                guard ScrollTurning.shouldTurn(eventWindow: window, discWindow: discWindow,
+                let point = anchor.convert(location, from: nil)
+                let inside = self?.round == false
+                    ? window === discWindow && discWindow.isVisible && anchor.bounds.contains(point)
+                    : ScrollTurning.shouldTurn(eventWindow: window, discWindow: discWindow,
                                                windowVisible: discWindow.isVisible,
-                                               pointInDisc: anchor.convert(location, from: nil),
-                                               discSize: anchor.bounds.width) else { return false }
+                                               pointInDisc: point, discSize: anchor.bounds.width)
+                guard inside else { return false }
                 turn(degrees)
                 return true
             }

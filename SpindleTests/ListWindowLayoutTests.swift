@@ -129,32 +129,21 @@ final class ListWindowLayoutTests: XCTestCase {
     }
 
     func testThePanelStaysCompact() {
-        // The times, skip buttons and footer live in the disc and the cover's corners, not rows of their own.
+        // The line, times and buttons take one short row each; the footer lives in the cover's corners.
         let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
                                                          onLibrary: {}, onPopOut: {}, onCover: {}))
         XCTAssertLessThanOrEqual(view.fittingSize.height, 530)
     }
-
-    func testTheDiscHasRoomForItsHalo() {
-        // The halo reaches 5 pt past the disc on each side; the panel reserves it plus breathing room,
-        // so the artist line and the pills sit 22 pt from the halo's edge.
-        XCTAssertEqual(DialGeometry.haloSide, DialGeometry.discSize + 10)
-        XCTAssertEqual(DialPanelView.rowSpacing + DialPanelView.discBreathing, 22)
-        let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
-                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
-        XCTAssertGreaterThanOrEqual(view.fittingSize.height, 500, "roomier than the 479 pt it was")
-    }
 }
 
 @MainActor
-final class DiscTimesTests: XCTestCase {
-    func testEveryTimeFitsInTheLowerCornersAtFullSize() {
+final class PlaybackTimesTests: XCTestCase {
+    func testEveryTimeFitsUnderTheLineAtFullSize() {
         // Both times always use the same font size: no shrinking for long episodes.
         let longest = TimeFormat.remaining(9 * 3600 + 59 * 60 + 59)
         XCTAssertEqual(longest, "\u{2212}9:59:59")
         let width = (longest as NSString).size(withAttributes: [.font: DialPanelView.timeFont]).width
-        XCTAssertLessThanOrEqual(width, DialPanelView.timeColumnWidth, "fits where the disc curves away")
-        XCTAssertGreaterThan(DialPanelView.timeColumnWidth, 60)
+        XCTAssertLessThan(2 * width + 8, DialPanelView.width - 2 * DialPanelView.panelPadding, "both fit side by side")
     }
 }
 

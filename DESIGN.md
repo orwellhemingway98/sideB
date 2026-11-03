@@ -175,11 +175,10 @@ when space runs out, move them (they sit in the disc row's lower corners) rather
 
 ## Layout
 
-A single 272 pt column with 16 pt padding (`panel`): cover (240 × 240 pt), 10 pt, title block, then the disc row,
-then pills. Rows are 14 pt apart; the disc row adds 8 pt on each side so the artist line and the pills sit 22 pt
-(`around-disc`) from the halo's edge. The disc row reserves the halo's full 160 pt height so its gaps are real.
+A single 272 pt column with 16 pt padding (`panel`): cover (240 × 240 pt), 10 pt, title block, then the progress
+line with its times, the controls, then pills. Rows are 14 pt apart.
 
-Times sit in the lower corners of the disc row, where the circle curves away. The bottom margin is 18 pt. The panel
+Times sit under the two ends of the progress line. The bottom margin is 18 pt. The panel
 grows to fit its rows (about 507 pt with music and a Resume pill) and must fit a 1280 × 800 screen (720 pt max).
 
 The list lives on the back of the cover in the same 240 pt square: 10 pt inset at the top, 6 pt at the sides and
@@ -232,23 +231,21 @@ current item and fade softly at their scroll edges.
 Episodes | Notes (or Chapters): a 2 pt-inset track in Segment Track with the selected half in Segment Light. Drawn
 in SwiftUI rather than a system segmented control, because a system control doesn't turn with the cover.
 
-### The Disc (signature)
-A 150 pt disc of system glass, edged only by light: a thin highlight on its rim, bright on one side and faint
-opposite, that turns as the wheel is turned. No drawn rim and no track. A 60 pt glass centre button carries the
-play/pause glyph, drawn in code, whose triangle halves slide and square off into the pause bars (a 0.3 s spring).
+### The Progress Line and Controls
+The dial is gone: Spindle chose something simpler and more pragmatic. Under the title, a 240 pt progress line (4 pt
+capsule, white 22% track, Glass Ink fill; 6 pt under the pointer or while dragging) with the times under its two
+ends in caption digits. Drag it to move through the song or episode, or scroll over it to scrub with the haptic
+ticks the dial had (Option + scroll sets the volume: the line shows the level and the times read "Volume 40%").
+Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
 
-The **halo** is a 3 pt band of light 2 pt outside the disc's edge, with nothing for the part still to play: it fades
-in over the first 7% of the circle from 12 o'clock (no cap there) and runs at 85% white to the current time, with a
-round end and a small break at each chapter start it has passed; chapters still ahead are 2.5 pt marks at 35% on
-the line the light will follow. While the wheel is turned it eases to 4 pt (growing inward) and full white, and
-eases back when the scrub lands. During Option + turn it shows the volume whole, with no fade-in (a low volume must
-still show), and the centre shows the number for a second. While playing, the light glides on between the player's ticks at the
-playback speed (never more than 1.5 s past the last known place), and every 7 s a soft glint travels along it from
-12 o'clock to now in 2.4 s, as light moving through glass; Reduce Motion drops the glint.
+Under it, centred: back, a 44 pt glass play/pause button whose glyph morphs between the two, and forward (drawn
+skip glyphs for music, "−15" and "+30" for podcasts). A podcast's speed sits at the right as a quiet text button.
 
-Back and forward sit at 9 and 3 o'clock (drawn skip glyphs for music, "−15" and "+30" for podcasts) at 35% at rest
-and full while the pointer is over the wheel; their spots work either way. The podcast speed (10 pt) sits under the
-centre. Spindle tried a glass droplet for "now" and controls budding out as bubbles; both were dropped as busy.
+### Mini Player
+The floating window is the menu bar strip grown: a 300 × 56 pt glass capsule tinted with the cover's colour,
+holding the 42 pt cover (11 pt corners), the title (13 pt semibold) and the artist line with its source, and a 3 pt
+progress line. With the pointer over it: play/pause on the cover, back and forward at the right, and the times under
+the line. Drag it by anywhere that isn't a control; right-click for Put Back, the Library and Quit.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when

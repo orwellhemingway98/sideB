@@ -17,7 +17,7 @@ enum StatusMenu {
     static func rows(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil) -> [Row?] {
         var rows: [Row?] = [Row(title: "Open Library\u{2026}", command: .library, isOn: false)]
         if let out = floatingDial {
-            rows.append(Row(title: out ? "Put Dial Back" : "Show Floating Dial", command: .floatingDial, isOn: false))
+            rows.append(Row(title: out ? "Hide Mini Player" : "Show Mini Player", command: .floatingDial, isOn: false))
         }
         rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil]
         switch spotifySignedIn {
