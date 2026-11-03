@@ -6,8 +6,6 @@ import SwiftUI
 struct ProgressLine: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
-    /// Which window the line is in; only the panel's follows the panel's show and close notifications.
-    let host: DiscHost
     var height: CGFloat = 6
 
     @State private var dragFraction: Double?
@@ -15,10 +13,9 @@ struct ProgressLine: View {
     @State private var scroll = ScrollMonitor(round: false)
     @State private var positionStamp = (position: 0.0, at: Date())
 
-    init(nowPlaying: NowPlaying, host: DiscHost = .panel, height: CGFloat = 6) {
+    init(nowPlaying: NowPlaying, height: CGFloat = 6) {
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
-        self.host = host
         self.height = height
     }
 
@@ -48,11 +45,11 @@ struct ProgressLine: View {
                 .gesture(DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard duration != nil else { return }
-                        dragFraction = MiniPlayer.fraction(atX: value.location.x, width: geometry.size.width)
+                        dragFraction = Transport.fraction(atX: value.location.x, width: geometry.size.width)
                     }
                     .onEnded { value in
                         if let duration {
-                            let fraction = MiniPlayer.fraction(atX: value.location.x, width: geometry.size.width)
+                            let fraction = Transport.fraction(atX: value.location.x, width: geometry.size.width)
                             nowPlaying.jump(to: fraction * duration)
                         }
                         dragFraction = nil
@@ -67,10 +64,10 @@ struct ProgressLine: View {
             if inside { installScroll() } else { scroll.remove() }
         }
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in
-            if host.followsPanel { installScroll() }
+            installScroll()
         }
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in
-            if host.followsPanel { scroll.remove() }
+            scroll.remove()
         }
         .onDisappear { scroll.remove() }
         .onChange(of: nowPlaying.displayPosition, initial: true) { _, position in
@@ -167,6 +164,12 @@ struct TransportControls: View {
 }
 
 enum Transport {
+    /// Where along a line of `width` a pointer at `x` lands, held to the line's ends.
+    static func fraction(atX x: CGFloat, width: CGFloat) -> Double {
+        guard width > 0 else { return 0 }
+        return Double(min(1, max(0, x / width)))
+    }
+
     /// The SF Symbols the playback buttons use.
     struct Symbols: Equatable {
         let back: String

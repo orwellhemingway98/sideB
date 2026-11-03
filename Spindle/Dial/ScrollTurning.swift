@@ -86,12 +86,3 @@ struct ScrollAnchor: NSViewRepresentable {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
-
-/// Where a disc lives: the menu bar panel, or the floating dial.
-enum DiscHost {
-    case panel, floating
-
-    /// Only the panel's disc follows the panel's show and close notifications.
-    var followsPanel: Bool { self == .panel }
-}
-

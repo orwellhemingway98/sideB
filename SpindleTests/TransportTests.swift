@@ -28,12 +28,10 @@ final class TransportTests: XCTestCase {
         }
     }
 
-    func testPopOutAndPutBackAreDrawnArrows() {
-        let box = CGRect(x: 0, y: 0, width: 10, height: 10)
-        for back in [false, true] {
-            let bounds = PopOutGlyph(back: back).path(in: box).boundingRect
-            XCTAssertFalse(bounds.isEmpty)
-            XCTAssertTrue(box.insetBy(dx: -0.01, dy: -0.01).contains(bounds))
-        }
+    func testDraggingTheLineSeeksWhereThePointerIs() {
+        XCTAssertEqual(Transport.fraction(atX: 50, width: 200), 0.25)
+        XCTAssertEqual(Transport.fraction(atX: -10, width: 200), 0, "held at the start")
+        XCTAssertEqual(Transport.fraction(atX: 260, width: 200), 1, "held at the end")
+        XCTAssertEqual(Transport.fraction(atX: 10, width: 0), 0)
     }
 }
