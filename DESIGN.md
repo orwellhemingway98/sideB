@@ -242,11 +242,11 @@ Under it, centred: back, a 52 pt glass play/pause button whose glyph morphs betw
 drawn skip glyphs for music, "−15" and "+30" at 14 pt for podcasts). A podcast's speed sits at the right as a quiet text button.
 
 ### Mini Player
-The floating window is the menu bar strip grown into two rows: a 300 × 120 pt glass panel (22 pt corners: the
-cover's 10 plus the 12 pt padding) tinted with the cover's colour. Top: the 40 pt cover with the title (13 pt
-semibold) and the artist line with its source. Below: a 4 pt progress line, then the times at its two ends with back,
-a 34 pt glass play/pause and forward centred between them. Drag it by the cover or titles; right-click for Put Back,
-the Library and Quit.
+The floating window is a small Now Playing card, 340 × 160 pt of glass tinted with the cover's colour, with 26 pt
+corners (the cover's 12 plus the 14 pt padding). Top: the 56 pt cover with the title (15 pt semibold) and the artist
+line with its source (13 pt). Then the times either side of a 6 pt progress line. Then back, play/pause and forward
+in a row of their own: big plain white glyphs with no glass, the skips as two triangles without their bar (or
+"−15" and "+30" for podcasts). Drag it by the cover or titles; right-click for Put Back, the Library and Quit.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when

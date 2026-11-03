@@ -60,9 +60,9 @@ final class FloatingDialTests: XCTestCase {
                                     schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
         let mini = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: defaults),
                                           onPutBack: {}, onLibrary: {})
-        XCTAssertEqual(mini.window.frame.size, MiniPlayer.size, "the menu bar strip, grown into two rows")
-        XCTAssertEqual(MiniPlayer.size, CGSize(width: 300, height: 120))
-        XCTAssertEqual(MiniPlayer.cornerRadius, 22, "the cover's 10 pt corners plus the 12 pt padding")
+        XCTAssertEqual(mini.window.frame.size, MiniPlayer.size, "a small Now Playing card")
+        XCTAssertEqual(MiniPlayer.size, CGSize(width: 340, height: 160))
+        XCTAssertEqual(MiniPlayer.cornerRadius, 26, "the cover's 12 pt corners plus the 14 pt padding")
     }
 
     func testDraggingTheLineSeeksWhereThePointerIs() {

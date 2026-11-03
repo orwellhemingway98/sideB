@@ -100,13 +100,13 @@ private struct FloatingDialView: View {
     }
 }
 
-/// The menu bar strip, grown into two rows: the cover with the title and the artist and its source, then the
-/// progress line with the times, and back, play/pause and forward under it.
+/// A small Now Playing card: the cover with the title and the artist and its source; the times either side of
+/// the progress line; then back, play/pause and forward, big and plain, in a row of their own.
 struct MiniPlayer: View {
-    static let size = CGSize(width: 300, height: 120)
-    private static let padding: CGFloat = 12
-    private static let coverSide: CGFloat = 40
-    private static let coverRadius: CGFloat = 10
+    static let size = CGSize(width: 340, height: 160)
+    private static let padding: CGFloat = 14
+    private static let coverSide: CGFloat = 56
+    private static let coverRadius: CGFloat = 12
     /// Parallel corners: the window's radius is the cover's plus the padding round it.
     static let cornerRadius = coverRadius + padding
 
@@ -120,39 +120,52 @@ struct MiniPlayer: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
                 cover
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     if let display = nowPlaying.display {
                         Text(display.title)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Color(nsColor: .labelColor))
                             .lineLimit(1)
                         HStack(spacing: 4) {
                             Text(display.subtitle).lineLimit(1)
-                            if let source = display.source { SourceMark(source: source, size: 11) }
+                            if let source = display.source { SourceMark(source: source, size: 13) }
                         }
-                        .font(.system(size: 11))
+                        .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                     } else {
                         Text(DialPanelView.emptyTitle)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
                 }
-                .allowsHitTesting(false)   // the window drags from here
+                Spacer(minLength: 0)
             }
-            VStack(spacing: 0) {
-                ProgressLine(nowPlaying: nowPlaying, host: .floating, height: 4)
-                ZStack {
-                    times
-                    TransportControls(nowPlaying: nowPlaying, playSize: 34)
-                }
+            .allowsHitTesting(false)   // the window drags from here
+            HStack(spacing: 10) {
+                Text(elapsed).frame(width: 40, alignment: .leading)
+                ProgressLine(nowPlaying: nowPlaying, host: .floating, height: 6)
+                Text(remaining).frame(width: 44, alignment: .trailing)
             }
+            .font(.system(size: 11, weight: .medium).monospacedDigit())
+            .foregroundStyle(.secondary)
+            TransportControls(nowPlaying: nowPlaying, playSize: 40, plain: true)
         }
         .padding(Self.padding)
         .frame(width: Self.size.width, height: Self.size.height, alignment: .top)
+    }
+
+    private var elapsed: String {
+        guard nowPlaying.display != nil else { return "" }
+        if let volume = nowPlaying.volumeShown { return "\(volume)%" }
+        return TimeFormat.clock(nowPlaying.displayPosition)
+    }
+
+    private var remaining: String {
+        guard nowPlaying.volumeShown == nil, let duration = nowPlaying.displayDuration else { return "" }
+        return TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition))
     }
 
     private var cover: some View {
@@ -167,24 +180,6 @@ struct MiniPlayer: View {
                     .frame(width: Self.coverSide, height: Self.coverSide)
             }
         }
-        .allowsHitTesting(false)
-    }
-
-    private var times: some View {
-        HStack {
-            if let volume = nowPlaying.volumeShown {
-                Text("\(volume)%")
-            } else {
-                Text(TimeFormat.clock(nowPlaying.displayPosition))
-            }
-            Spacer()
-            if let duration = nowPlaying.displayDuration, nowPlaying.volumeShown == nil {
-                Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
-            }
-        }
-        .font(.system(size: 10).monospacedDigit())
-        .foregroundStyle(.secondary)
-        .opacity(nowPlaying.display == nil ? 0 : 1)
         .allowsHitTesting(false)
     }
 }

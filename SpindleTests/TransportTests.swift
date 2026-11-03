@@ -27,6 +27,14 @@ final class TransportTests: XCTestCase {
         XCTAssertNotEqual(halfway, pause)
     }
 
+    func testTheMiniPlayersSkipsAreTwoTrianglesWithoutTheBar() {
+        let box = CGRect(x: 0, y: 0, width: 28, height: 18)
+        XCTAssertTrue(TrackSkipGlyph(forward: true).path(in: box).contains(CGPoint(x: 27.5, y: 1)), "the bar")
+        XCTAssertFalse(TrackSkipGlyph(forward: true, bar: false).path(in: box).contains(CGPoint(x: 27.5, y: 1)))
+        XCTAssertTrue(TrackSkipGlyph(forward: true, bar: false).path(in: box).contains(CGPoint(x: 26, y: 9)),
+                      "the second triangle's tip reaches the edge")
+    }
+
     func testPopOutAndPutBackAreDrawnArrows() {
         let box = CGRect(x: 0, y: 0, width: 10, height: 10)
         for back in [false, true] {
