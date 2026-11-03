@@ -232,20 +232,21 @@ Episodes | Notes (or Chapters): a 2 pt-inset track in Segment Track with the sel
 in SwiftUI rather than a system segmented control, because a system control doesn't turn with the cover.
 
 ### The Progress Line and Controls
-The dial is gone: Spindle chose something simpler and more pragmatic. Under the title, a 240 pt progress line (4 pt
-capsule, white 22% track, Glass Ink fill; 6 pt under the pointer or while dragging) with the times under its two
+The dial is gone: Spindle chose something simpler and more pragmatic. Under the title, a 240 pt progress line (a bold
+6 pt capsule, white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two
 ends in caption digits. Drag it to move through the song or episode, or scroll over it to scrub with the haptic
 ticks the dial had (Option + scroll sets the volume: the line shows the level and the times read "Volume 40%").
 Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
 
-Under it, centred: back, a 44 pt glass play/pause button whose glyph morphs between the two, and forward (drawn
-skip glyphs for music, "−15" and "+30" for podcasts). A podcast's speed sits at the right as a quiet text button.
+Under it, centred: back, a 52 pt glass play/pause button whose glyph morphs between the two, and forward (21 pt
+drawn skip glyphs for music, "−15" and "+30" at 14 pt for podcasts). A podcast's speed sits at the right as a quiet text button.
 
 ### Mini Player
-The floating window is the menu bar strip grown: a 300 × 56 pt glass capsule tinted with the cover's colour,
-holding the 42 pt cover (11 pt corners), the title (13 pt semibold) and the artist line with its source, and a 3 pt
-progress line. With the pointer over it: play/pause on the cover, back and forward at the right, and the times under
-the line. Drag it by anywhere that isn't a control; right-click for Put Back, the Library and Quit.
+The floating window is the menu bar strip grown into two rows: a 300 × 120 pt glass panel (22 pt corners: the
+cover's 10 plus the 12 pt padding) tinted with the cover's colour. Top: the 40 pt cover with the title (13 pt
+semibold) and the artist line with its source. Below: a 4 pt progress line, then the times at its two ends with back,
+a 34 pt glass play/pause and forward centred between them. Drag it by the cover or titles; right-click for Put Back,
+the Library and Quit.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when

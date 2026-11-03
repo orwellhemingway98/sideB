@@ -17,7 +17,7 @@ final class DialPlacement: ObservableObject {
     }
 }
 
-/// The mini player: the menu bar strip grown into a floating glass capsule above other windows, dragged by
+/// The mini player: the menu bar strip grown into a small floating glass player above other windows, dragged by
 /// anywhere that isn't a control. Its position is remembered; "Put Back" returns it to the menu bar.
 @MainActor
 final class FloatingDialController {
@@ -89,7 +89,7 @@ private struct FloatingDialView: View {
     var body: some View {
         MiniPlayer(nowPlaying: nowPlaying, artwork: artwork)
             .background(GrabArea())
-            .background(WindowGlass(cornerRadius: MiniPlayer.size.height / 2, tint: CoverTint.glassTint(for: coverImage)))
+            .background(WindowGlass(cornerRadius: MiniPlayer.cornerRadius, tint: CoverTint.glassTint(for: coverImage)))
             .frame(width: MiniPlayer.size.width, height: MiniPlayer.size.height)
             .contextMenu {
                 Button("Put Back", action: onPutBack)
@@ -100,15 +100,18 @@ private struct FloatingDialView: View {
     }
 }
 
-/// The menu bar strip, grown: the cover, the title and artist with the source, and the progress line. With the
-/// pointer over it, play/pause shows on the cover, back and forward at the right and the times under the line.
+/// The menu bar strip, grown into two rows: the cover with the title and the artist and its source, then the
+/// progress line with the times, and back, play/pause and forward under it.
 struct MiniPlayer: View {
-    static let size = CGSize(width: 300, height: 56)
-    private static let cover: CGFloat = 42
+    static let size = CGSize(width: 300, height: 120)
+    private static let padding: CGFloat = 12
+    private static let coverSide: CGFloat = 40
+    private static let coverRadius: CGFloat = 10
+    /// Parallel corners: the window's radius is the cover's plus the padding round it.
+    static let cornerRadius = coverRadius + padding
 
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject var artwork: ArtworkCache
-    @State private var hovering = false
 
     /// Where along a line of `width` a pointer at `x` lands, held to the line's ends.
     static func fraction(atX x: CGFloat, width: CGFloat) -> Double {
@@ -117,103 +120,72 @@ struct MiniPlayer: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            cover
-            VStack(alignment: .leading, spacing: 1) {
-                if let display = nowPlaying.display {
-                    Text(display.title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(nsColor: .labelColor))
-                        .lineLimit(1)
-                    HStack(spacing: 4) {
-                        Text(display.subtitle).lineLimit(1)
-                        if let source = display.source { SourceMark(source: source, size: 11) }
-                    }
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                } else {
-                    Text(DialPanelView.emptyTitle)
-                        .font(.system(size: 13, weight: .semibold))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                cover
+                VStack(alignment: .leading, spacing: 1) {
+                    if let display = nowPlaying.display {
+                        Text(display.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color(nsColor: .labelColor))
+                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(display.subtitle).lineLimit(1)
+                            if let source = display.source { SourceMark(source: source, size: 11) }
+                        }
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                    } else {
+                        Text(DialPanelView.emptyTitle)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                ProgressLine(nowPlaying: nowPlaying, host: .floating, height: 3)
-                    .padding(.top, -3)
-                    .overlay(alignment: .bottom) { if hovering { times.offset(y: 9) } }
+                .allowsHitTesting(false)   // the window drags from here
             }
-            .allowsHitTesting(nowPlaying.display != nil)
-            if hovering, nowPlaying.display != nil {
-                HStack(spacing: 2) {
-                    skip(forward: false)
-                    skip(forward: true)
+            VStack(spacing: 0) {
+                ProgressLine(nowPlaying: nowPlaying, host: .floating, height: 4)
+                ZStack {
+                    times
+                    TransportControls(nowPlaying: nowPlaying, playSize: 34)
                 }
-                .transition(.opacity)
             }
         }
-        .padding(.leading, 7)
-        .padding(.trailing, 14)
-        .frame(width: Self.size.width, height: Self.size.height)
-        .contentShape(Capsule())
-        .onHover { inside in withAnimation(.easeOut(duration: 0.2)) { hovering = inside } }
+        .padding(Self.padding)
+        .frame(width: Self.size.width, height: Self.size.height, alignment: .top)
     }
 
     private var cover: some View {
         Group {
             if let display = nowPlaying.display {
-                Button { nowPlaying.toggle() } label: {
-                    ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
-                                size: Self.cover, cornerRadius: 11,
-                                image: display.kind == .music ? nowPlaying.musicArtwork : nil)
-                        .overlay {
-                            if hovering {
-                                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                    .fill(.black.opacity(0.3))
-                                    .overlay(PlayPauseGlyph(isPlaying: display.isPlaying)
-                                        .fill(.white).frame(width: 12, height: 14))
-                                    .transition(.opacity)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(display.isPlaying ? "Pause" : "Play")
+                ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
+                            size: Self.coverSide, cornerRadius: Self.coverRadius,
+                            image: display.kind == .music ? nowPlaying.musicArtwork : nil)
             } else {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                RoundedRectangle(cornerRadius: Self.coverRadius, style: .continuous)
                     .fill(.white.opacity(0.12))
-                    .frame(width: Self.cover, height: Self.cover)
+                    .frame(width: Self.coverSide, height: Self.coverSide)
             }
         }
+        .allowsHitTesting(false)
     }
 
     private var times: some View {
         HStack {
-            Text(TimeFormat.clock(nowPlaying.displayPosition))
+            if let volume = nowPlaying.volumeShown {
+                Text("\(volume)%")
+            } else {
+                Text(TimeFormat.clock(nowPlaying.displayPosition))
+            }
             Spacer()
-            if let duration = nowPlaying.displayDuration {
+            if let duration = nowPlaying.displayDuration, nowPlaying.volumeShown == nil {
                 Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
             }
         }
         .font(.system(size: 10).monospacedDigit())
         .foregroundStyle(.secondary)
+        .opacity(nowPlaying.display == nil ? 0 : 1)
         .allowsHitTesting(false)
-    }
-
-    private func skip(forward: Bool) -> some View {
-        let music = nowPlaying.mode == .music
-        let label = forward ? (music ? "Next track" : "Forward 30 seconds") : (music ? "Previous track" : "Back 15 seconds")
-        return Button { forward ? nowPlaying.forward() : nowPlaying.back() } label: {
-            Group {
-                if music {
-                    TrackSkipGlyph(forward: forward).fill(Color(nsColor: .labelColor)).frame(width: 14, height: 10)
-                } else {
-                    Text(forward ? "+30" : "\u{2212}15").font(.system(size: 11, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(Color(nsColor: .labelColor))
-                }
-            }
-            .frame(width: 28, height: 28)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(label)
-        .accessibilityLabel(label)
     }
 }
 

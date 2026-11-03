@@ -8,14 +8,14 @@ struct ProgressLine: View {
     @ObservedObject private var player: PodcastPlayer
     /// Which window the line is in; only the panel's follows the panel's show and close notifications.
     let host: DiscHost
-    var height: CGFloat = 4
+    var height: CGFloat = 6
 
     @State private var dragFraction: Double?
     @State private var hovering = false
     @State private var scroll = ScrollMonitor(round: false)
     @State private var positionStamp = (position: 0.0, at: Date())
 
-    init(nowPlaying: NowPlaying, host: DiscHost = .panel, height: CGFloat = 4) {
+    init(nowPlaying: NowPlaying, host: DiscHost = .panel, height: CGFloat = 6) {
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.host = host
@@ -38,7 +38,7 @@ struct ProgressLine: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule().fill(.white.opacity(0.22))
-                    Capsule().fill(Color(nsColor: .labelColor))
+                    Capsule().fill(.white)
                         .frame(width: max(thickness, geometry.size.width * shown))
                         .opacity(nowPlaying.display == nil ? 0 : 1)
                 }
@@ -59,7 +59,7 @@ struct ProgressLine: View {
                     })
             }
         }
-        .frame(height: 16)
+        .frame(height: max(16, height + 10))
         .animation(.easeOut(duration: 0.15), value: active)
         .background(ScrollAnchor(monitor: scroll))
         .onHover { inside in
@@ -112,9 +112,11 @@ struct ProgressLine: View {
 struct TransportControls: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
-    var playSize: CGFloat = 44
+    var playSize: CGFloat = 52
+    /// The skip glyphs scale with the play button.
+    private var scale: CGFloat { playSize / 52 }
 
-    init(nowPlaying: NowPlaying, playSize: CGFloat = 44) {
+    init(nowPlaying: NowPlaying, playSize: CGFloat = 52) {
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.playSize = playSize
@@ -125,12 +127,12 @@ struct TransportControls: View {
     var body: some View {
         let ink = Color(nsColor: .labelColor)
         let enabled = nowPlaying.display != nil
-        HStack(spacing: 22) {
+        HStack(spacing: 26 * scale) {
             button(isMusic ? "Previous track" : "Back 15 seconds", action: nowPlaying.back) {
                 if isMusic {
-                    TrackSkipGlyph(forward: false).fill(ink).frame(width: 16, height: 11)
+                    TrackSkipGlyph(forward: false).fill(ink).frame(width: 21 * scale, height: 14 * scale)
                 } else {
-                    Text("\u{2212}15").font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    Text("\u{2212}15").font(.system(size: 14 * scale, weight: .semibold).monospacedDigit())
                 }
             }
             Button { nowPlaying.toggle() } label: {
@@ -146,9 +148,9 @@ struct TransportControls: View {
             .accessibilityLabel(nowPlaying.display?.isPlaying == true ? "Pause" : "Play")
             button(isMusic ? "Next track" : "Forward 30 seconds", action: nowPlaying.forward) {
                 if isMusic {
-                    TrackSkipGlyph(forward: true).fill(ink).frame(width: 16, height: 11)
+                    TrackSkipGlyph(forward: true).fill(ink).frame(width: 21 * scale, height: 14 * scale)
                 } else {
-                    Text("+30").font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    Text("+30").font(.system(size: 14 * scale, weight: .semibold).monospacedDigit())
                 }
             }
         }
@@ -161,7 +163,7 @@ struct TransportControls: View {
                                      @ViewBuilder glyph: () -> Label) -> some View {
         Button(action: action) {
             glyph()
-                .frame(width: 34, height: 34)
+                .frame(width: 40 * scale, height: 40 * scale)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
