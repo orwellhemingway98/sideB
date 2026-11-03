@@ -14,10 +14,6 @@ struct DialPanelView: View {
     /// What the header showed last time the cover was settled; kept while a new song's cover loads.
     @State private var settledDisplay: NowPlayingDisplay?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
-    let onPopOut: (() -> Void)?
-    /// Whether the dial is out, so the pill reads Pop out or Put back.
-    let placement: DialPlacement?
     /// Clicking the cover opens or closes the list window.
     let onCover: (() -> Void)?
     /// Tells the cover's hint whether a Music song plays from an album or a playlist.
@@ -26,10 +22,7 @@ struct DialPanelView: View {
     let lesson: DialLesson?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
-         list: ListModel? = nil, lesson: DialLesson? = nil) {
-        self.onPopOut = onPopOut
-        self.placement = placement
+         onCover: (() -> Void)? = nil, list: ListModel? = nil, lesson: DialLesson? = nil) {
         self.onCover = onCover
         self.list = list
         self.lesson = lesson
@@ -180,7 +173,7 @@ struct DialPanelView: View {
                                contextKind: nowPlaying.music?.contextKind)
     }
 
-    /// Library and Pop out sit faintly in the cover's top corners, and come up fully under the pointer.
+    /// Library sits faintly in the cover's top corner, and come up fully under the pointer.
     static func cornerOpacity(hovering: Bool) -> Double {
         hovering ? 1 : 0.35
     }
@@ -191,13 +184,6 @@ struct DialPanelView: View {
                 LibraryGlyph().fill(Color(nsColor: .labelColor)).frame(width: 13, height: 12)
             }
             Spacer(minLength: 0)
-            if let onPopOut {
-                if let placement {
-                    PopOutCorner(placement: placement, action: onPopOut)
-                } else {
-                    CornerButton(label: "Pop out", action: onPopOut) { PopOutArrow(back: false) }
-                }
-            }
         }
         .padding(10)
         .opacity(Self.cornerOpacity(hovering: hovering))
@@ -416,49 +402,6 @@ private struct CornerButton<Glyph: View>: View {
     }
 }
 
-/// Pop out while the dial lives in the panel, Put back while it floats.
-private struct PopOutCorner: View {
-    @ObservedObject var placement: DialPlacement
-    let action: () -> Void
-
-    var body: some View {
-        CornerButton(label: placement.isPoppedOut ? "Put back" : "Pop out", action: action) {
-            PopOutArrow(back: placement.isPoppedOut)
-        }
-    }
-}
-
-/// Pop out (up and away) or Put back (down and in), drawn in code like the Library's spines.
-struct PopOutGlyph: Shape {
-    var back: Bool
-
-    func path(in rect: CGRect) -> Path {
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x * rect.width, y: rect.minY + y * rect.height)
-        }
-        var path = Path()
-        path.move(to: p(0.15, 0.85))
-        path.addLine(to: p(0.85, 0.15))
-        if back {
-            path.move(to: p(0.15, 0.4)); path.addLine(to: p(0.15, 0.85)); path.addLine(to: p(0.6, 0.85))
-        } else {
-            path.move(to: p(0.4, 0.15)); path.addLine(to: p(0.85, 0.15)); path.addLine(to: p(0.85, 0.6))
-        }
-        return path
-    }
-}
-
-/// The Pop out / Put back glyph at the size and stroke of the corner buttons.
-private struct PopOutArrow: View {
-    let back: Bool
-
-    var body: some View {
-        PopOutGlyph(back: back)
-            .stroke(Color(nsColor: .labelColor), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-            .frame(width: 10, height: 10)
-    }
-}
-
 /// Three spines on a shelf, the last leaning.
 struct LibraryGlyph: Shape {
     func path(in rect: CGRect) -> Path {
@@ -551,8 +494,7 @@ final class DialPanelController {
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
-         list: ListModel? = nil, lesson: DialLesson? = nil) {
+         onCover: (() -> Void)? = nil, list: ListModel? = nil, lesson: DialLesson? = nil) {
         self.nowPlaying = nowPlaying
         self.onLibrary = onLibrary
         self.onCover = onCover
@@ -571,8 +513,7 @@ final class DialPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
-                                 onPopOut: onPopOut, placement: placement, onCover: onCover, list: list,
-                                 lesson: lesson)
+                                 onCover: onCover, list: list, lesson: lesson)
         let m = Self.shadowMargin
         let hosting = NSHostingView(rootView: root.padding(EdgeInsets(top: m.top, leading: m.left,
                                                                        bottom: m.bottom, trailing: m.right)))

@@ -17,7 +17,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var downloads: DownloadManager?
     private var scheduler: RefreshScheduler?
     private var music: MusicRemote?
-    private var floatingDial: FloatingDialController?
     private var list: ListController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -59,16 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             music: music)
         let artwork = ArtworkCache()
-        let placement = DialPlacement()
-        let floatingDial = FloatingDialController(nowPlaying: nowPlaying, placement: placement,
-                                                  onPutBack: {}, onLibrary: { [weak self] in self?.showLibrary() },
-                                                  artwork: artwork)
         let listModel = ListModel(nowPlaying: nowPlaying, library: library, spotify: spotify)
         let list = ListController(model: listModel, nowPlaying: nowPlaying)
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: artwork,
                                         onLibrary: { [weak self] in self?.showLibrary() },
-                                        onPopOut: { [weak self] in self?.popOutDial() },
-                                        placement: placement,
                                         onCover: { [weak self] in self?.toggleList() },
                                         list: listModel,
                                         lesson: DialLesson(turned: nowPlaying.turned))
@@ -76,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.list = list
         let strip = StatusStripController(nowPlaying: nowPlaying, artwork: artwork, panel: panel,
                                           onLibrary: { [weak self] in self?.showLibrary() },
-                                          floatingDial: floatingDial, spotify: spotify)
+                                          spotify: spotify)
 
         // Downloads live beside the library store, in Application Support/Spindle/Episodes.
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -92,7 +85,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         })
 
         self.music = music
-        self.floatingDial = floatingDial
         self.fetcher = fetcher
         self.artwork = artwork
         self.downloads = downloads
@@ -110,7 +102,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scheduler.start()
         // The first poll of a running music app makes macOS ask for Automation permission, once.
         music.start()
-        if placement.isPoppedOut { floatingDial.show() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -121,17 +112,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The cover opens (or closes) the list window under the panel.
     private func toggleList() {
         list?.toggle()
-    }
-
-    /// The panel's pill: pops the dial out, or puts it back when it is already out.
-    private func popOutDial() {
-        guard let floatingDial else { return }
-        if floatingDial.isShown {
-            floatingDial.putBack()
-        } else {
-            panel?.close()
-            floatingDial.show()
-        }
     }
 
     /// Opens (creating once) the Library window and brings Spindle forward.

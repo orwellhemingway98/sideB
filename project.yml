@@ -17,8 +17,8 @@ targets:
       properties:
         CFBundleName: Spindle
         CFBundleDisplayName: Spindle
-        CFBundleShortVersionString: "0.13.6"
-        CFBundleVersion: "47"
+        CFBundleShortVersionString: "0.14.0"
+        CFBundleVersion: "48"
         LSApplicationCategoryType: public.app-category.music
         LSUIElement: true
         NSAppleEventsUsageDescription: "Spindle controls Apple Music and Spotify so it can show what's playing and play, pause, skip or scrub it."
