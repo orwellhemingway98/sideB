@@ -1,11 +1,11 @@
 import Combine
 import Foundation
 
-/// The one-time caption under the disc that teaches the turn. It shows until the dial is first turned, and
+/// The one-time caption that teaches scrolling over the line. It shows until the first scroll, and
 /// that is remembered, so it never comes back. To see it again:
 /// `defaults delete com.mfelouro.Spindle dialLessonLearned`.
 @MainActor
-final class DialLesson: ObservableObject {
+final class ScrollLesson: ObservableObject {
     static let key = "dialLessonLearned"
 
     @Published private(set) var learned: Bool

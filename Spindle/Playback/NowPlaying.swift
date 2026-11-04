@@ -1,19 +1,19 @@
 import Combine
 import AppKit
 
-/// Who the dial is steering: the podcast, or whatever Apple Music or Spotify is playing.
+/// Who Spindle is steering: the podcast, or whatever Apple Music or Spotify is playing.
 enum PlaybackMode: Equatable {
     case podcast, music
 }
 
-/// The one object the dial, the windows and the media keys talk to. Podcasts and music take turns:
+/// The one object the windows and the media keys talk to. Podcasts and music take turns:
 /// whichever was started most recently is in control.
 @MainActor
 final class NowPlaying: ObservableObject {
     static let commitDelay: TimeInterval = 0.15
     /// Turning with Option held: one full turn goes from silent to full.
     static let degreesPerPercent = 3.6
-    /// How long the volume stays on the disc after the last turn.
+    /// How long the volume stays showing after the last scroll.
     static let volumeShownFor: TimeInterval = 1
 
     let player: PodcastPlayer
@@ -29,7 +29,7 @@ final class NowPlaying: ObservableObject {
     private var generation = 0
     private let optionHeld: () -> Bool
     private let turnSubject = PassthroughSubject<Void, Never>()
-    /// Fires each time the dial is turned while there's something to steer.
+    /// Fires each time the line is scrolled while there's something to steer.
     var turned: AnyPublisher<Void, Never> { turnSubject.eraseToAnyPublisher() }
     private var volumeGeneration = 0
     /// Part of a percent turned but not yet applied.
@@ -40,7 +40,7 @@ final class NowPlaying: ObservableObject {
     @Published private(set) var chapters: [Chapter] = []
     @Published private(set) var scrubPosition: TimeInterval?
     @Published private(set) var mode: PlaybackMode = .podcast
-    /// The volume being set with Option + turn, shown on the disc for a moment; nil otherwise.
+    /// The volume being set with Option + scroll, shown for a moment; nil otherwise.
     @Published private(set) var volumeShown: Int?
 
     init(player: PodcastPlayer, media: MediaCenterPublishing, haptics: HapticPerforming,
@@ -83,19 +83,19 @@ final class NowPlaying: ObservableObject {
 
     // MARK: Who's in control
 
-    /// The podcast waiting while music has the dial; the panel offers to resume it.
+    /// The podcast waiting while music has the controls; the panel offers to resume it.
     var pausedEpisode: Episode? {
         mode == .music ? player.episode : nil
     }
 
-    /// Plays the waiting podcast, which pauses the music and gives the dial back to the podcast.
+    /// Plays the waiting podcast, which pauses the music and gives the controls back to the podcast.
     func resumePodcast() {
         guard mode == .music, player.episode != nil else { return }
         flushScrub()
         player.play()
     }
 
-    /// Music started (seen by polling): the podcast pauses, keeping its place, and the dial follows the music.
+    /// Music started (seen by polling): the podcast pauses, keeping its place, and the controls follow the music.
     private func musicStarted() {
         guard mode != .music || player.isPlaying else { return }
         dropScrub()
@@ -104,7 +104,7 @@ final class NowPlaying: ObservableObject {
         media.publish(nil)  // the music app publishes its own Now Playing
     }
 
-    /// A podcast started: the music pauses and the dial follows the podcast again.
+    /// A podcast started: the music pauses and the controls follow the podcast again.
     private func podcastStarted() {
         // Polling may not have seen the music start yet, so pause any music app we know about;
         // pausing one that is already paused does nothing.
@@ -137,7 +137,7 @@ final class NowPlaying: ObservableObject {
         return mode == .music ? music?.track?.position ?? 0 : player.position
     }
 
-    /// The length of whatever the dial is steering.
+    /// The length of whatever Spindle is steering.
     var displayDuration: TimeInterval? {
         guard mode == .music else { return player.duration }
         // Radio and live streams report no length: there's nothing to scrub.
@@ -154,7 +154,7 @@ final class NowPlaying: ObservableObject {
         return chapters.last { $0.start <= position }
     }
 
-    // MARK: Dial
+    // MARK: Scrubbing
 
     func turn(degrees: Double) {
         guard hasSomethingToSteer else { return }
@@ -174,7 +174,7 @@ final class NowPlaying: ObservableObject {
         }
     }
 
-    /// The volume of whatever the dial steers: Spindle's own for a podcast, the app's for music.
+    /// The volume of whatever Spindle steers: Spindle's own for a podcast, the app's for music.
     private var currentVolume: Int? {
         mode == .music ? music?.volume : player.volume
     }
@@ -238,7 +238,7 @@ final class NowPlaying: ObservableObject {
 
     // MARK: Transport
 
-    /// Commits a pending scrub now, so the next action (or quitting) starts from what the dial shows.
+    /// Commits a pending scrub now, so the next action (or quitting) starts from what the line shows.
     /// The scheduled commit then finds a newer generation and does nothing.
     func flushScrub() {
         guard scrubPosition != nil else { return }
@@ -264,17 +264,17 @@ final class NowPlaying: ObservableObject {
         music?.previous()
     }
 
-    /// The disc's 9 o'clock: the previous song, or 15 seconds back in a podcast.
+    /// Back: the previous song, or 15 seconds back in a podcast.
     func back() {
         if mode == .music { previous() } else { skip(by: -15) }
     }
 
-    /// The disc's 3 o'clock: the next song, or 30 seconds on in a podcast.
+    /// Forward: the next song, or 30 seconds on in a podcast.
     func forward() {
         if mode == .music { next() } else { skip(by: 30) }
     }
 
-    /// Starts from what the dial shows and wins over any pending scrub commit.
+    /// Starts from what the line shows and wins over any pending scrub commit.
     func skip(by seconds: TimeInterval) {
         jump(to: displayPosition + seconds)
     }

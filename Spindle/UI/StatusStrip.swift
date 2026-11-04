@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 /// What the menu bar shows: the artwork and a progress hairline in a small glass capsule,
-/// or a small empty glass disc when nothing is open.
+/// or a small empty glass circle when nothing is open.
 struct StatusStripView: View {
     static let height: CGFloat = 20
     static let stripWidth: CGFloat = 13 + 5 + 44 + 2 * 6
@@ -53,24 +53,24 @@ struct StatusStripView: View {
     }
 }
 
-/// The menu bar item. A click toggles the dial panel; a right-click shows the `StatusMenu`;
+/// The menu bar item. A click toggles the panel; a right-click shows the `StatusMenu`;
 /// scrolling over it scrubs without opening anything.
 @MainActor
 final class StatusStripController: NSObject {
     private let statusItem: NSStatusItem
     private let nowPlaying: NowPlaying
-    private let panel: DialPanelController
+    private let panel: PanelController
     private let onLibrary: () -> Void
-    private let floatingDial: FloatingDialController?
+    private let miniPlayer: MiniPlayerController?
     private let loginItem: LoginItem
     private let spotify: SpotifyAccount?
     private var cancellables: Set<AnyCancellable> = []
 
-    init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void,
-         floatingDial: FloatingDialController? = nil, loginItem: LoginItem = MainAppLoginItem(),
+    init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: PanelController, onLibrary: @escaping () -> Void,
+         miniPlayer: MiniPlayerController? = nil, loginItem: LoginItem = MainAppLoginItem(),
          spotify: SpotifyAccount? = nil) {
         self.spotify = spotify
-        self.floatingDial = floatingDial
+        self.miniPlayer = miniPlayer
         self.loginItem = loginItem
         self.nowPlaying = nowPlaying
         self.panel = panel
@@ -120,7 +120,7 @@ final class StatusStripController: NSObject {
     private func showMenu() {
         guard let button = statusItem.button else { return }
         panel.close()
-        let menu = StatusMenu.menu(floatingDial: floatingDial?.isShown, launchAtLogin: loginItem.isEnabled,
+        let menu = StatusMenu.menu(miniPlayer: miniPlayer?.isShown, launchAtLogin: loginItem.isEnabled,
                                    spotifySignedIn: spotify?.isSignedIn) { [weak self] in
             self?.perform($0)
         }
@@ -132,7 +132,7 @@ final class StatusStripController: NSObject {
     private func perform(_ command: StatusMenu.Command) {
         switch command {
         case .library: openLibrary()
-        case .floatingDial: toggleFloatingDial()
+        case .miniPlayer: toggleMiniPlayer()
         case .launchAtLogin:
             StatusMenu.toggle(loginItem) { error in
                 let alert = NSAlert()
@@ -151,9 +151,9 @@ final class StatusStripController: NSObject {
 
     private func openLibrary() { onLibrary() }
 
-    private func toggleFloatingDial() {
-        guard let floatingDial else { return }
-        if floatingDial.isShown { floatingDial.putBack() } else { floatingDial.show() }
+    private func toggleMiniPlayer() {
+        guard let miniPlayer else { return }
+        if miniPlayer.isShown { miniPlayer.putBack() } else { miniPlayer.show() }
     }
 }
 

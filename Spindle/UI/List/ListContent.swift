@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the list window shows for whatever the dial is steering.
+/// What the list window shows for whatever Spindle is steering.
 enum ListContent {
     case podcast(episodes: [Episode], current: Episode, chapters: [Chapter], currentChapter: Chapter?, description: String)
     case music(MusicContext, currentTrackID: String)

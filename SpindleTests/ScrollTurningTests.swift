@@ -4,17 +4,18 @@ import XCTest
 
 @MainActor
 final class ScrollTurningTests: XCTestCase {
-    func testScrollOnlyTurnsInsideTheVisibleDisc() {
-        let disc = NSWindow()
+    func testScrollOnlyTurnsOnTheVisibleLine() {
+        let line = NSWindow()
         let other = NSWindow()
-        let inside = CGPoint(x: 75, y: 40)
-        XCTAssertFalse(ScrollTurning.shouldTurn(eventWindow: other, discWindow: disc, windowVisible: true,
-                                                pointInDisc: inside, discSize: 150))
-        XCTAssertFalse(ScrollTurning.shouldTurn(eventWindow: disc, discWindow: disc, windowVisible: false,
-                                                pointInDisc: inside, discSize: 150))
-        XCTAssertFalse(ScrollTurning.shouldTurn(eventWindow: disc, discWindow: disc, windowVisible: true,
-                                                pointInDisc: CGPoint(x: 5, y: 5), discSize: 150))
-        XCTAssertTrue(ScrollTurning.shouldTurn(eventWindow: disc, discWindow: disc, windowVisible: true,
-                                               pointInDisc: inside, discSize: 150))
+        let bounds = CGRect(x: 0, y: 0, width: 240, height: 16)
+        let inside = CGPoint(x: 120, y: 8)
+        XCTAssertFalse(ScrollTurning.shouldTurn(eventWindow: other, lineWindow: line, windowVisible: true,
+                                                pointInLine: inside, lineBounds: bounds))
+        XCTAssertFalse(ScrollTurning.shouldTurn(eventWindow: line, lineWindow: line, windowVisible: false,
+                                                pointInLine: inside, lineBounds: bounds))
+        XCTAssertFalse(ScrollTurning.shouldTurn(eventWindow: line, lineWindow: line, windowVisible: true,
+                                                pointInLine: CGPoint(x: 120, y: 40), lineBounds: bounds))
+        XCTAssertTrue(ScrollTurning.shouldTurn(eventWindow: line, lineWindow: line, windowVisible: true,
+                                               pointInLine: inside, lineBounds: bounds))
     }
 }

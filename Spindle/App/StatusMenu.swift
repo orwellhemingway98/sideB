@@ -1,10 +1,10 @@
 import AppKit
 import ServiceManagement
 
-/// The menu bar icon's right-click menu: Library, the floating dial, Launch at Login, signing out of Spotify
+/// The menu bar icon's right-click menu: Library, the mini player, Launch at Login, signing out of Spotify
 /// and Quit.
 enum StatusMenu {
-    enum Command: Equatable { case library, floatingDial, launchAtLogin, signInToSpotify, signOutOfSpotify, quit }
+    enum Command: Equatable { case library, miniPlayer, launchAtLogin, signInToSpotify, signOutOfSpotify, quit }
 
     struct Row: Equatable {
         let title: String
@@ -12,12 +12,12 @@ enum StatusMenu {
         let isOn: Bool
     }
 
-    /// The rows top to bottom; nil is a separator. `floatingDial` is whether it is out (nil: no floating dial).
+    /// The rows top to bottom; nil is a separator. `miniPlayer` is whether it is out (nil: no mini player).
     /// The menu offers to sign in to Spotify or out of it (nil: no Spotify account to offer).
-    static func rows(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil) -> [Row?] {
+    static func rows(miniPlayer: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil) -> [Row?] {
         var rows: [Row?] = [Row(title: "Open Library\u{2026}", command: .library, isOn: false)]
-        if let out = floatingDial {
-            rows.append(Row(title: out ? "Hide Mini Player" : "Show Mini Player", command: .floatingDial, isOn: false))
+        if let out = miniPlayer {
+            rows.append(Row(title: out ? "Hide Mini Player" : "Show Mini Player", command: .miniPlayer, isOn: false))
         }
         rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil]
         switch spotifySignedIn {
@@ -35,10 +35,10 @@ enum StatusMenu {
     }
 
     @MainActor
-    static func menu(floatingDial: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil,
+    static func menu(miniPlayer: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil,
                      perform: @escaping (Command) -> Void) -> NSMenu {
         let menu = NSMenu()
-        for row in rows(floatingDial: floatingDial, launchAtLogin: launchAtLogin, spotifySignedIn: spotifySignedIn) {
+        for row in rows(miniPlayer: miniPlayer, launchAtLogin: launchAtLogin, spotifySignedIn: spotifySignedIn) {
             guard let row else { menu.addItem(.separator()); continue }
             let item = CommandItem(title: row.title, keyEquivalent: row.command == .quit ? "q" : "") { perform(row.command) }
             item.state = row.isOn ? .on : .off

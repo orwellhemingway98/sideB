@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import Spindle
 
-/// The progress line and controls that replaced the dial.
+/// The progress line and controls.
 final class TransportTests: XCTestCase {
     func testTheLineGlidesOnBetweenTicks() {
         // Playing, it moves on smoothly from the last known place at the playback speed.

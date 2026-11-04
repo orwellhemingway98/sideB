@@ -1,7 +1,7 @@
 import XCTest
 @testable import Spindle
 
-/// Podcasts and music take turns on the dial: whichever was started most recently is in control.
+/// Podcasts and music take turns: whichever was started most recently is in control.
 @MainActor
 final class NowPlayingModeTests: XCTestCase {
     private var engine: FakeEngine!

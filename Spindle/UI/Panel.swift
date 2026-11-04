@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The glass panel that drops from the menu bar strip.
-struct DialPanelView: View {
+struct PanelView: View {
     static let width: CGFloat = 272
 
     @ObservedObject var nowPlaying: NowPlaying
@@ -14,20 +14,20 @@ struct DialPanelView: View {
     /// What the header showed last time the cover was settled; kept while a new song's cover loads.
     @State private var settledDisplay: NowPlayingDisplay?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
+    /// Pops the mini player out, or puts it back; nil hides the button.
     let onPopOut: (() -> Void)?
-    /// Whether the dial is out, so the pill reads Pop out or Put back.
-    let placement: DialPlacement?
+    /// Whether the mini player is out, so the button reads Pop out or Put back.
+    let placement: MiniPlacement?
     /// Clicking the cover opens or closes the list window.
     let onCover: (() -> Void)?
     /// Tells the cover's hint whether a Music song plays from an album or a playlist.
     let list: ListModel?
-    /// The one-time caption that teaches the turn.
-    let lesson: DialLesson?
+    /// The one-time caption that teaches scrolling over the line.
+    let lesson: ScrollLesson?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
-         list: ListModel? = nil, lesson: DialLesson? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: MiniPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil, lesson: ScrollLesson? = nil) {
         self.onPopOut = onPopOut
         self.placement = placement
         self.onCover = onCover
@@ -40,8 +40,7 @@ struct DialPanelView: View {
         self.onLibrary = onLibrary
     }
 
-    /// Between the panel's rows, and the extra room round the disc so it doesn't crowd the text above and
-    /// the pills below (22 pt from the halo's edge in all).
+    /// Between the panel's rows.
     static let rowSpacing: CGFloat = 14
     static let panelPadding: CGFloat = 16
     static let panelCornerRadius: CGFloat = 30
@@ -204,9 +203,9 @@ struct DialPanelView: View {
         .animation(.easeOut(duration: 0.15), value: hovering)
     }
 
-    // MARK: Disc and times
+    // MARK: Progress and times
 
-    /// The times sit in the row's lower corners, either side of the disc, like the ends of a scrubber.
+    /// The times sit under the ends of the progress line.
     /// The progress line with the times under it, then back, play/pause and forward (and a podcast's speed).
     private func playbackRow(_ display: NowPlayingDisplay) -> some View {
         VStack(spacing: 10) {
@@ -251,7 +250,7 @@ struct DialPanelView: View {
 
     // MARK: Pills
 
-    /// While music has the dial, the waiting podcast is one click away.
+    /// While music has the controls, the waiting podcast is one click away.
     private func resumePill(_ episode: Episode) -> some View {
         // A side option, so it's quiet: the show's artwork, "Resume" in grey, the title in regular weight.
         Button { nowPlaying.resumePodcast() } label: {
@@ -361,7 +360,7 @@ struct DialPanelView: View {
 
     // MARK: Footer
 
-    /// What a podcast failure says under the disc; the Try Again under it plays, which reloads the episode.
+    /// What a podcast failure says under the controls; the Try Again under it plays, which reloads the episode.
     static func failureMessage(_ failure: String) -> String {
         switch failure {
         case "Offline": return "You're offline. Spindle kept your place."
@@ -375,15 +374,15 @@ struct DialPanelView: View {
     static let emptyLine = "Play something in Music or Spotify and it shows up here. Or follow a podcast."
 }
 
-/// The one-time caption under the disc that teaches the turn; it fades away after the first turn.
+/// The one-time caption that teaches scrolling over the line; it fades away after the first scroll.
 private struct LessonCaption: View {
-    @ObservedObject var lesson: DialLesson
+    @ObservedObject var lesson: ScrollLesson
     let kind: NowPlayingDisplay.Kind
 
     var body: some View {
         Group {
             if !lesson.learned {
-                Text(DialLesson.caption(for: kind))
+                Text(ScrollLesson.caption(for: kind))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -416,9 +415,9 @@ struct CornerButton<Glyph: View>: View {
     }
 }
 
-/// Pop out while the dial lives in the panel, Put back while it floats.
+/// Pop out while the mini player is away, Put back while it floats.
 private struct PopOutCorner: View {
-    @ObservedObject var placement: DialPlacement
+    @ObservedObject var placement: MiniPlacement
     let action: () -> Void
 
     var body: some View {
@@ -480,7 +479,7 @@ struct LibraryGlyph: Shape {
     }
 }
 
-/// The keys the dial panel answers while it's the key window. Keys held with Command, Option or Control
+/// The keys the panel answers while it's the key window. Keys held with Command, Option or Control
 /// belong to the system, except ⌘L.
 enum PanelKey: Equatable {
     case playPause, back, forward, up, down, turnCover, library, escape
@@ -508,7 +507,7 @@ enum PanelKey: Equatable {
 
 /// A borderless panel that can take key status (for its keys) without activating the app, and keeps
 /// its top edge in place when its content grows or shrinks.
-private final class DialPanelWindow: NSPanel {
+private final class PanelWindow: NSPanel {
     var anchoredTop: CGFloat?
 
     override var canBecomeKey: Bool { true }
@@ -521,15 +520,15 @@ private final class DialPanelWindow: NSPanel {
     }
 }
 
-/// Owns the dial panel: shows it under the status button, closes it on an outside click or Escape, and
+/// Owns the panel: shows it under the status button, closes it on an outside click or Escape, and
 /// answers its keys: Space plays or pauses, ← and → go back and forward, Return turns the cover, ⌘L opens
 /// the Library. On the back of the cover, ↑ and ↓ move through the rows and Return plays one.
 @MainActor
-final class DialPanelController {
-    /// Posted when the panel closes, so the disc drops its scroll monitor even with the pointer still over it.
-    static let didClose = Notification.Name("DialPanelController.didClose")
-    /// Posted when the panel shows, so the disc can take scrolls from a pointer already over it.
-    static let didShow = Notification.Name("DialPanelController.didShow")
+final class PanelController {
+    /// Posted when the panel closes, so the line drops its scroll monitor even with the pointer still over it.
+    static let didClose = Notification.Name("PanelController.didClose")
+    /// Posted when the panel shows, so the line can take scrolls from a pointer already over it.
+    static let didShow = Notification.Name("PanelController.didShow")
 
     /// How far below the menu bar icon the panel hangs.
     static let gapBelowIcon: CGFloat = 6
@@ -537,7 +536,7 @@ final class DialPanelController {
     /// off square at the window's edges. The top only goes up to the icon, so the icon stays clickable.
     static let shadowMargin = NSEdgeInsets(top: gapBelowIcon, left: 24, bottom: 28, right: 24)
 
-    private let panel: DialPanelWindow
+    private let panel: PanelWindow
     private var outsideClickMonitor: Any?
     private var ownWindowClickMonitor: Any?
     /// The status bar window the panel hangs from: its clicks toggle through the button instead.
@@ -551,13 +550,13 @@ final class DialPanelController {
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
-         list: ListModel? = nil, lesson: DialLesson? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: MiniPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil, lesson: ScrollLesson? = nil) {
         self.nowPlaying = nowPlaying
         self.onLibrary = onLibrary
         self.onCover = onCover
         self.list = list
-        panel = DialPanelWindow(contentRect: NSRect(x: 0, y: 0, width: DialPanelView.width, height: 400),
+        panel = PanelWindow(contentRect: NSRect(x: 0, y: 0, width: PanelView.width, height: 400),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -570,7 +569,7 @@ final class DialPanelController {
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
-        let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
+        let root = PanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
                                  onPopOut: onPopOut, placement: placement, onCover: onCover, list: list,
                                  lesson: lesson)
         let m = Self.shadowMargin
@@ -726,7 +725,7 @@ struct CoverButton: View {
     var body: some View {
         ZStack {
             ArtworkView(cache: artwork, url: display.artworkURL, seed: display.artworkSeed,
-                        size: Self.size, cornerRadius: DialPanelView.coverCornerRadius, image: image)
+                        size: Self.size, cornerRadius: PanelView.coverCornerRadius, image: image)
                 .id(pictureKey)
                 .transition(reduceMotion ? .opacity : .asymmetric(
                     insertion: .modifier(active: Developing(amount: 0), identity: Developing(amount: 1)),
@@ -768,7 +767,7 @@ struct CoverButton: View {
 /// colour alone. The artist gives way first when the line is short of room.
 struct SourceMark: View {
     let source: MusicSourceID
-    var size: CGFloat = DialPanelView.subtitleSize
+    var size: CGFloat = PanelView.subtitleSize
 
     var body: some View {
         HStack(spacing: 4) {
@@ -890,7 +889,7 @@ private struct CoverBack: View {
     let turnBack: (() -> Void)?
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: DialPanelView.coverCornerRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: PanelView.coverCornerRadius, style: .continuous)
         ZStack(alignment: .bottomTrailing) {
             ListBody(model: list, nowPlaying: nowPlaying)
                 .frame(width: 240, height: 240, alignment: .top)

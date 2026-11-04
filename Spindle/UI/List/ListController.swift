@@ -18,7 +18,7 @@ enum ListPlacement {
     }
 }
 
-/// Which clicks close the dial panel: those in another Spindle window, but not in the panel, its menu bar
+/// Which clicks close the panel: those in another Spindle window, but not in the panel, its menu bar
 /// item or the panel's own child windows (the list).
 enum PanelClickPolicy {
     static func closesPanel(clickWindow: NSWindow?, panel: NSWindow, anchor: NSWindow?, children: [NSWindow]) -> Bool {
@@ -66,7 +66,7 @@ final class ListController {
         }.store(in: &cancellables)
         // The panel opens on the cover next time.
         if followsPanel {
-            NotificationCenter.default.publisher(for: DialPanelController.didClose)
+            NotificationCenter.default.publisher(for: PanelController.didClose)
                 .sink { [weak self] _ in self?.close(animated: false) }
                 .store(in: &cancellables)
         }
@@ -97,7 +97,7 @@ final class ListController {
         }
     }
 
-    /// Escape in the dial panel turns the cover back first.
+    /// Escape in the panel turns the cover back first.
     func handleEscape() -> Bool {
         guard isShown else { return false }
         close(animated: true)

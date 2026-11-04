@@ -1,21 +1,21 @@
 import AppKit
 import SwiftUI
 
-/// The progress line that replaced the dial: drag it to move through the song or episode, or scroll over it
-/// (with haptic ticks, as the dial had). Playing, it glides on between the player's ticks rather than stepping.
+/// The progress line: drag it to move through the song or episode, or scroll over it
+/// (with haptic ticks). Playing, it glides on between the player's ticks rather than stepping.
 struct ProgressLine: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
     /// Which window the line is in; only the panel's follows the panel's show and close notifications.
-    let host: DiscHost
+    let host: LineHost
     var height: CGFloat = 6
 
     @State private var dragFraction: Double?
     @State private var hovering = false
-    @State private var scroll = ScrollMonitor(round: false)
+    @State private var scroll = ScrollMonitor()
     @State private var positionStamp = (position: 0.0, at: Date())
 
-    init(nowPlaying: NowPlaying, host: DiscHost = .panel, height: CGFloat = 6) {
+    init(nowPlaying: NowPlaying, host: LineHost = .panel, height: CGFloat = 6) {
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
         self.host = host
@@ -66,10 +66,10 @@ struct ProgressLine: View {
             hovering = inside
             if inside { installScroll() } else { scroll.remove() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: PanelController.didShow)) { _ in
             if host.followsPanel { installScroll() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: PanelController.didClose)) { _ in
             if host.followsPanel { scroll.remove() }
         }
         .onDisappear { scroll.remove() }

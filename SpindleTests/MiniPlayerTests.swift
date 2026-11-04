@@ -3,7 +3,7 @@ import XCTest
 @testable import Spindle
 
 @MainActor
-final class FloatingDialTests: XCTestCase {
+final class MiniPlayerTests: XCTestCase {
     private var suite: String!
     private var defaults: UserDefaults!
 
@@ -17,10 +17,10 @@ final class FloatingDialTests: XCTestCase {
     }
 
     func testPlacementIsRemembered() {
-        let placement = DialPlacement(defaults: defaults)
+        let placement = MiniPlacement(defaults: defaults)
         XCTAssertFalse(placement.isPoppedOut)
         placement.isPoppedOut = true
-        XCTAssertTrue(DialPlacement(defaults: defaults).isPoppedOut)
+        XCTAssertTrue(MiniPlacement(defaults: defaults).isPoppedOut)
     }
 
     func testShowAndPutBack() async throws {
@@ -29,23 +29,23 @@ final class FloatingDialTests: XCTestCase {
         let player = PodcastPlayer(engine: FakeEngine(), library: library)
         let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
                                     schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
-        let placement = DialPlacement(defaults: defaults)
+        let placement = MiniPlacement(defaults: defaults)
         var putBack = 0
-        let dial = FloatingDialController(nowPlaying: nowPlaying, placement: placement,
+        let mini = MiniPlayerController(nowPlaying: nowPlaying, placement: placement,
                                           onPutBack: { putBack += 1 }, onLibrary: {})
-        XCTAssertFalse(dial.isShown)
-        dial.show()
-        XCTAssertTrue(dial.isShown)
+        XCTAssertFalse(mini.isShown)
+        mini.show()
+        XCTAssertTrue(mini.isShown)
         XCTAssertTrue(placement.isPoppedOut)
-        dial.putBack()
-        XCTAssertFalse(dial.isShown)
+        mini.putBack()
+        XCTAssertFalse(mini.isShown)
         XCTAssertFalse(placement.isPoppedOut)
         XCTAssertEqual(putBack, 1)
     }
 
     func testPoppingOutIsAnnounced() {
         // The panel's Pop out / Put back pill follows it.
-        let placement = DialPlacement(defaults: defaults)
+        let placement = MiniPlacement(defaults: defaults)
         var seen: [Bool] = []
         let watch = placement.$isPoppedOut.dropFirst().sink { seen.append($0) }
         placement.isPoppedOut = true
@@ -58,15 +58,15 @@ final class FloatingDialTests: XCTestCase {
         let player = PodcastPlayer(engine: FakeEngine(), library: LibraryStore.inMemory(fetcher: StubFetcher(responses: [:])))
         let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
                                     schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
-        let mini = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: defaults),
+        let mini = MiniPlayerController(nowPlaying: nowPlaying, placement: MiniPlacement(defaults: defaults),
                                           onPutBack: {}, onLibrary: {})
-        let m = FloatingDialController.shadowMargin
+        let m = MiniPlayerController.shadowMargin
         XCTAssertEqual(mini.window.frame.size, CGSize(width: MiniPlayer.size.width + m.left + m.right,
                                                       height: MiniPlayer.size.height + m.top + m.bottom),
                        "the cover's frame plus clear room round it, so the glass's own shadow fades out")
         XCTAssertFalse(mini.window.hasShadow, "no window shadow tracing the square window, as in the panel")
         XCTAssertEqual(MiniPlayer.size, CGSize(width: 260, height: 260), "the panel's 240 pt cover in a 10 pt glass frame")
-        XCTAssertEqual(MiniPlayer.cornerRadius, DialPanelView.coverCornerRadius + MiniPlayer.frameWidth,
+        XCTAssertEqual(MiniPlayer.cornerRadius, PanelView.coverCornerRadius + MiniPlayer.frameWidth,
                        "parallel corners: the cover's plus the frame")
     }
 
@@ -90,7 +90,7 @@ final class FloatingDialTests: XCTestCase {
         let miniController = ListController(model: miniList, nowPlaying: nowPlaying, followsPanel: false)
         panelList.showsList = true
         miniList.showsList = true
-        NotificationCenter.default.post(name: DialPanelController.didClose, object: nil)
+        NotificationCenter.default.post(name: PanelController.didClose, object: nil)
         XCTAssertFalse(panelController.isShown)
         XCTAssertTrue(miniController.isShown)
     }

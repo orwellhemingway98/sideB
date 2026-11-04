@@ -1,39 +1,31 @@
 import AppKit
 import SwiftUI
 
-/// Scrolls as turns of the dial.
+/// Scrolls as turns: how far to scrub.
 enum ScrollTurning {
     /// Degrees of turn for a scroll: scrolling down turns clockwise. Line-based mice step 10 points a line.
     static func degrees(for event: NSEvent) -> Double {
         let points = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.deltaY * 10
-        return -Double(points) * DialGeometry.scrollDegreesPerPoint
+        return -Double(points) * ScrollGeometry.scrollDegreesPerPoint
     }
 
-    /// A scroll turns the disc only when it lands inside the disc's circle, in the disc's own window,
-    /// while that window is on screen. `pointInDisc` is in the disc's bounds (0...discSize on each axis).
-    static func shouldTurn(eventWindow: NSWindow?, discWindow: NSWindow?, windowVisible: Bool,
-                           pointInDisc: CGPoint, discSize: CGFloat) -> Bool {
-        guard let eventWindow, eventWindow === discWindow, windowVisible else { return false }
-        let radius = discSize / 2
-        return hypot(pointInDisc.x - radius, pointInDisc.y - radius) <= radius
+    /// A scroll scrubs only when it lands on the line, in the line's own window, while that window is on screen.
+    static func shouldTurn(eventWindow: NSWindow?, lineWindow: NSWindow?, windowVisible: Bool,
+                           pointInLine: CGPoint, lineBounds: CGRect) -> Bool {
+        guard let eventWindow, eventWindow === lineWindow, windowVisible else { return false }
+        return lineBounds.contains(pointInLine)
     }
 }
 
-/// A local scroll-wheel monitor that runs while the pointer is over the disc. It swallows only the
-/// scrolls that land on the disc (so the panel doesn't scroll instead) and passes every other one on.
+/// A local scroll-wheel monitor that runs while the pointer is over the line. It swallows only the
+/// scrolls that land on the line (so the panel doesn't scroll instead) and passes every other one on.
 @MainActor
 final class ScrollMonitor {
-    /// The disc's own view, which gives its window and its frame.
+    /// The line's own view, which gives its window and its frame.
     weak var anchor: NSView?
     private var monitor: Any?
-    /// A round anchor (the disc) takes scrolls inside its circle; a flat one (the progress line) anywhere in it.
-    private let round: Bool
 
-    init(round: Bool = true) {
-        self.round = round
-    }
-
-    /// True when the disc is in a window that is showing.
+    /// True when the line is in a window that is showing.
     var anchorIsOnScreen: Bool { anchor?.window?.isVisible == true }
 
     func install(_ turn: @escaping @MainActor (Double) -> Void) {
@@ -43,14 +35,11 @@ final class ScrollMonitor {
             let location = event.locationInWindow
             let degrees = ScrollTurning.degrees(for: event)
             let used = MainActor.assumeIsolated { () -> Bool in
-                guard let anchor = self?.anchor, let discWindow = anchor.window else { return false }
-                let point = anchor.convert(location, from: nil)
-                let inside = self?.round == false
-                    ? window === discWindow && discWindow.isVisible && anchor.bounds.contains(point)
-                    : ScrollTurning.shouldTurn(eventWindow: window, discWindow: discWindow,
-                                               windowVisible: discWindow.isVisible,
-                                               pointInDisc: point, discSize: anchor.bounds.width)
-                guard inside else { return false }
+                guard let anchor = self?.anchor, let lineWindow = anchor.window else { return false }
+                guard ScrollTurning.shouldTurn(eventWindow: window, lineWindow: lineWindow,
+                                               windowVisible: lineWindow.isVisible,
+                                               pointInLine: anchor.convert(location, from: nil),
+                                               lineBounds: anchor.bounds) else { return false }
                 turn(degrees)
                 return true
             }
@@ -68,7 +57,7 @@ final class ScrollMonitor {
     }
 }
 
-/// An invisible view behind the disc that tells the scroll monitor where the disc is.
+/// An invisible view behind the line that tells the scroll monitor where the line is.
 struct ScrollAnchor: NSViewRepresentable {
     let monitor: ScrollMonitor
 
@@ -87,11 +76,11 @@ struct ScrollAnchor: NSViewRepresentable {
     }
 }
 
-/// Where a disc lives: the menu bar panel, or the floating dial.
-enum DiscHost {
+/// Which window a progress line lives in: the panel, or the mini player.
+enum LineHost {
     case panel, floating
 
-    /// Only the panel's disc follows the panel's show and close notifications.
+    /// Only the panel's line follows the panel's show and close notifications.
     var followsPanel: Bool { self == .panel }
 }
 

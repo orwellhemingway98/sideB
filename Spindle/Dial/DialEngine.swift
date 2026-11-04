@@ -1,12 +1,12 @@
 import Foundation
 
-/// A moment on the dial worth a haptic bump.
+/// A moment worth a haptic bump while scrubbing.
 enum Detent: Equatable {
     case tick(at: TimeInterval)
     case chapter(at: TimeInterval)
 }
 
-/// What one turn of the dial does: how far to seek and which detents it crossed.
+/// What one turn (a scroll, measured in degrees) does: how far to seek and which detents it crossed.
 struct DialStep: Equatable {
     let seek: TimeInterval
     let detents: [Detent]
