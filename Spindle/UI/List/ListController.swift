@@ -248,6 +248,7 @@ struct ListBody: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(current ? .isSelected : [])
     }
 
     private func episodeRow(_ episode: Episode, current: Bool, action: @escaping () -> Void) -> some View {
@@ -263,6 +264,7 @@ struct ListBody: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(current ? .isSelected : [])
     }
 
     private static func episodeDetail(_ episode: Episode) -> String {

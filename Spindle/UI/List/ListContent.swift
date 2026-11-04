@@ -34,6 +34,15 @@ enum ListContent {
         return text == Self.couldNotRead || text == Self.couldNotReadSpotify
     }
 
+    /// What VoiceOver calls the back of the cover: what it lists.
+    var spokenTitle: String {
+        switch self {
+        case .music(let context, _): return (context.kind == .playlist ? "Playlist: " : "Album: ") + context.title
+        case .podcast(_, let current, _, _, _): return current.show.map { "Episodes of \($0.title)" } ?? "Episodes"
+        default: return "List"
+        }
+    }
+
     var isLoading: Bool {
         if case .musicLoading = self { return true }
         return false

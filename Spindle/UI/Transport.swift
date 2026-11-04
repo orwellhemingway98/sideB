@@ -27,7 +27,7 @@ struct ProgressLine: View {
         return duration
     }
 
-    private var isTurning: Bool { nowPlaying.scrubPosition != nil || nowPlaying.volumeShown != nil }
+    private var isTurning: Bool { nowPlaying.scrubPosition != nil }
 
     var body: some View {
         let flowing = dragFraction == nil && !isTurning && nowPlaying.display?.isPlaying == true && duration != nil
@@ -45,7 +45,7 @@ struct ProgressLine: View {
                 .frame(height: thickness)
                 .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 0)
+                .gesture(DragGesture(minimumDistance: Transport.seekDragDistance)
                     .onChanged { value in
                         guard duration != nil else { return }
                         dragFraction = Transport.fraction(atX: value.location.x, width: geometry.size.width)
@@ -91,16 +91,13 @@ struct ProgressLine: View {
 
     /// While dragging, where the pointer is; while playing, gliding on from the last tick; else where the player is.
     private func shownFraction(at now: Date, flowing: Bool) -> Double {
-        if let dragFraction { return dragFraction }
-        if let volume = nowPlaying.volumeShown { return Double(volume) / 100 }
-        guard let duration else { return 0 }
-        if flowing {
+        if flowing, dragFraction == nil, let duration {
             return Transport.flowingProgress(position: positionStamp.position,
                                              elapsed: now.timeIntervalSince(positionStamp.at),
                                              rate: nowPlaying.mode == .music ? 1 : Double(player.rate),
                                              duration: duration, playing: true)
         }
-        return min(1, max(0, nowPlaying.displayPosition / duration))
+        return Transport.lineFraction(dragging: dragFraction, position: nowPlaying.displayPosition, duration: duration)
     }
 
     private func installScroll() {
@@ -167,6 +164,17 @@ struct TransportControls: View {
 }
 
 enum Transport {
+    /// How far the pointer must move on the line before it seeks: a stray click does nothing.
+    static let seekDragDistance: CGFloat = 3
+
+    /// How full the line is: where the pointer is while dragging, otherwise how far through. Always time; the
+    /// volume is said in words beside it.
+    static func lineFraction(dragging: Double?, position: TimeInterval, duration: TimeInterval?) -> Double {
+        if let dragging { return dragging }
+        guard let duration, duration > 0 else { return 0 }
+        return min(1, max(0, position / duration))
+    }
+
     /// Where along a line of `width` a pointer at `x` lands, held to the line's ends.
     static func fraction(atX x: CGFloat, width: CGFloat) -> Double {
         guard width > 0 else { return 0 }

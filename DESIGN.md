@@ -167,7 +167,7 @@ artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or t
 - **Body** (regular, 12 pt): the artist or show line, list rows, descriptions.
 - **Caption** (regular, 11 pt, tabular digits): times under the progress line, row durations and dates, pill text.
 - **Label** (semibold, 10 pt, 1 pt tracking, uppercase for list headings): the cover's hint pill, "UP NEXT", the
-  album heading on the back of the cover. The podcast speed beside the controls is 11 pt semibold.
+  album heading on the back of the cover. The podcast speed between the times is 11 pt semibold.
 
 ### Named Rules
 **The Same Size Rule.** Paired values keep one size: elapsed and remaining times never shrink independently;
@@ -234,13 +234,14 @@ in SwiftUI rather than a system segmented control, because a system control does
 ### The Progress Line and Controls
 The dial is gone: Spindle chose something simpler and more pragmatic. Under the title, a 240 pt progress line (a bold
 6 pt capsule, white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two
-ends in caption digits. Drag it to move through the song or episode, or scroll over it to scrub with the haptic
-ticks the dial had (Option + scroll sets the volume: the line shows the level and the times read "Volume 40%").
+ends in caption digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing), or scroll over
+it to scrub with haptic ticks. Option + scroll sets the volume, said in words where the elapsed time was ("Volume
+40%"); the line always shows time.
 Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
 
 Under it, centred, in Apple's SF Symbols at 20 pt: back, play/pause (a plain 30 pt symbol, no glass circle) whose symbol
 swaps with the system's replace effect, and forward (`backward.fill` / `forward.fill` for music, `gobackward.15` /
-`goforward.30` for podcasts). A podcast's speed sits at the right as a quiet text button.
+`goforward.30` for podcasts). A podcast's speed sits between the two times as a quiet text button, clear of the buttons.
 
 ### Mini Player
 The floating window is only the cover: the panel's 240 pt cover in a 10 pt frame of window glass tinted with the

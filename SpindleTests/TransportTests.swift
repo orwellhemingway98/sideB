@@ -28,6 +28,18 @@ final class TransportTests: XCTestCase {
         }
     }
 
+    func testAStrayClickOnTheLineDoesNotSeek() {
+        // Seeking takes a real drag, so a click on its way to the play button can't lose a podcast's place.
+        XCTAssertGreaterThanOrEqual(Transport.seekDragDistance, 3)
+    }
+
+    func testTheLineShowsTimeNotVolume() {
+        XCTAssertEqual(Transport.lineFraction(dragging: nil, position: 50, duration: 200), 0.25)
+        XCTAssertEqual(Transport.lineFraction(dragging: 0.75, position: 50, duration: 200), 0.75, "where the pointer is")
+        XCTAssertEqual(Transport.lineFraction(dragging: nil, position: 500, duration: 200), 1)
+        XCTAssertEqual(Transport.lineFraction(dragging: nil, position: 50, duration: nil), 0)
+    }
+
     func testDraggingTheLineSeeksWhereThePointerIs() {
         XCTAssertEqual(Transport.fraction(atX: 50, width: 200), 0.25)
         XCTAssertEqual(Transport.fraction(atX: -10, width: 200), 0, "held at the start")

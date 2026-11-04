@@ -146,6 +146,7 @@ struct PanelView: View {
                 Text(display.title)
                     .font(.system(size: Self.titleSize, weight: .semibold))
                     .lineLimit(2)
+                    .help(display.title)    // a long title is cut short; the pointer reads it whole
                 if !display.subtitle.isEmpty || display.source != nil {
                     HStack(spacing: 5) {
                         if !display.subtitle.isEmpty {
@@ -153,6 +154,7 @@ struct PanelView: View {
                                 .font(.system(size: Self.subtitleSize))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
+                                .help(display.subtitle)
                         }
                         if let source = display.source {
                             SourceMark(source: source)
@@ -211,40 +213,40 @@ struct PanelView: View {
         VStack(spacing: 10) {
             VStack(spacing: 2) {
                 ProgressLine(nowPlaying: nowPlaying)
-                HStack {
-                    if let volume = nowPlaying.volumeShown {
-                        // Option + scroll sets the volume; the line shows the level for a second.
-                        Text("Volume \(volume)%")
-                            .contentTransition(.numericText(value: Double(volume)))
-                    } else {
-                        Text(TimeFormat.clock(nowPlaying.displayPosition))
+                ZStack {
+                    HStack {
+                        if let volume = nowPlaying.volumeShown {
+                            // Option + scroll sets the volume, said here for a second; the line stays on the time.
+                            Text("Volume \(volume)%")
+                                .contentTransition(.numericText(value: Double(volume)))
+                        } else {
+                            Text(TimeFormat.clock(nowPlaying.displayPosition))
+                        }
+                        Spacer(minLength: 8)
+                        if let duration = display.duration {
+                            Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
+                        }
                     }
-                    Spacer(minLength: 8)
-                    if let duration = display.duration, nowPlaying.volumeShown == nil {
-                        Text(TimeFormat.remaining(max(0, duration - nowPlaying.displayPosition)))
+                    .lineLimit(1)
+                    .font(Font(Self.timeFont))
+                    .foregroundStyle(.secondary)
+                    // A podcast's speed sits between the times, clear of the buttons below.
+                    if display.kind == .podcast, player.episode != nil {
+                        Button { nowPlaying.cycleRate() } label: {
+                            Text(Self.rateLabel(player.rate))
+                                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Playback speed")
+                        .accessibilityLabel("Speed \(Self.rateLabel(player.rate))")
                     }
                 }
-                .lineLimit(1)
-                .font(Font(Self.timeFont))
-                .foregroundStyle(.secondary)
             }
-            ZStack {
-                TransportControls(nowPlaying: nowPlaying)
-                if display.kind == .podcast, player.episode != nil {
-                    Button { nowPlaying.cycleRate() } label: {
-                        Text(Self.rateLabel(player.rate))
-                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Playback speed")
-                    .accessibilityLabel("Speed \(Self.rateLabel(player.rate))")
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-            }
+            TransportControls(nowPlaying: nowPlaying)
         }
     }
 
@@ -756,7 +758,7 @@ struct CoverButton: View {
                 })
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Cover")
+            .accessibilityLabel("Cover, \(display.title)")
             .accessibilityHint(spokenHint)
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { action?() }
@@ -832,13 +834,13 @@ struct CoverFlip<Front: View>: View {
             CoverBack(list: list, nowPlaying: nowPlaying, tint: tint, turnBack: turnBack)
                 .modifier(FlipFace(angle: angle, isBack: true, reduceMotion: reduceMotion))
                 .accessibilityElement(children: .contain)
-                .accessibilityLabel(list.showsList ? "List" : "")
+                .accessibilityLabel(list.showsList ? list.content.spokenTitle : "")
                 .accessibilityFocused($spoken, equals: .back)
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : coverTurn, value: list.showsList)
         .onChange(of: list.showsList) { _, showsList in
             // After the turn, once the side VoiceOver should read is in the tree.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { spoken = showsList ? .back : .front }
+            DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0.2 : 0.6)) { spoken = showsList ? .back : .front }
         }
     }
 }
