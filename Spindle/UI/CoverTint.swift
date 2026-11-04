@@ -75,7 +75,7 @@ enum CoverTint {
 
     private static let glassCache = NSCache<NSImage, NSColor>()
 
-    /// The panel's and floating dial's glass for this cover, lightly. Nil keeps plain glass.
+    /// The panel's and mini player's glass for this cover, lightly. Nil keeps plain glass.
     static func glassTint(for image: NSImage?) -> NSColor? {
         guard let image else { return nil }
         if let known = glassCache.object(forKey: image) { return known }

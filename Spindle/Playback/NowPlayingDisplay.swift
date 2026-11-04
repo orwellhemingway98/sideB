@@ -1,6 +1,6 @@
 import AppKit
 
-/// What every view shows for whatever the dial is steering: a podcast episode or a song.
+/// What every view shows for whatever Spindle is steering: a podcast episode or a song.
 struct NowPlayingDisplay: Equatable {
     enum Kind: Equatable { case podcast, music }
 

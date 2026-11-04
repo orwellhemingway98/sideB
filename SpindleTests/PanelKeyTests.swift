@@ -2,7 +2,7 @@ import AppKit
 import XCTest
 @testable import Spindle
 
-/// The keys the dial panel answers while it's the key window.
+/// The keys the panel answers while it's the key window.
 final class PanelKeyTests: XCTestCase {
     func testPlainKeysControlPlayback() {
         XCTAssertEqual(PanelKey(keyCode: 49, modifiers: []), .playPause, "Space")

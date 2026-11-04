@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the list window shows for whatever the dial is steering.
+/// What the list window shows for whatever Spindle is steering.
 enum ListContent {
     case podcast(episodes: [Episode], current: Episode, chapters: [Chapter], currentChapter: Chapter?, description: String)
     case music(MusicContext, currentTrackID: String)
@@ -32,6 +32,15 @@ enum ListContent {
     var canTryAgain: Bool {
         guard case .musicMessage(_, let text) = self else { return false }
         return text == Self.couldNotRead || text == Self.couldNotReadSpotify
+    }
+
+    /// What VoiceOver calls the back of the cover: what it lists.
+    var spokenTitle: String {
+        switch self {
+        case .music(let context, _): return (context.kind == .playlist ? "Playlist: " : "Album: ") + context.title
+        case .podcast(_, let current, _, _, _): return current.show.map { "Episodes of \($0.title)" } ?? "Episodes"
+        default: return "List"
+        }
     }
 
     var isLoading: Bool {

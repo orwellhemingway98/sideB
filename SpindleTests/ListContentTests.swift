@@ -180,6 +180,28 @@ final class ListContentTests: XCTestCase {
         XCTAssertFalse(list.content.canTryAgain)
     }
 
+    func testVoiceOverNamesWhatTheBackOfTheCoverLists() async {
+        music.contextResult = .success(album("Night Roads", ["t1"]))
+        music.contextKeyValue = "album:Night Roads|Northern Static"
+        music.play("t1", id: "t1")
+        await remote.refresh()
+        let list = model()
+        await list.reload()
+        XCTAssertEqual(list.content.spokenTitle, "Album: Night Roads")
+        let playlist = MusicContext(kind: .playlist, id: "playlist:p", title: "Drive", tracks: [], totalCount: 0)
+        XCTAssertEqual(ListContent.music(playlist, currentTrackID: "x").spokenTitle, "Playlist: Drive")
+        XCTAssertEqual(ListContent.nothing.spokenTitle, "List")
+    }
+
+    func testVoiceOverNamesTheShowOnTheBackOfAPodcastsCover() async {
+        music.stop()
+        await remote.refresh()
+        player.open(library.episodes(of: show)[0], autoplay: false)
+        let list = model()
+        await list.reload()
+        XCTAssertEqual(list.content.spokenTitle, "Episodes of \(show.title)")
+    }
+
     func testNothingToListIsNotSomethingToTryAgain() {
         XCTAssertFalse(ListContent.musicMessage(trackID: "t", text: ListContent.nothingToList).canTryAgain)
         XCTAssertTrue(ListContent.musicMessage(trackID: "t", text: ListContent.couldNotReadSpotify).canTryAgain)

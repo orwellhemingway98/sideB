@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// Whether the dial is popped out of the menu bar, remembered across launches.
-final class DialPlacement: ObservableObject {
+/// Whether the mini player is popped out of the menu bar, remembered across launches.
+final class MiniPlacement: ObservableObject {
     private static let key = "dialPoppedOut"
     private let defaults: UserDefaults
 
@@ -21,7 +21,7 @@ final class DialPlacement: ObservableObject {
 /// controls, a click turns it over to its list, and a drag moves it. Its position is remembered; "Put Back" returns
 /// it to the menu bar.
 @MainActor
-final class FloatingDialController {
+final class MiniPlayerController {
     static let autosaveName = "SpindleMiniPlayer"
     /// Clear room round the glass inside the window, as the panel keeps, so the glass's own shadow fades out
     /// instead of being cut off square at the window's edges.
@@ -32,12 +32,12 @@ final class FloatingDialController {
     }
 
     private let panel: NSPanel
-    private let placement: DialPlacement
+    private let placement: MiniPlacement
     private let onPutBack: () -> Void
     /// The mini player's own list and flip, apart from the panel's.
     private let listController: ListController?
 
-    init(nowPlaying: NowPlaying, placement: DialPlacement, onPutBack: @escaping () -> Void,
+    init(nowPlaying: NowPlaying, placement: MiniPlacement, onPutBack: @escaping () -> Void,
          onLibrary: @escaping () -> Void, artwork: ArtworkCache? = nil, list: ListModel? = nil) {
         self.placement = placement
         self.onPutBack = onPutBack
@@ -55,7 +55,7 @@ final class FloatingDialController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
-        let root = FloatingDialView(nowPlaying: nowPlaying, artwork: artwork ?? ArtworkCache(), list: list,
+        let root = MiniPlayerWindow(nowPlaying: nowPlaying, artwork: artwork ?? ArtworkCache(), list: list,
                                     onFlip: { listController?.toggle() },
                                     onPutBack: { [weak self] in self?.putBack() },
                                     onLibrary: onLibrary)
@@ -75,7 +75,7 @@ final class FloatingDialController {
 
     var isShown: Bool { panel.isVisible }
 
-    /// The dial's window.
+    /// The mini player's window.
     var window: NSWindow { panel }
 
     func show() {
@@ -91,7 +91,7 @@ final class FloatingDialController {
     }
 }
 
-private struct FloatingDialView: View {
+private struct MiniPlayerWindow: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject var artwork: ArtworkCache
     let list: ListModel?
@@ -123,7 +123,7 @@ struct MiniPlayer: View {
     static let frameWidth: CGFloat = 10
     static let size = CGSize(width: CoverButton.size + 2 * frameWidth, height: CoverButton.size + 2 * frameWidth)
     /// Parallel corners: the cover's radius plus the frame.
-    static let cornerRadius = DialPanelView.coverCornerRadius + frameWidth
+    static let cornerRadius = PanelView.coverCornerRadius + frameWidth
     /// How far the pointer moves before a press on the cover is a drag and not a click.
     static let dragThreshold: CGFloat = 3
 
@@ -222,7 +222,7 @@ struct MiniPlayer: View {
                 .frame(height: 130)
                 .allowsHitTesting(false)
         }
-        .clipShape(RoundedRectangle(cornerRadius: DialPanelView.coverCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: PanelView.coverCornerRadius, style: .continuous))
         .frame(width: CoverButton.size, height: CoverButton.size)
     }
 
@@ -277,10 +277,10 @@ struct MiniPlayer: View {
     /// Nothing to show: a plain tile that still moves, opens the Library and goes back.
     private var empty: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: DialPanelView.coverCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: PanelView.coverCornerRadius, style: .continuous)
                 .fill(.white.opacity(0.08))
-            Text(DialPanelView.emptyTitle)
-                .font(.system(size: DialPanelView.titleSize, weight: .semibold))
+            Text(PanelView.emptyTitle)
+                .font(.system(size: PanelView.titleSize, weight: .semibold))
                 .foregroundStyle(.secondary)
             ClickOrDragArea(onClick: nil, menu: { MiniPlayer.menu(onPutBack: onPutBack, onLibrary: onLibrary) })
             if hovering {

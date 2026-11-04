@@ -45,7 +45,7 @@ final class ListWindowLayoutTests: XCTestCase {
     func testClickingTheCoverFlipsItToTheList() throws {
         let model = ListModel(nowPlaying: nowPlaying, library: library)
         let list = ListController(model: model, nowPlaying: nowPlaying)
-        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
                                         onCover: { list.toggle() }, list: model)
         panel.show(below: try XCTUnwrap(statusItem.button))
         spin(0.3)
@@ -94,7 +94,7 @@ final class ListWindowLayoutTests: XCTestCase {
         })
         let model = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
         let list = ListController(model: model, nowPlaying: nowPlaying)
-        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
                                         onCover: { list.toggle() }, list: model)
         panel.show(below: try XCTUnwrap(statusItem.button))
         spin(0.3)
@@ -122,7 +122,7 @@ final class ListWindowLayoutTests: XCTestCase {
         // A podcast with a full Up Next is the tallest the panel gets.
         for episode in library.episodes(of: library.shows[0]) { library.enqueue(episode) }
         XCTAssertEqual(library.upNext.count, 3)
-        let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+        let view = NSHostingView(rootView: PanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
                                                          onLibrary: {}, onPopOut: {}, onCover: {}))
         // 800 pt, less a 33 pt menu bar and the 6 pt gap, leaves 761 pt; keep a margin for the Dock.
         XCTAssertLessThanOrEqual(view.fittingSize.height, 720)
@@ -130,7 +130,7 @@ final class ListWindowLayoutTests: XCTestCase {
 
     func testThePanelStaysCompact() {
         // The line, times and buttons take one short row each; the footer lives in the cover's corners.
-        let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+        let view = NSHostingView(rootView: PanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
                                                          onLibrary: {}, onPopOut: {}, onCover: {}))
         XCTAssertLessThanOrEqual(view.fittingSize.height, 530)
     }
@@ -142,8 +142,8 @@ final class PlaybackTimesTests: XCTestCase {
         // Both times always use the same font size: no shrinking for long episodes.
         let longest = TimeFormat.remaining(9 * 3600 + 59 * 60 + 59)
         XCTAssertEqual(longest, "\u{2212}9:59:59")
-        let width = (longest as NSString).size(withAttributes: [.font: DialPanelView.timeFont]).width
-        XCTAssertLessThan(2 * width + 8, DialPanelView.width - 2 * DialPanelView.panelPadding, "both fit side by side")
+        let width = (longest as NSString).size(withAttributes: [.font: PanelView.timeFont]).width
+        XCTAssertLessThan(2 * width + 8, PanelView.width - 2 * PanelView.panelPadding, "both fit side by side")
     }
 }
 
@@ -151,13 +151,13 @@ final class PlaybackTimesTests: XCTestCase {
 final class PanelProportionsTests: XCTestCase {
     func testTheCoverCornersRunParallelWithThePanels() {
         // Concentric corners: the inner radius is the outer one less the gap between them.
-        XCTAssertEqual(DialPanelView.coverCornerRadius, DialPanelView.panelCornerRadius - DialPanelView.panelPadding)
-        XCTAssertEqual(DialPanelView.coverCornerRadius, 14)
+        XCTAssertEqual(PanelView.coverCornerRadius, PanelView.panelCornerRadius - PanelView.panelPadding)
+        XCTAssertEqual(PanelView.coverCornerRadius, 14)
     }
 
     func testTheTitleLeadsTheArtistLine() {
-        XCTAssertEqual(DialPanelView.titleSize, 16)
-        XCTAssertEqual(DialPanelView.subtitleSize, 12)
+        XCTAssertEqual(PanelView.titleSize, 16)
+        XCTAssertEqual(PanelView.subtitleSize, 12)
     }
 }
 
@@ -186,13 +186,13 @@ final class WindowGlassTests: XCTestCase {
         let player = PodcastPlayer(engine: FakeEngine(), library: library)
         let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
                                     schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
-        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
         let content = try XCTUnwrap(panel.window.contentView)
         content.frame = NSRect(x: 0, y: 0, width: 320, height: 600)
         content.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
         let glass = try XCTUnwrap(glassViews(in: content).first, "an NSGlassEffectView behind the panel")
-        XCTAssertEqual(glass.cornerRadius, DialPanelView.panelCornerRadius)
+        XCTAssertEqual(glass.cornerRadius, PanelView.panelCornerRadius)
     }
 }
 
@@ -200,8 +200,8 @@ final class WindowGlassTests: XCTestCase {
 final class CoverCornersTests: XCTestCase {
     func testLibraryAndPopOutAreFaintAtRestAndFullUnderThePointer() {
         // Hidden until hover, they couldn't be found by someone who opens the panel and doesn't move the pointer.
-        XCTAssertEqual(DialPanelView.cornerOpacity(hovering: false), 0.35)
-        XCTAssertEqual(DialPanelView.cornerOpacity(hovering: true), 1)
+        XCTAssertEqual(PanelView.cornerOpacity(hovering: false), 0.35)
+        XCTAssertEqual(PanelView.cornerOpacity(hovering: true), 1)
     }
 }
 
@@ -223,10 +223,10 @@ final class DarkGlassTests: XCTestCase {
         NSApp.appearance = NSAppearance(named: .aqua)
         defer { NSApp.appearance = previous }
 
-        let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
         XCTAssertTrue(isDark(panel.window))
-        let dial = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: UserDefaults(suiteName: "DarkGlassTests")!),
+        let mini = MiniPlayerController(nowPlaying: nowPlaying, placement: MiniPlacement(defaults: UserDefaults(suiteName: "DarkGlassTests")!),
                                           onPutBack: {}, onLibrary: {})
-        XCTAssertTrue(isDark(dial.window))
+        XCTAssertTrue(isDark(mini.window))
     }
 }

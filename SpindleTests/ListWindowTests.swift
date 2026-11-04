@@ -33,29 +33,29 @@ final class ListWindowTests: XCTestCase {
 
     func testTheCoverRectIsWhereThePanelDrawsIt() {
         // The panel's window holds a clear margin for the glass's shadow; the cover sits inside it.
-        let m = DialPanelController.shadowMargin
+        let m = PanelController.shadowMargin
         let bounds = NSRect(x: 0, y: 0, width: 272 + m.left + m.right, height: 507 + m.top + m.bottom)
-        XCTAssertEqual(DialPanelView.coverRect(in: bounds, flipped: true, margin: m),
+        XCTAssertEqual(PanelView.coverRect(in: bounds, flipped: true, margin: m),
                        NSRect(x: m.left + 16, y: m.top + 16, width: 240, height: 240))
-        XCTAssertEqual(DialPanelView.coverRect(in: bounds, flipped: false, margin: m),
+        XCTAssertEqual(PanelView.coverRect(in: bounds, flipped: false, margin: m),
                        NSRect(x: m.left + 16, y: bounds.height - m.top - 16 - 240, width: 240, height: 240))
     }
 
     func testTheGlassRectIsThePanelLessItsShadowMargin() {
-        let m = DialPanelController.shadowMargin
+        let m = PanelController.shadowMargin
         let bounds = NSRect(x: 0, y: 0, width: 272 + m.left + m.right, height: 507 + m.top + m.bottom)
-        XCTAssertEqual(DialPanelView.glassRect(in: bounds, flipped: true, margin: m),
+        XCTAssertEqual(PanelView.glassRect(in: bounds, flipped: true, margin: m),
                        NSRect(x: m.left, y: m.top, width: 272, height: 507))
-        XCTAssertEqual(DialPanelView.glassRect(in: bounds, flipped: false, margin: m),
+        XCTAssertEqual(PanelView.glassRect(in: bounds, flipped: false, margin: m),
                        NSRect(x: m.left, y: m.bottom, width: 272, height: 507))
     }
 
     func testTheShadowHasRoomButNeverCoversTheMenuBarIcon() {
-        let m = DialPanelController.shadowMargin
+        let m = PanelController.shadowMargin
         XCTAssertGreaterThanOrEqual(m.left, 20)
         XCTAssertEqual(m.left, m.right, "the panel stays centred under its icon")
         XCTAssertGreaterThanOrEqual(m.bottom, 20)
-        XCTAssertLessThanOrEqual(m.top, DialPanelController.gapBelowIcon, "the window stops at the icon's bottom edge")
+        XCTAssertLessThanOrEqual(m.top, PanelController.gapBelowIcon, "the window stops at the icon's bottom edge")
     }
 
     func testEpisodeRowsAreTallerThanSongRows() {

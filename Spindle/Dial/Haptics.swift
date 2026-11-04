@@ -4,7 +4,7 @@ protocol HapticPerforming {
     func perform(_ kind: HapticKind)
 }
 
-/// Trackpad taps for the dial: a light tick, a firmer bump on chapters.
+/// Trackpad taps while scrubbing: a light tick, a firmer bump on chapters.
 final class Haptics: HapticPerforming {
     private let performer: NSHapticFeedbackPerformer
 

@@ -1,7 +1,7 @@
 import XCTest
 @testable import Spindle
 
-/// Holding Option while turning the dial changes the volume instead of the place.
+/// Holding Option while scrolling changes the volume instead of the place.
 @MainActor
 final class NowPlayingVolumeTests: XCTestCase {
     private var engine: FakeEngine!

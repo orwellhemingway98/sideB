@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import Spindle
 
-/// The progress line and controls that replaced the dial.
+/// The progress line and controls.
 final class TransportTests: XCTestCase {
     func testTheLineGlidesOnBetweenTicks() {
         // Playing, it moves on smoothly from the last known place at the playback speed.
@@ -26,6 +26,18 @@ final class TransportTests: XCTestCase {
         for name in ["backward.fill", "forward.fill", "play.fill", "pause.fill", "gobackward.15", "goforward.30"] {
             XCTAssertNotNil(NSImage(systemSymbolName: name, accessibilityDescription: nil), name)
         }
+    }
+
+    func testAStrayClickOnTheLineDoesNotSeek() {
+        // Seeking takes a real drag, so a click on its way to the play button can't lose a podcast's place.
+        XCTAssertGreaterThanOrEqual(Transport.seekDragDistance, 3)
+    }
+
+    func testTheLineShowsTimeNotVolume() {
+        XCTAssertEqual(Transport.lineFraction(dragging: nil, position: 50, duration: 200), 0.25)
+        XCTAssertEqual(Transport.lineFraction(dragging: 0.75, position: 50, duration: 200), 0.75, "where the pointer is")
+        XCTAssertEqual(Transport.lineFraction(dragging: nil, position: 500, duration: 200), 1)
+        XCTAssertEqual(Transport.lineFraction(dragging: nil, position: 50, duration: nil), 0)
     }
 
     func testDraggingTheLineSeeksWhereThePointerIs() {

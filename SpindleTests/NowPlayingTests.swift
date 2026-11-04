@@ -171,7 +171,7 @@ final class NowPlayingTests: XCTestCase {
         time = 0.02
         nowPlaying.turn(degrees: 60)   // fast: still crosses ticks, but 20 ms is too soon
         XCTAssertEqual(haptics.performed, [.tick])
-        XCTAssertGreaterThan(nowPlaying.scrubPosition!, 37)   // the dial remembers the first turn's speed
+        XCTAssertGreaterThan(nowPlaying.scrubPosition!, 37)   // scrubbing remembers the first turn's speed
     }
     // MARK: Final review fixes
 
