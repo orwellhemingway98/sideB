@@ -61,14 +61,16 @@ final class StatusStripController: NSObject {
     private let nowPlaying: NowPlaying
     private let panel: DialPanelController
     private let onLibrary: () -> Void
+    private let floatingDial: FloatingDialController?
     private let loginItem: LoginItem
     private let spotify: SpotifyAccount?
     private var cancellables: Set<AnyCancellable> = []
 
     init(nowPlaying: NowPlaying, artwork: ArtworkCache, panel: DialPanelController, onLibrary: @escaping () -> Void,
-         loginItem: LoginItem = MainAppLoginItem(),
+         floatingDial: FloatingDialController? = nil, loginItem: LoginItem = MainAppLoginItem(),
          spotify: SpotifyAccount? = nil) {
         self.spotify = spotify
+        self.floatingDial = floatingDial
         self.loginItem = loginItem
         self.nowPlaying = nowPlaying
         self.panel = panel
@@ -118,7 +120,7 @@ final class StatusStripController: NSObject {
     private func showMenu() {
         guard let button = statusItem.button else { return }
         panel.close()
-        let menu = StatusMenu.menu(launchAtLogin: loginItem.isEnabled,
+        let menu = StatusMenu.menu(floatingDial: floatingDial?.isShown, launchAtLogin: loginItem.isEnabled,
                                    spotifySignedIn: spotify?.isSignedIn) { [weak self] in
             self?.perform($0)
         }
@@ -130,6 +132,7 @@ final class StatusStripController: NSObject {
     private func perform(_ command: StatusMenu.Command) {
         switch command {
         case .library: openLibrary()
+        case .floatingDial: toggleFloatingDial()
         case .launchAtLogin:
             StatusMenu.toggle(loginItem) { error in
                 let alert = NSAlert()
@@ -147,6 +150,11 @@ final class StatusStripController: NSObject {
     }
 
     private func openLibrary() { onLibrary() }
+
+    private func toggleFloatingDial() {
+        guard let floatingDial else { return }
+        if floatingDial.isShown { floatingDial.putBack() } else { floatingDial.show() }
+    }
 }
 
 /// Draws, but never takes the mouse: clicks fall through to the status button.

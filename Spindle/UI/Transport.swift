@@ -6,6 +6,8 @@ import SwiftUI
 struct ProgressLine: View {
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
+    /// Which window the line is in; only the panel's follows the panel's show and close notifications.
+    let host: DiscHost
     var height: CGFloat = 6
 
     @State private var dragFraction: Double?
@@ -13,9 +15,10 @@ struct ProgressLine: View {
     @State private var scroll = ScrollMonitor(round: false)
     @State private var positionStamp = (position: 0.0, at: Date())
 
-    init(nowPlaying: NowPlaying, height: CGFloat = 6) {
+    init(nowPlaying: NowPlaying, host: DiscHost = .panel, height: CGFloat = 6) {
         self.nowPlaying = nowPlaying
         _player = ObservedObject(wrappedValue: nowPlaying.player)
+        self.host = host
         self.height = height
     }
 
@@ -64,10 +67,10 @@ struct ProgressLine: View {
             if inside { installScroll() } else { scroll.remove() }
         }
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didShow)) { _ in
-            installScroll()
+            if host.followsPanel { installScroll() }
         }
         .onReceive(NotificationCenter.default.publisher(for: DialPanelController.didClose)) { _ in
-            scroll.remove()
+            if host.followsPanel { scroll.remove() }
         }
         .onDisappear { scroll.remove() }
         .onChange(of: nowPlaying.displayPosition, initial: true) { _, position in

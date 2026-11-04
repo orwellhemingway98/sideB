@@ -41,7 +41,8 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 ## Operating Context
 
 - Used in short glances between other work, mostly by mouse/trackpad; the panel drops from the menu bar strip and
-  closes when you click elsewhere.
+  closes when you click elsewhere. It can also be popped out as a mini player: just the cover, floating, with its controls on
+  hover and its list on the back.
 - Music apps are controlled through AppleScript; Spindle never launches an app that isn't running.
 - Podcasts come from RSS feeds the author follows (search Apple's podcast directory, paste a feed, or import OPML),
   with downloads for offline listening.
@@ -57,7 +58,7 @@ Music or Spotify, whichever was started most recently — from the menu bar.
   OPML import, Library window.
 - **Music:** Apple Music albums and playlists read through AppleScript; Spotify albums and the user's own
   playlists through the Web API after a personal sign-in (PKCE, `spindle://callback`).
-- **Menu bar menu:** Open Library, Launch at Login, Spotify sign-in or sign-out, Quit.
+- **Menu bar menu:** Open Library, the mini player, Launch at Login, Spotify sign-in or sign-out, Quit.
 - **Haptics** need a Force Touch trackpad; everything else works without one.
 - **Repo:** private (`orwellhemingway98/spindle`); nothing is pushed or published unless the author asks.
 - **Undecided for a public release:** signing and notarisation (builds are ad-hoc signed today); Spotify — the

@@ -123,7 +123,7 @@ final class ListWindowLayoutTests: XCTestCase {
         for episode in library.episodes(of: library.shows[0]) { library.enqueue(episode) }
         XCTAssertEqual(library.upNext.count, 3)
         let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
-                                                         onLibrary: {}, onCover: {}))
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
         // 800 pt, less a 33 pt menu bar and the 6 pt gap, leaves 761 pt; keep a margin for the Dock.
         XCTAssertLessThanOrEqual(view.fittingSize.height, 720)
     }
@@ -131,7 +131,7 @@ final class ListWindowLayoutTests: XCTestCase {
     func testThePanelStaysCompact() {
         // The line, times and buttons take one short row each; the footer lives in the cover's corners.
         let view = NSHostingView(rootView: DialPanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
-                                                         onLibrary: {}, onCover: {}))
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
         XCTAssertLessThanOrEqual(view.fittingSize.height, 530)
     }
 }
@@ -198,7 +198,7 @@ final class WindowGlassTests: XCTestCase {
 
 @MainActor
 final class CoverCornersTests: XCTestCase {
-    func testTheLibraryCornerIsFaintAtRestAndFullUnderThePointer() {
+    func testLibraryAndPopOutAreFaintAtRestAndFullUnderThePointer() {
         // Hidden until hover, they couldn't be found by someone who opens the panel and doesn't move the pointer.
         XCTAssertEqual(DialPanelView.cornerOpacity(hovering: false), 0.35)
         XCTAssertEqual(DialPanelView.cornerOpacity(hovering: true), 1)
@@ -213,7 +213,7 @@ final class DarkGlassTests: XCTestCase {
         window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
     }
 
-    func testThePanelStaysDarkInLightMode() {
+    func testThePanelAndTheFloatingDialStayDarkInLightMode() {
         let feed = URL(string: "https://example.com/feed")!
         let library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
         let player = PodcastPlayer(engine: FakeEngine(), library: library)
@@ -225,5 +225,8 @@ final class DarkGlassTests: XCTestCase {
 
         let panel = DialPanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
         XCTAssertTrue(isDark(panel.window))
+        let dial = FloatingDialController(nowPlaying: nowPlaying, placement: DialPlacement(defaults: UserDefaults(suiteName: "DarkGlassTests")!),
+                                          onPutBack: {}, onLibrary: {})
+        XCTAssertTrue(isDark(dial.window))
     }
 }
