@@ -102,7 +102,7 @@ it hangs at the edge of the author's work in the menu bar, is touched for a mome
 exact.
 
 The material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows
-behind show through the panel, so Spindle takes its colour from where it sits and from the
+behind show through the panel and the mini player, so Spindle takes its colour from where it sits and from the
 artwork it shows: the glass itself is tinted with the cover's colour. Spindle adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
 240 pt cover, a title, the progress line and its controls and, when needed, one pill.
 
@@ -130,7 +130,7 @@ artwork and two tiny source dots.
 - **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, "Resume" in the Resume pill, list
   details, the podcast speed.
 - **Row Light** (`row-highlight`): the current song, episode or chapter in a list.
-- **Glass Tint**: the panel's window glass takes the cover's hue, lighter and livelier than
+- **Glass Tint**: the window glass of the panel and the mini player takes the cover's hue, lighter and livelier than
   the Cover Tint (HSB brightness 0.5–0.72, saturation up to 0.8), at 35% so the desktop still shows through. It eases
   in over about half a second when the cover changes; with no artwork the glass stays plain.
 - **Glass Hairline** (`hairline`): the 0.5 pt edge on the cover and its back.
@@ -189,7 +189,7 @@ date and length).
 
 Depth comes from the glass itself and one ambient shadow under the cover. The panel window draws no shadow of its
 own (it would outline the square window past the rounded glass); the window keeps a clear margin round the glass so
-the glass's own shadow fades out instead of being cut off.
+the glass's own shadow fades out instead of being cut off. The mini player's window does the same.
 
 ### Shadow Vocabulary
 - **Cover lift** (black 35%, radius 15 pt, y 10 pt): under the cover, so it sits above the panel glass.
@@ -242,13 +242,22 @@ Under it, centred, in Apple's SF Symbols at 20 pt: back, play/pause (a plain 30 
 swaps with the system's replace effect, and forward (`backward.fill` / `forward.fill` for music, `gobackward.15` /
 `goforward.30` for podcasts). A podcast's speed sits at the right as a quiet text button.
 
+### Mini Player
+The floating window is only the cover: the panel's 240 pt cover in a 10 pt frame of window glass tinted with the
+cover's colour, 260 × 260 pt with 24 pt corners (the cover's 14 plus the frame), in a clear window margin with no window
+shadow. At rest there is nothing else on it. With the pointer over it, controls fade in: Library, a turn hint and Put
+Back along the top, and the progress line, times and playback buttons along the bottom over a soft dark fade that
+keeps them readable on any artwork. Clicking the cover turns it over to its list, exactly as in the panel but with
+its own list and flip; dragging it (past 3 pt) moves it; right-click gives Put Back, the Library and Quit. With nothing
+playing it is a plain glass tile saying "Nothing playing".
+
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when
 pressed (0.97). New artwork **develops in**: from blurred, 96% and transparent to sharp, full and solid on a soft
 spring (response 0.45, damping 0.9); the title rises 6 pt and fades in with it, and the old cover stays until the new
 one is ready. Clicking it **turns it over** (a 3D flip about the vertical axis, spring response 0.5, damping 0.86)
 to the list on the Cover Tint; each face shows only while it faces you, and VoiceOver reads only that face and
-moves to it after the turn. The Library button sits in its top corner at 35% at rest and full under the pointer.
+moves to it after the turn. Library and Pop out sit in its top corners at 35% at rest and full under the pointer.
 
 ### Keys
 While the panel is open: Space plays or pauses, ← and → go back and forward (a song, or 15 and 30 seconds), Return
@@ -263,17 +272,17 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 ## Do's and Don'ts
 
 ### Do:
-- **Do** put window glass (`NSGlassEffectView`) behind every surface that should see the desktop (the panel),
-  tinted with the cover's colour.
+- **Do** put window glass (`NSGlassEffectView`) behind every surface that should see the desktop: the panel and the
+  mini player, tinted with the cover's colour.
 - **Do** draw white ink with `NSColor.labelColor`.
-- **Do** keep the panel in the dark appearance (`darkAqua`), so that ink stays white in
+- **Do** keep the panel and the mini player in the dark appearance (`darkAqua`), so that ink stays white in
   Light mode too.
 - **Do** nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.
 - **Do** use tabular digits for every time and number.
 - **Do** give every motion a Reduce Motion crossfade.
 - **Do** use SF Symbols for the playback buttons (`backward.fill`, `play.fill` / `pause.fill` with the symbol
   replace transition, `forward.fill`; `gobackward.15` and `goforward.30` for podcasts) and draw the other glyphs in
-  code (library, the turn mark), never Unicode arrows.
+  code (library, pop out and put back, the turn mark), never Unicode arrows.
 
 ### Don't:
 - **Don't** use SwiftUI `.glassEffect` for a whole window's surface: it only sees inside its own clear window and

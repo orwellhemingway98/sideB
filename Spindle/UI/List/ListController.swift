@@ -37,7 +37,8 @@ final class ListController {
     private var cancellables: Set<AnyCancellable> = []
     private var lastIdentity: String?
 
-    init(model: ListModel, nowPlaying: NowPlaying) {
+    /// `followsPanel`: the panel's cover turns back when the panel closes; the mini player's has its own life.
+    init(model: ListModel, nowPlaying: NowPlaying, followsPanel: Bool = true) {
         self.model = model
         self.nowPlaying = nowPlaying
 
@@ -64,9 +65,11 @@ final class ListController {
             }
         }.store(in: &cancellables)
         // The panel opens on the cover next time.
-        NotificationCenter.default.publisher(for: DialPanelController.didClose)
-            .sink { [weak self] _ in self?.close(animated: false) }
-            .store(in: &cancellables)
+        if followsPanel {
+            NotificationCenter.default.publisher(for: DialPanelController.didClose)
+                .sink { [weak self] _ in self?.close(animated: false) }
+                .store(in: &cancellables)
+        }
     }
 
     var isShown: Bool { model.showsList }

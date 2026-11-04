@@ -14,6 +14,10 @@ struct DialPanelView: View {
     /// What the header showed last time the cover was settled; kept while a new song's cover loads.
     @State private var settledDisplay: NowPlayingDisplay?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Pops the disc out into the floating dial, or puts it back; nil hides the pill.
+    let onPopOut: (() -> Void)?
+    /// Whether the dial is out, so the pill reads Pop out or Put back.
+    let placement: DialPlacement?
     /// Clicking the cover opens or closes the list window.
     let onCover: (() -> Void)?
     /// Tells the cover's hint whether a Music song plays from an album or a playlist.
@@ -22,7 +26,10 @@ struct DialPanelView: View {
     let lesson: DialLesson?
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onCover: (() -> Void)? = nil, list: ListModel? = nil, lesson: DialLesson? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil, lesson: DialLesson? = nil) {
+        self.onPopOut = onPopOut
+        self.placement = placement
         self.onCover = onCover
         self.list = list
         self.lesson = lesson
@@ -173,7 +180,7 @@ struct DialPanelView: View {
                                contextKind: nowPlaying.music?.contextKind)
     }
 
-    /// Library sits faintly in the cover's top corner, and come up fully under the pointer.
+    /// Library and Pop out sit faintly in the cover's top corners, and come up fully under the pointer.
     static func cornerOpacity(hovering: Bool) -> Double {
         hovering ? 1 : 0.35
     }
@@ -184,6 +191,13 @@ struct DialPanelView: View {
                 LibraryGlyph().fill(Color(nsColor: .labelColor)).frame(width: 13, height: 12)
             }
             Spacer(minLength: 0)
+            if let onPopOut {
+                if let placement {
+                    PopOutCorner(placement: placement, action: onPopOut)
+                } else {
+                    CornerButton(label: "Pop out", action: onPopOut) { PopOutArrow(back: false) }
+                }
+            }
         }
         .padding(10)
         .opacity(Self.cornerOpacity(hovering: hovering))
@@ -382,7 +396,7 @@ private struct LessonCaption: View {
 }
 
 /// A small round glass button for the cover's corners.
-private struct CornerButton<Glyph: View>: View {
+struct CornerButton<Glyph: View>: View {
     let label: String
     let action: () -> Void
     @ViewBuilder let glyph: () -> Glyph
@@ -399,6 +413,49 @@ private struct CornerButton<Glyph: View>: View {
         .buttonStyle(.plain)
         .help(label)
         .accessibilityLabel(label)
+    }
+}
+
+/// Pop out while the dial lives in the panel, Put back while it floats.
+private struct PopOutCorner: View {
+    @ObservedObject var placement: DialPlacement
+    let action: () -> Void
+
+    var body: some View {
+        CornerButton(label: placement.isPoppedOut ? "Put back" : "Pop out", action: action) {
+            PopOutArrow(back: placement.isPoppedOut)
+        }
+    }
+}
+
+/// Pop out (up and away) or Put back (down and in), drawn in code like the Library's spines.
+struct PopOutGlyph: Shape {
+    var back: Bool
+
+    func path(in rect: CGRect) -> Path {
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + x * rect.width, y: rect.minY + y * rect.height)
+        }
+        var path = Path()
+        path.move(to: p(0.15, 0.85))
+        path.addLine(to: p(0.85, 0.15))
+        if back {
+            path.move(to: p(0.15, 0.4)); path.addLine(to: p(0.15, 0.85)); path.addLine(to: p(0.6, 0.85))
+        } else {
+            path.move(to: p(0.4, 0.15)); path.addLine(to: p(0.85, 0.15)); path.addLine(to: p(0.85, 0.6))
+        }
+        return path
+    }
+}
+
+/// The Pop out / Put back glyph at the size and stroke of the corner buttons.
+struct PopOutArrow: View {
+    let back: Bool
+
+    var body: some View {
+        PopOutGlyph(back: back)
+            .stroke(Color(nsColor: .labelColor), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+            .frame(width: 10, height: 10)
     }
 }
 
@@ -494,7 +551,8 @@ final class DialPanelController {
     var isShown: Bool { panel.isVisible }
 
     init(nowPlaying: NowPlaying, library: LibraryStore, artwork: ArtworkCache, onLibrary: @escaping () -> Void,
-         onCover: (() -> Void)? = nil, list: ListModel? = nil, lesson: DialLesson? = nil) {
+         onPopOut: (() -> Void)? = nil, placement: DialPlacement? = nil, onCover: (() -> Void)? = nil,
+         list: ListModel? = nil, lesson: DialLesson? = nil) {
         self.nowPlaying = nowPlaying
         self.onLibrary = onLibrary
         self.onCover = onCover
@@ -513,7 +571,8 @@ final class DialPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         let root = DialPanelView(nowPlaying: nowPlaying, library: library, artwork: artwork, onLibrary: onLibrary,
-                                 onCover: onCover, list: list, lesson: lesson)
+                                 onPopOut: onPopOut, placement: placement, onCover: onCover, list: list,
+                                 lesson: lesson)
         let m = Self.shadowMargin
         let hosting = NSHostingView(rootView: root.padding(EdgeInsets(top: m.top, leading: m.left,
                                                                        bottom: m.bottom, trailing: m.right)))
@@ -624,7 +683,7 @@ final class DialPanelController {
 }
 
 /// The big cover: gives a little under the pointer and when pressed; clicking it opens the list window.
-private struct CoverButton: View {
+struct CoverButton: View {
     static let size: CGFloat = 240
 
     @ObservedObject var artwork: ArtworkCache
@@ -635,9 +694,23 @@ private struct CoverButton: View {
     let hint: String
     let spokenHint: String
     let action: (() -> Void)?
+    /// Draws the hint pill on the corner; the mini player shows only the cover at rest.
+    let showsHint: Bool
     @State private var hovering = false
     @State private var shownIdentity: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(artwork: ArtworkCache, display: NowPlayingDisplay, image: NSImage?, identity: String?, hint: String,
+         spokenHint: String, action: (() -> Void)?, showsHint: Bool = true) {
+        self.artwork = artwork
+        self.display = display
+        self.image = image
+        self.identity = identity
+        self.hint = hint
+        self.spokenHint = spokenHint
+        self.action = action
+        self.showsHint = showsHint
+    }
 
     /// A cover coming into focus behind glass.
     static let develop = Animation.spring(response: 0.45, dampingFraction: 0.9)
@@ -664,7 +737,7 @@ private struct CoverButton: View {
         .onChange(of: identity) { _, new in if let new { shownIdentity = new } }
             .shadow(color: .black.opacity(0.35), radius: 15, y: 10)
             .overlay(alignment: .bottomTrailing) {
-                if action != nil {
+                if action != nil, showsHint {
                     TurnHint(word: hint)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -731,7 +804,7 @@ private let coverTurn = Animation.spring(response: 0.5, dampingFraction: 0.86)
 
 /// The cover turns over to show its list: a 3D flip about the vertical axis. With Reduce Motion it crossfades.
 /// VoiceOver follows the turn: it reads only the side that faces you and moves to it once the turn ends.
-private struct CoverFlip<Front: View>: View {
+struct CoverFlip<Front: View>: View {
     @ObservedObject var list: ListModel
     let nowPlaying: NowPlaying
     /// The back's colour, from the cover; nil keeps it smoked glass.
@@ -740,6 +813,15 @@ private struct CoverFlip<Front: View>: View {
     @ViewBuilder let front: Front
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AccessibilityFocusState private var spoken: CoverSide?
+
+    init(list: ListModel, nowPlaying: NowPlaying, tint: NSColor?, turnBack: (() -> Void)?,
+         @ViewBuilder front: () -> Front) {
+        self.list = list
+        self.nowPlaying = nowPlaying
+        self.tint = tint
+        self.turnBack = turnBack
+        self.front = front()
+    }
 
     var body: some View {
         let angle: Double = list.showsList ? 180 : 0
