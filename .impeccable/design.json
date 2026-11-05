@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-02T23:56:44Z",
+  "generatedAt": "2026-11-05T23:22:01Z",
   "title": "Design System: sideB",
   "extensions": {
     "colorMeta": {
@@ -84,7 +84,7 @@
       },
       "volume": {
         "displayName": "Volume",
-        "purpose": "Volume number in the disc's centre during Option + turn."
+        "purpose": "\"Volume 40%\" in place of the elapsed time during Option + scroll."
       },
       "body": {
         "displayName": "Body",
@@ -168,11 +168,12 @@
       "css": ".ds-tabs { display: flex; gap: 2px; width: 228px; padding: 2px; border-radius: 8px; background: rgba(255,255,255,.10); } .ds-tab { flex: 1; border: 0; background: transparent; color: #fff; font: 400 11px -apple-system, sans-serif; padding: 3px 0; border-radius: 6px; cursor: pointer; } .ds-tab:hover { background: rgba(255,255,255,.08); } .ds-tab:focus-visible { outline: 2px solid rgba(255,255,255,.6); } .ds-on { background: rgba(255,255,255,.22); font-weight: 600; }"
     },
     {
-      "name": "Disc",
+      "name": "Progress Line and Controls",
       "kind": "custom",
-      "description": "The wheel: system glass edged by light, a band of light from 12 o'clock to now with no track, and faint back and forward that come up on hover.",
-      "html": "<div class=\"ds-disc\"><div class=\"ds-halo\"></div><div class=\"ds-face\"><span class=\"ds-l\">&minus;15</span><span class=\"ds-c\"><svg width=\"18\" height=\"20\" viewBox=\"0 0 18 20\"><path d=\"M1.4 0 L10 5 L10 15 L1.4 20 Z M10 5 L19 10 L19 10 L10 15 Z\" fill=\"#fff\"/></svg></span><span class=\"ds-r\">+30</span></div></div>",
-      "css": ".ds-disc { position: relative; width: 160px; height: 160px; } .ds-halo { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(255,255,255,0) 0, rgba(255,255,255,.85) 7%, rgba(255,255,255,.85) 30%, transparent 30%); -webkit-mask: radial-gradient(circle, transparent 77px, #000 77.5px, #000 80px, transparent 80.5px); mask: radial-gradient(circle, transparent 77px, #000 77.5px, #000 80px, transparent 80.5px); transition: filter .25s; } .ds-disc:active .ds-halo { filter: brightness(1.2); } .ds-face { position: absolute; inset: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: space-around; background: rgba(120,40,95,.12); backdrop-filter: blur(6px) saturate(1.6); box-shadow: inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -2px 3px rgba(0,0,0,.25); color: #fff; font: 600 10px -apple-system, sans-serif; } .ds-l, .ds-r { opacity: .35; transition: opacity .2s ease-out; } .ds-disc:hover .ds-l, .ds-disc:hover .ds-r { opacity: 1; } .ds-c { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); box-shadow: inset 0 1.5px 1px rgba(255,255,255,.7), inset 0 -2px 4px rgba(0,0,0,.3); transition: transform .2s; } .ds-c:active { transform: scale(.94); }"
+      "description": "A bold white progress line with the times under its ends, then back, play/pause and forward as plain symbols.",
+      "html": "<div class=\"ds-line\"><div class=\"ds-track\"><i></i></div><div class=\"ds-times\"><span>1:12</span><span>&minus;2:47</span></div><div class=\"ds-ctl\"><button aria-label=\"Back\">&#9198;</button><button class=\"ds-play\" aria-label=\"Pause\">&#10074;&#10074;</button><button aria-label=\"Forward\">&#9197;</button></div></div>",
+      "css": ".ds-line { width: 240px; color: #fff; font: 400 11px -apple-system, sans-serif; } .ds-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.22); overflow: hidden; transition: height .15s; } .ds-track:hover { height: 8px; } .ds-track i { display: block; width: 30%; height: 100%; background: #fff; border-radius: 3px; } .ds-times { display: flex; justify-content: space-between; margin-top: 4px; color: rgba(235,235,245,.6); font-variant-numeric: tabular-nums; } .ds-ctl { display: flex; justify-content: center; align-items: center; gap: 26px; margin-top: 8px; } .ds-ctl button { background: none; border: 0; color: #fff; font-size: 20px; padding: 6px; transition: transform .15s; } .ds-ctl button:hover { transform: scale(1.06); } .ds-ctl button:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 2px; border-radius: 8px; } .ds-ctl .ds-play { font-size: 26px; }",
+      "refersTo": "progress-line"
     },
     {
       "name": "Source Dot",
@@ -183,14 +184,14 @@
     }
   ],
   "narrative": {
-    "northStar": "The Quiet Wheel",
-    "overview": "sideB is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention: it hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel tactile, calm and precise — physical controls you feel through the trackpad, nothing shouting, every detail exact. The material is the see-through window glass macOS draws (AppKit NSGlassEffectView): the desktop and the windows behind show through the panel and the floating dial, so sideB takes its colour from where it sits and from the artwork it shows. sideB adds almost no colour of its own. Density is low and deliberate: a 272 pt panel holds a 240 pt cover, a title, the 150 pt disc and, when needed, one pill. The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to show what's inside. No Apple assets, logos or SF Symbols appear in sideB's own controls; glyphs are drawn in code.",
+    "northStar": "The Other Side",
+    "overview": "sideB is a cover you can turn over. On the front, what's playing and nothing else; on the back, the album, the playlist or the episodes it belongs to. It hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel tactile, calm and precise: the cover gives under the pointer and turns like a real sleeve, nothing shouts, every detail is exact. The material is the see-through window glass macOS draws (AppKit NSGlassEffectView), tinted with the cover's colour; sideB adds no colour of its own. A 272 pt panel holds a 240 pt cover, a title, the progress line and its controls and, when needed, one pill. The mini player is just the cover in a thin glass frame.",
     "keyCharacteristics": [
       "Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.",
       "Colour comes from artwork and the desktop; sideB's own ink is white at a few opacities.",
       "System type (SF Pro) at small, exact sizes; tabular digits for every time.",
       "Soft springs for every change; Reduce Motion always gets a plain crossfade.",
-      "One gesture per thing: turn the disc, press its centre, click the cover."
+      "One gesture per thing: drag or scroll the progress line, press play, click the cover."
     ],
     "rules": [
       {
@@ -205,12 +206,12 @@
       },
       {
         "name": "The Same Size Rule",
-        "body": "Paired values keep one size: elapsed and remaining times never shrink independently; when space runs out, move them (they sit in the disc row's lower corners) rather than scale them.",
+        "body": "Paired values keep one size: elapsed and remaining times never shrink independently; when space runs out, move them rather than scale them.",
         "section": "typography"
       },
       {
         "name": "The One Lift Rule",
-        "body": "Only the cover lifts. Pills, rows and the disc sit in the glass, not on it.",
+        "body": "Only the cover lifts. Pills, rows, the progress line and the buttons sit in the glass, not on it.",
         "section": "elevation"
       },
       {
@@ -220,7 +221,7 @@
       }
     ],
     "dos": [
-      "Do put window glass (NSGlassEffectView) behind every surface that should see the desktop: the panel and the floating dial.",
+      "Do put window glass (NSGlassEffectView) behind every surface that should see the desktop: the panel and the mini player, tinted with the cover's colour.",
       "Do draw white ink with NSColor.labelColor.",
       "Do nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.",
       "Do use tabular digits for every time and number.",
