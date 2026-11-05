@@ -114,10 +114,16 @@ enum SpotifyWebSignIn {
     }
 }
 
-/// Asks for the Client ID of the author's Spotify developer app, until it gets one or is cancelled.
+/// Spotify's play, pause and skip work without any of this. Listing its albums and playlists is the optional extra,
+/// which needs your own Spotify developer app. This asks for its Client ID, until it gets one or is cancelled.
 enum SpotifyClientIDPrompt {
-    static let explanation = "Create a free app at developer.spotify.com/dashboard with redirect URI "
+    static let explanation = "Optional. Play, pause and skip already work; this also lists a song's album or playlist. "
+        + "It needs Spotify Premium: create a free app at developer.spotify.com/dashboard with redirect URI "
         + "sideb://callback, then paste its Client ID."
+
+    static func buttonTitle(hasClientID: Bool) -> String {
+        hasClientID ? "Sign in to Spotify" : "Set Up Album Lists\u{2026}"
+    }
     static let notAnID = "That isn't a Client ID. It's 32 letters and numbers at the top of your Spotify app's "
         + "Settings page (not the app name or the client secret)."
 
@@ -135,7 +141,7 @@ enum SpotifyClientIDPrompt {
         var message = explanation
         while true {
             let alert = NSAlert()
-            alert.messageText = "Your Spotify app's Client ID"
+            alert.messageText = "List Spotify albums and playlists"
             alert.informativeText = message
             let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
             field.placeholderString = "Client ID"

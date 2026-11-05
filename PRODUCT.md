@@ -57,13 +57,13 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 - **Podcasts:** chapters (feed, Podcasting 2.0 JSON, in-file), speed, resume, Up Next, downloads, hourly refresh,
   OPML import, Library window.
 - **Music:** Apple Music albums and playlists read through AppleScript; Spotify albums and the user's own
-  playlists through the Web API after a personal sign-in (PKCE, `sideb://callback`).
+  playlists through the Web API after an optional personal sign-in (PKCE, `sideb://callback`).
 - **Menu bar menu:** Open Library, the mini player, Launch at Login, Spotify sign-in or sign-out, Quit.
 - **Haptics** need a Force Touch trackpad; everything else works without one.
 - **Repo:** private (`orwellhemingway98/spindle`); nothing is pushed or published unless the author asks.
-- **Undecided for a public release:** signing and notarisation (builds are ad-hoc signed today); Spotify — the
-  developer app's Development Mode allows 5 users and requires the owner to have Premium, so Spotify lists for the
-  public are an open question; first-run and onboarding.
+- **Public release (decided):** free, ad-hoc signed, from GitHub, for now; a Developer ID can come later. Spotify is a
+  remote by default, with album and playlist lists as an optional extra using your own developer app, because Spotify
+  allows 5 users in Development Mode and at least 250k monthly users for more.
 
 ## Brand Commitments
 

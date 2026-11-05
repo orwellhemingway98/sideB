@@ -15,8 +15,8 @@
             "solid" : "extended-gray:1.00000,1.00000"
           },
           "glass" : true,
-          "image-name" : "iPod-04.svg",
-          "name" : "iPod-04"
+          "image-name" : "wheel-04.svg",
+          "name" : "wheel-04"
         }
       ],
       "lighting" : "individual",
@@ -49,8 +49,8 @@
       "layers" : [
         {
           "blend-mode" : "normal",
-          "image-name" : "iPod-03.svg",
-          "name" : "iPod-03",
+          "image-name" : "wheel-03.svg",
+          "name" : "wheel-03",
           "position" : {
             "scale" : 1.25,
             "translation-in-points" : [
@@ -84,8 +84,8 @@
           "fill" : {
             "solid" : "extended-gray:1.00000,1.00000"
           },
-          "image-name" : "iPod-02.svg",
-          "name" : "iPod-02",
+          "image-name" : "wheel-02.svg",
+          "name" : "wheel-02",
           "position" : {
             "scale" : 1.25,
             "translation-in-points" : [

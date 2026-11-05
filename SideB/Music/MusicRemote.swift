@@ -38,7 +38,8 @@ final class MusicRemote: ObservableObject {
     private var timer: AnyObject?
     private var isRefreshing = false
     private var lastActive: MusicSourceID?
-    private var declined: Set<MusicSourceID> = []
+    /// The apps macOS has refused to let sideB control; the empty panel says so.
+    @Published private(set) var declined: Set<MusicSourceID> = []
     private var pendingSeek: (trackID: String, seconds: Double, pollsLeft: Int)?
     /// A volume we set, believed over polls that may still report the old one.
     private var pendingVolume: (percent: Int, pollsLeft: Int)?
