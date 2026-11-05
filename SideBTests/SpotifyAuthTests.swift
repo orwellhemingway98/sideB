@@ -80,11 +80,11 @@ final class SpotifyAuthTests: XCTestCase {
 
 final class SpotifyClientIDTests: XCTestCase {
     func testOnlyA32CharacterHexIDIsAccepted() {
-        XCTAssertEqual(SpotifyClientIDPrompt.validated("  64c3deef8969445ca15a174b9c116b21 \n"), "64c3deef8969445ca15a174b9c116b21")
-        XCTAssertEqual(SpotifyClientIDPrompt.validated("64C3DEEF8969445CA15A174B9C116B21"), "64c3deef8969445ca15a174b9c116b21")
+        XCTAssertEqual(SpotifyClientIDPrompt.validated("  0123456789abcdef0123456789abcdef \n"), "0123456789abcdef0123456789abcdef")
+        XCTAssertEqual(SpotifyClientIDPrompt.validated("0123456789ABCDEF0123456789ABCDEF"), "0123456789abcdef0123456789abcdef")
         XCTAssertNil(SpotifyClientIDPrompt.validated("mfelouro"), "a username isn't a Client ID")
-        XCTAssertNil(SpotifyClientIDPrompt.validated("64c3deef8969445ca15a174b9c116b2"), "one character short")
-        XCTAssertNil(SpotifyClientIDPrompt.validated("64c3deef8969445ca15a174b9c116b2z"))
+        XCTAssertNil(SpotifyClientIDPrompt.validated("0123456789abcdef0123456789abcde"), "one character short")
+        XCTAssertNil(SpotifyClientIDPrompt.validated("0123456789abcdef0123456789abcdez"))
         XCTAssertNil(SpotifyClientIDPrompt.validated(""))
     }
 }
