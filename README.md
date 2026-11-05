@@ -22,7 +22,7 @@ through the list on the back, ⌘L opens the Library, Esc turns the cover back a
 
 ## Download
 
-Get the **sideB** zip from the [latest release](https://github.com/orwellhemingway98/spindle/releases/latest), unzip it
+Get the **sideB** zip from the [latest release](https://github.com/orwellhemingway98/sideB/releases/latest), unzip it
 and move **sideB.app** to Applications. It needs macOS 26 or later.
 
 sideB isn't notarized by Apple (that needs a paid developer account), so macOS blocks it the first time. Open it once,

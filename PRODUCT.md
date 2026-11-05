@@ -61,7 +61,7 @@ whichever was started most recently — from the menu bar, or floating over your
 - **Menu bar menu:** Open Library, the mini player, Launch at Login, Spotify sign-in or sign-out, Quit.
 - **Haptics** are an extra while scrubbing (a tick every 15 seconds, firmer at chapters) and need a Force Touch
   trackpad; everything else works without one.
-- **Repo:** private (`orwellhemingway98/spindle`); nothing is pushed or published unless the author asks.
+- **Repo:** private (`orwellhemingway98/sideB`); nothing is pushed or published unless the author asks.
 - **Public release (decided):** free, ad-hoc signed, from GitHub, for now; a Developer ID can come later. Spotify is a
   remote by default, with album and playlist lists as an optional extra using your own developer app, because Spotify
   allows 5 users in Development Mode and at least 250k monthly users for more.
