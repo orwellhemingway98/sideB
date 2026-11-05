@@ -98,6 +98,7 @@ struct PanelView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 pill("Find a Show\u{2026}", action: onLibrary)
+                if let remote = nowPlaying.music { MusicAccessNote(remote: remote) }
             }
         }
         .padding(Self.panelPadding)
@@ -362,6 +363,16 @@ struct PanelView: View {
 
     // MARK: Footer
 
+    /// What the empty panel says when macOS has refused sideB control of a music app.
+    static func accessNote(declined: Set<MusicSourceID>) -> String? {
+        let names = MusicSourceID.allCases.filter(declined.contains).map(\.shortName)
+        guard !names.isEmpty else { return nil }
+        return "sideB isn't allowed to control \(names.joined(separator: " and "))."
+    }
+
+    /// System Settings › Privacy & Security › Automation.
+    static let automationSettings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!
+
     /// What a podcast failure says under the controls; the Try Again under it plays, which reloads the episode.
     static func failureMessage(_ failure: String) -> String {
         switch failure {
@@ -374,6 +385,26 @@ struct PanelView: View {
     /// The empty panel: a first run, or nothing at all to play (after that, the last episode reopens paused).
     static let emptyTitle = "Nothing playing"
     static let emptyLine = "Play something in Music or Spotify and it shows up here. Or follow a podcast."
+}
+
+/// Why Music or Spotify doesn't show up, and where to change it.
+private struct MusicAccessNote: View {
+    @ObservedObject var remote: MusicRemote
+
+    var body: some View {
+        if let note = PanelView.accessNote(declined: remote.declined) {
+            VStack(spacing: 6) {
+                Text(note)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open Automation Settings") { NSWorkspace.shared.open(PanelView.automationSettings) }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .medium))
+            }
+        }
+    }
 }
 
 /// The one-time caption that teaches scrolling over the line; it fades away after the first scroll.

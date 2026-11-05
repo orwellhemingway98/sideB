@@ -52,6 +52,7 @@ final class MusicRemoteTests: XCTestCase {
         XCTAssertFalse(remote.isPlaying)
         await remote.refresh()
         XCTAssertEqual(music.snapshotCalls, 1, "a declined permission isn't asked for again every second")
+        XCTAssertEqual(remote.declined, [music.id], "and the panel can say so")
     }
 
     func testCommandsGoToTheActiveSource() async {

@@ -1,66 +1,70 @@
 # sideB
 
-A contemporary listening companion for the Mac: a Liquid Glass dial in the menu
-bar that you feel through the trackpad, and a podcast player done properly.
-It plays podcasts itself and acts as a remote for Spotify and Apple Music.
+The other side of what you're listening to. sideB is a listening companion for the Mac menu bar: a podcast player
+of its own and a remote for Apple Music and Spotify, built round the cover, which turns over to show what's on it.
 
-Work in progress.
+## What it does
 
-## Run it
+- **The panel:** click the strip in the menu bar for the big cover, the title, a progress line and the playback buttons.
+  The glass takes its colour from the cover.
+- **The back of the cover:** click the cover and it turns over to the album, the playlist or the show's episodes.
+  Click a row to play it.
+- **The mini player:** press Pop out in the cover's corner to float just the cover over your work. Move the pointer
+  over it for the controls, click to turn it over, drag to move it.
+- **Scrubbing:** drag the line, or scroll over it, with haptic ticks on a Force Touch trackpad and a firmer one at
+  chapters. Hold ⌥ while scrolling to set the volume.
+- **Podcasts:** follow shows by searching Apple's podcast directory, pasting a feed or importing OPML. Chapters, speed,
+  Up Next, downloads for offline listening, and it keeps your place.
+- **Music:** whichever you started last is in control. Starting music pauses your podcast and keeps its place.
 
-sideB needs macOS 26 (Liquid Glass) and Xcode 26.
+Keys while the panel is open: Space plays or pauses, ← and → go back and forward, Return turns the cover, ↑ and ↓ move
+through the list on the back, ⌘L opens the Library, Esc turns the cover back and then closes the panel.
+
+## Download
+
+Get the **sideB** zip from the [latest release](https://github.com/orwellhemingway98/spindle/releases/latest), unzip it
+and move **sideB.app** to Applications. It needs macOS 26 or later.
+
+sideB isn't notarized by Apple (that needs a paid developer account), so macOS blocks it the first time. Open it once,
+then go to **System Settings › Privacy & Security** and click **Open Anyway**. After that it opens normally. Because it
+isn't notarized, a new version may ask again for the permissions below.
+
+## Permissions
+
+- **Controlling Music and Spotify:** macOS asks the first time sideB sees either running. Choose **Allow**; you can change
+  it later in System Settings › Privacy & Security › Automation. sideB never launches an app that isn't running.
+- **A playlist in Apple Music:** to play an album from a chosen song, sideB keeps one playlist of its own called
+  "sideB" in your library, and refills it each time. You can delete it; sideB makes a new one when it needs to.
+
+## Spotify
+
+Play, pause, skip and scrubbing work with no sign-in. On a Spotify song, the back of the cover shows the song's details.
+
+Listing Spotify albums and your own playlists is optional, because Spotify limits apps like this one. It takes Spotify
+Premium and a free developer app of your own: create one at
+[developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) with the redirect URI `sideb://callback`, then
+choose **Set Up Album Lists…** on the back of the cover and paste its Client ID.
+
+## Privacy
+
+There are no analytics and no account. sideB only talks to your podcast feeds and the hosts of their audio and artwork,
+Apple's podcast directory when you search it, and Spotify if you set up album lists. Your Spotify sign-in stays in your
+Keychain.
+
+## Build
+
+Needs macOS 26, Xcode 26 and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```sh
 brew install xcodegen
-xcodegen generate          # makes sideB.xcodeproj from project.yml
-open sideB.xcodeproj     # then Product › Run (⌘R)
+xcodegen generate
+open SideB.xcodeproj    # then Product › Run (⌘R)
 ```
 
-sideB lives in the menu bar (no Dock icon). Click its glass disc for the
-dial; "Library" in the dial panel opens the Library window. Right-click the
-disc for "Open Library…" and "Quit sideB".
+Run the tests with `./scripts/test.sh`. `./scripts/release.sh` builds the downloadable zip into `releases/`.
 
-Run the tests with `./scripts/test.sh` (full log in `build.noindex/test.log`).
+sideB is not affiliated with Apple or Spotify.
 
-## The Library (stage 2)
+## Licence
 
-Open the Library from the dial's **Library** pill, or right-click the menu bar strip and choose
-**Open Library…**.
-
-- **New Episodes:** everything unplayed from the shows you follow, newest first. sideB checks
-  for new episodes at launch and then every hour, or straight away with **Refresh**.
-- **Shows:** your shows as covers. Click one to see its episodes.
-- **Up Next:** drag to reorder, or take an episode out with **Remove**.
-- **Downloaded:** episodes saved for listening offline. Choose **Download** on any episode.
-  A download is removed a week after you've played the episode.
-- **Import OPML…:** brings in the shows you follow in another podcast app. Export an OPML
-  file from that app first (often under Settings or Library › Export).
-
-## Music (stage 3)
-
-sideB is also a remote for **Apple Music** and **Spotify**. When one of them is playing, the dial shows the
-song, artist and artwork, turning it scrubs through the song, and the panel offers previous and next.
-The first time sideB sees Music or Spotify running, macOS asks whether sideB may control it: choose
-**Allow** (System Settings › Privacy & Security › Automation lets you change it later).
-
-Whichever you started last is in control: starting music pauses your podcast and keeps its place, and
-starting a podcast pauses the music.
-
-## Floating dial
-
-Choose **Pop out ↗** in the dial panel (or **Show Floating Dial** from the menu bar strip's right-click
-menu) to float the disc anywhere on screen. Drag it by the bar beneath the disc; it remembers where you
-left it. Right-click it and choose **Put Back** to return it to the menu bar.
-
-## Big cover
-
-With something playing, the dial panel shows a big cover. Click it and a glass drop falls from the panel and
-spreads into a list:
-
-- **A podcast:** the show's episodes, or this episode's chapters (switch at the top).
-- **Apple Music:** the album or playlist you're playing from. Click a song to play it there.
-- **Spotify:** the song's details for now; listing Spotify albums and playlists needs Spotify sign-in, which
-  is a later addition.
-
-Click the cover again, press Escape or click elsewhere to put the list away.
-
+MIT. See [LICENSE](LICENSE).

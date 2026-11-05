@@ -175,7 +175,7 @@ struct ListBody: View {
                 if let account = model.spotify {
                     SpotifySignInButton(account: account)
                 } else {
-                    note("Sign in to Spotify to see the album and playlist.")
+                    note("Spotify's album and playlist can't be listed here.")
                 }
             case .nothing:
                 EmptyView()
@@ -278,7 +278,7 @@ struct ListBody: View {
     }
 }
 
-/// Signs in to Spotify, asking for the Client ID of the author's Spotify app the first time.
+/// The optional Spotify sign-in, asking for the Client ID of your own Spotify developer app the first time.
 private struct SpotifySignInButton: View {
     @ObservedObject var account: SpotifyAccount
 
@@ -291,7 +291,8 @@ private struct SpotifySignInButton: View {
                 guard let id = account.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
                 Task { await account.signIn(clientID: id) }
             } label: {
-                Text(account.isSigningIn ? "Signing in\u{2026}" : "Sign in to Spotify")
+                Text(account.isSigningIn ? "Signing in\u{2026}"
+                     : SpotifyClientIDPrompt.buttonTitle(hasClientID: account.clientID != nil))
                     .font(.system(size: 12, weight: .medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 7)

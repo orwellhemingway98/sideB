@@ -88,3 +88,17 @@ final class SpotifyClientIDTests: XCTestCase {
         XCTAssertNil(SpotifyClientIDPrompt.validated(""))
     }
 }
+
+/// Spotify works as a remote with no sign-in; listing albums is the optional extra.
+final class SpotifyIsOptionalTests: XCTestCase {
+    func testSetupSaysItIsOptionalAndWhatItAdds() {
+        XCTAssertTrue(SpotifyClientIDPrompt.explanation.hasPrefix("Optional."))
+        XCTAssertTrue(SpotifyClientIDPrompt.explanation.contains("sideb://callback"))
+        XCTAssertTrue(SpotifyClientIDPrompt.explanation.contains("Premium"))
+    }
+
+    func testTheButtonOnlySaysSignInOnceAClientIDIsSaved() {
+        XCTAssertEqual(SpotifyClientIDPrompt.buttonTitle(hasClientID: false), "Set Up Album Lists\u{2026}")
+        XCTAssertEqual(SpotifyClientIDPrompt.buttonTitle(hasClientID: true), "Sign in to Spotify")
+    }
+}

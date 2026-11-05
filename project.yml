@@ -17,13 +17,14 @@ targets:
       properties:
         CFBundleName: sideB
         CFBundleDisplayName: sideB
-        CFBundleShortVersionString: "0.16.0"
-        CFBundleVersion: "51"
+        CFBundleShortVersionString: "0.16.1"
+        CFBundleVersion: "52"
         LSApplicationCategoryType: public.app-category.music
         LSUIElement: true
         NSAppleEventsUsageDescription: "sideB controls Apple Music and Spotify so it can show what's playing and play, pause, skip or scrub it."
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoadsForMedia: true
+          # Many podcast feeds and their artwork are still plain http.
+          NSAllowsArbitraryLoads: true
     entitlements:
       path: SideB/App/SideB.entitlements
       properties:

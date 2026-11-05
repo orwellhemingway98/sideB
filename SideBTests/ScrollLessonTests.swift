@@ -56,3 +56,27 @@ final class ChapterMenuTitleTests: XCTestCase {
         XCTAssertEqual(PanelView.chapterMenuTitle(current: Chapter(start: 60, title: "Signal")), "Signal")
     }
 }
+
+final class MusicAccessNoteTests: XCTestCase {
+    func testItNamesWhatWasDeclined() {
+        XCTAssertNil(PanelView.accessNote(declined: []))
+        XCTAssertEqual(PanelView.accessNote(declined: [.appleMusic]), "sideB isn't allowed to control Music.")
+        XCTAssertEqual(PanelView.accessNote(declined: [.spotify]), "sideB isn't allowed to control Spotify.")
+        XCTAssertEqual(PanelView.accessNote(declined: [.spotify, .appleMusic]),
+                       "sideB isn't allowed to control Music and Spotify.")
+    }
+
+    func testTheButtonOpensTheAutomationSettings() {
+        XCTAssertEqual(PanelView.automationSettings.scheme, "x-apple.systempreferences")
+        XCTAssertTrue(PanelView.automationSettings.absoluteString.contains("Privacy_Automation"))
+    }
+}
+
+/// Plenty of podcast feeds and their artwork are still plain http.
+final class PlainHTTPFeedsTests: XCTestCase {
+    func testTheAppAllowsThem() throws {
+        let plist = try XCTUnwrap(Bundle.main.infoDictionary)
+        let security = try XCTUnwrap(plist["NSAppTransportSecurity"] as? [String: Any])
+        XCTAssertEqual(security["NSAllowsArbitraryLoads"] as? Bool, true)
+    }
+}
