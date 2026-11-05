@@ -1,5 +1,5 @@
 ---
-name: Spindle
+name: sideB
 description: A Liquid Glass dial in the Mac menu bar, felt through the trackpad.
 colors:
   ink: "#FFFFFF"
@@ -90,20 +90,20 @@ components:
     padding: "10pt 6pt 32pt 6pt"
 ---
 
-# Design System: Spindle
+# Design System: sideB
 
 ## Overview
 
 **Creative North Star: "The Quiet Wheel"**
 
-Spindle is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention:
+sideB is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention:
 it hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel
 **tactile, calm and precise** — physical controls you feel through the trackpad, nothing shouting, every detail
 exact.
 
 The material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows
-behind show through the panel and the mini player, so Spindle takes its colour from where it sits and from the
-artwork it shows: the glass itself is tinted with the cover's colour. Spindle adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
+behind show through the panel and the mini player, so sideB takes its colour from where it sits and from the
+artwork it shows: the glass itself is tinted with the cover's colour. sideB adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
 240 pt cover, a title, the progress line and its controls and, when needed, one pill.
 
 The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to
@@ -112,7 +112,7 @@ and every other glyph is drawn in code.
 
 **Key Characteristics:**
 - Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.
-- Colour comes from artwork and the desktop; Spindle's own ink is white at a few opacities.
+- Colour comes from artwork and the desktop; sideB's own ink is white at a few opacities.
 - System type (SF Pro) at small, exact sizes; tabular digits for every time.
 - Soft springs for every change; Reduce Motion always gets a plain crossfade.
 - One gesture per thing: drag or scroll the progress line, press play, click the cover.
@@ -147,7 +147,7 @@ artwork and two tiny source dots.
   name, saying where a song plays, always followed by the source's name. Our own mark, never a logo.
 
 ### Named Rules
-**The Borrowed Colour Rule.** Spindle never paints a surface with a colour of its own. Colour comes from the
+**The Borrowed Colour Rule.** sideB never paints a surface with a colour of its own. Colour comes from the
 artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or the two source dots.
 
 **The Label Ink Rule.** Anything that must read as white on glass uses `NSColor.labelColor`; `.primary` and
@@ -232,7 +232,7 @@ Episodes | Notes (or Chapters): a 2 pt-inset track in Segment Track with the sel
 in SwiftUI rather than a system segmented control, because a system control doesn't turn with the cover.
 
 ### The Progress Line and Controls
-The dial is gone: Spindle chose something simpler and more pragmatic. Under the title, a 240 pt progress line (a bold
+The dial is gone: sideB chose something simpler and more pragmatic. Under the title, a 240 pt progress line (a bold
 6 pt capsule, white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two
 ends in caption digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing), or scroll over
 it to scrub with haptic ticks. Option + scroll sets the volume, said in words where the elapsed time was ("Volume
@@ -295,4 +295,4 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 - **Don't** put account controls on the back of the cover.
 - **Don't** hide controls entirely until hover; show them faintly at rest.
 - **Don't** open a second window for something the panel can show in place (the list lives on the back of the cover).
-- **Don't** paint surfaces with Spindle's own colour.
+- **Don't** paint surfaces with sideB's own colour.

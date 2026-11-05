@@ -1,4 +1,4 @@
-# Spindle
+# sideB
 
 A contemporary listening companion for the Mac: a Liquid Glass dial in the menu
 bar that you feel through the trackpad, and a podcast player done properly.
@@ -8,17 +8,17 @@ Work in progress.
 
 ## Run it
 
-Spindle needs macOS 26 (Liquid Glass) and Xcode 26.
+sideB needs macOS 26 (Liquid Glass) and Xcode 26.
 
 ```sh
 brew install xcodegen
-xcodegen generate          # makes Spindle.xcodeproj from project.yml
-open Spindle.xcodeproj     # then Product › Run (⌘R)
+xcodegen generate          # makes sideB.xcodeproj from project.yml
+open sideB.xcodeproj     # then Product › Run (⌘R)
 ```
 
-Spindle lives in the menu bar (no Dock icon). Click its glass disc for the
+sideB lives in the menu bar (no Dock icon). Click its glass disc for the
 dial; "Library" in the dial panel opens the Library window. Right-click the
-disc for "Open Library…" and "Quit Spindle".
+disc for "Open Library…" and "Quit sideB".
 
 Run the tests with `./scripts/test.sh` (full log in `build.noindex/test.log`).
 
@@ -27,7 +27,7 @@ Run the tests with `./scripts/test.sh` (full log in `build.noindex/test.log`).
 Open the Library from the dial's **Library** pill, or right-click the menu bar strip and choose
 **Open Library…**.
 
-- **New Episodes:** everything unplayed from the shows you follow, newest first. Spindle checks
+- **New Episodes:** everything unplayed from the shows you follow, newest first. sideB checks
   for new episodes at launch and then every hour, or straight away with **Refresh**.
 - **Shows:** your shows as covers. Click one to see its episodes.
 - **Up Next:** drag to reorder, or take an episode out with **Remove**.
@@ -38,9 +38,9 @@ Open the Library from the dial's **Library** pill, or right-click the menu bar s
 
 ## Music (stage 3)
 
-Spindle is also a remote for **Apple Music** and **Spotify**. When one of them is playing, the dial shows the
+sideB is also a remote for **Apple Music** and **Spotify**. When one of them is playing, the dial shows the
 song, artist and artwork, turning it scrubs through the song, and the panel offers previous and next.
-The first time Spindle sees Music or Spotify running, macOS asks whether Spindle may control it: choose
+The first time sideB sees Music or Spotify running, macOS asks whether sideB may control it: choose
 **Allow** (System Settings › Privacy & Security › Automation lets you change it later).
 
 Whichever you started last is in control: starting music pauses your podcast and keeps its place, and

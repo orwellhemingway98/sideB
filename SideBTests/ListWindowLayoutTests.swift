@@ -1,0 +1,232 @@
+import AppKit
+import SwiftUI
+import XCTest
+@testable import SideB
+
+/// Opens the real panel and list windows, the way a click on the cover does, and lets AppKit lay them out.
+@MainActor
+final class ListWindowLayoutTests: XCTestCase {
+    private var library: LibraryStore!
+    private var player: PodcastPlayer!
+    private var nowPlaying: NowPlaying!
+    private var statusItem: NSStatusItem!
+
+    override func setUp() async throws {
+        let feed = URL(string: "https://example.com/feed")!
+        library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuietThreeItems)]))
+        let show = try await library.follow(feedURL: feed)
+        player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let music = FakeMusicSource(.appleMusic)
+        music.stop()
+        nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] },
+                                music: MusicRemote(sources: [music], every: { _, _ in NSObject() }))
+        player.open(library.episodes(of: show)[0], autoplay: false)
+        statusItem = NSStatusBar.system.statusItem(withLength: 30)
+    }
+
+    override func tearDown() async throws {
+        NSStatusBar.system.removeStatusItem(statusItem)
+    }
+
+    private func spin(_ seconds: TimeInterval) {
+        RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+    }
+
+    /// Runs async work from a synchronous test, keeping the run loop (and so the windows) going meanwhile.
+    private func wait(_ work: @escaping @MainActor () async -> Void) {
+        var done = false
+        Task { await work(); done = true }
+        let deadline = Date().addingTimeInterval(5)
+        while !done, Date() < deadline { spin(0.02) }
+        XCTAssertTrue(done, "timed out")
+    }
+
+    func testClickingTheCoverFlipsItToTheList() throws {
+        let model = ListModel(nowPlaying: nowPlaying, library: library)
+        let list = ListController(model: model, nowPlaying: nowPlaying)
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+                                        onCover: { list.toggle() }, list: model)
+        panel.show(below: try XCTUnwrap(statusItem.button))
+        spin(0.3)
+        let before = panel.window.frame
+
+        list.toggle()
+        spin(0.8)
+        XCTAssertTrue(list.isShown)
+        XCTAssertTrue(model.showsList, "the cover shows its back: the list")
+        guard case .podcast = model.content else { return XCTFail("got \(model.content)") }
+        XCTAssertEqual(panel.window.frame, before, "the list lives in the cover's square; the panel doesn't move")
+        XCTAssertNil(panel.window.childWindows?.first, "no second window")
+
+        XCTAssertTrue(list.handleEscape(), "Escape turns the cover back first")
+        XCTAssertFalse(model.showsList)
+        XCTAssertFalse(list.handleEscape(), "then Escape is the panel's again")
+
+        list.toggle()
+        spin(0.3)
+        panel.close()
+        spin(0.1)
+        XCTAssertFalse(model.showsList, "closing the panel turns the cover back, so it opens on the cover next time")
+    }
+
+    func testSigningInToSpotifyKeepsTheListOpen() throws {
+        let spotify = FakeMusicSource(.spotify)
+        spotify.contextResult = .success(MusicContext(kind: .album, id: "album:AL1", title: "Night Roads",
+                                                      tracks: [ContextTrack(id: "spotify:track:T1", disc: 1, number: 1,
+                                                                            title: "Headlights", artist: "Northern Static",
+                                                                            duration: 200)], totalCount: 1))
+        spotify.contextKeyValue = "album:AL1"
+        spotify.play("Headlights", id: "spotify:track:T1")
+        let remote = MusicRemote(sources: [spotify], every: { _, _ in NSObject() })
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] }, music: remote)
+        wait { await remote.refresh() }
+        XCTAssertEqual(nowPlaying.mode, .music)
+        let transport = FakeTransport()
+        transport.reply("/api/token", json: #"{"access_token":"A","expires_in":3600,"refresh_token":"R"}"#)
+        let defaults = UserDefaults(suiteName: "ListWindowLayoutTests")!
+        let account = SpotifyAccount(store: MemoryTokenStore(), transport: transport, defaults: defaults,
+                                     authenticate: { url in
+            let state = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first { $0.name == "state" }?.value ?? ""
+            return URL(string: "sideb://callback?code=C&state=\(state)")!
+        })
+        let model = ListModel(nowPlaying: nowPlaying, library: library, spotify: account)
+        let list = ListController(model: model, nowPlaying: nowPlaying)
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {},
+                                        onCover: { list.toggle() }, list: model)
+        panel.show(below: try XCTUnwrap(statusItem.button))
+        spin(0.3)
+        list.toggle()
+        spin(0.6)
+        XCTAssertTrue(list.isShown, "the cover turned over")
+        guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
+
+        wait { await account.signIn(clientID: "abc") }
+        spin(1.0)
+        guard case .music(let context, _) = model.content else { return XCTFail("got \(model.content)") }
+        XCTAssertEqual(context.title, "Night Roads")
+        XCTAssertTrue(list.isShown, "the list stays open and fills in")
+
+        account.signOut()
+        spin(1.0)
+        guard case .spotify = model.content else { return XCTFail("got \(model.content)") }
+        XCTAssertTrue(list.isShown)
+        list.toggle()
+        spin(0.6)
+        panel.close()
+    }
+
+    func testTheTallestPanelFitsA1280By800Screen() {
+        // A podcast with a full Up Next is the tallest the panel gets.
+        for episode in library.episodes(of: library.shows[0]) { library.enqueue(episode) }
+        XCTAssertEqual(library.upNext.count, 3)
+        let view = NSHostingView(rootView: PanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
+        // 800 pt, less a 33 pt menu bar and the 6 pt gap, leaves 761 pt; keep a margin for the Dock.
+        XCTAssertLessThanOrEqual(view.fittingSize.height, 720)
+    }
+
+    func testThePanelStaysCompact() {
+        // The line, times and buttons take one short row each; the footer lives in the cover's corners.
+        let view = NSHostingView(rootView: PanelView(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(),
+                                                         onLibrary: {}, onPopOut: {}, onCover: {}))
+        XCTAssertLessThanOrEqual(view.fittingSize.height, 530)
+    }
+}
+
+@MainActor
+final class PlaybackTimesTests: XCTestCase {
+    func testEveryTimeFitsUnderTheLineAtFullSize() {
+        // Both times always use the same font size: no shrinking for long episodes.
+        let longest = TimeFormat.remaining(9 * 3600 + 59 * 60 + 59)
+        XCTAssertEqual(longest, "\u{2212}9:59:59")
+        let width = (longest as NSString).size(withAttributes: [.font: PanelView.timeFont]).width
+        XCTAssertLessThan(2 * width + 8, PanelView.width - 2 * PanelView.panelPadding, "both fit side by side")
+    }
+}
+
+@MainActor
+final class PanelProportionsTests: XCTestCase {
+    func testTheCoverCornersRunParallelWithThePanels() {
+        // Concentric corners: the inner radius is the outer one less the gap between them.
+        XCTAssertEqual(PanelView.coverCornerRadius, PanelView.panelCornerRadius - PanelView.panelPadding)
+        XCTAssertEqual(PanelView.coverCornerRadius, 14)
+    }
+
+    func testTheTitleLeadsTheArtistLine() {
+        XCTAssertEqual(PanelView.titleSize, 16)
+        XCTAssertEqual(PanelView.subtitleSize, 12)
+    }
+}
+
+@MainActor
+final class WindowGlassTests: XCTestCase {
+    private func glassViews(in view: NSView) -> [NSGlassEffectView] {
+        ((view as? NSGlassEffectView).map { [$0] } ?? []) + view.subviews.flatMap { glassViews(in: $0) }
+    }
+
+    func testWindowGlassCarriesItsTint() throws {
+        let view = NSHostingView(rootView: WindowGlass(cornerRadius: 30, tint: .systemPink).frame(width: 100, height: 100))
+        view.frame = NSRect(x: 0, y: 0, width: 100, height: 100)
+        view.layoutSubtreeIfNeeded()
+        let glass = try XCTUnwrap(glassViews(in: view).first)
+        XCTAssertEqual(glass.tintColor, .systemPink)
+        let plain = NSHostingView(rootView: WindowGlass(cornerRadius: 30).frame(width: 100, height: 100))
+        plain.frame = NSRect(x: 0, y: 0, width: 100, height: 100)
+        plain.layoutSubtreeIfNeeded()
+        XCTAssertNil(try XCTUnwrap(glassViews(in: plain).first).tintColor)
+    }
+
+    func testThePanelIsWindowGlassThatSeesTheDesktop() async throws {
+        // SwiftUI's glass only sees inside its own window, which is clear, so it rendered flat grey.
+        let feed = URL(string: "https://example.com/feed")!
+        let library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
+        let player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        let content = try XCTUnwrap(panel.window.contentView)
+        content.frame = NSRect(x: 0, y: 0, width: 320, height: 600)
+        content.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let glass = try XCTUnwrap(glassViews(in: content).first, "an NSGlassEffectView behind the panel")
+        XCTAssertEqual(glass.cornerRadius, PanelView.panelCornerRadius)
+    }
+}
+
+@MainActor
+final class CoverCornersTests: XCTestCase {
+    func testLibraryAndPopOutAreFaintAtRestAndFullUnderThePointer() {
+        // Hidden until hover, they couldn't be found by someone who opens the panel and doesn't move the pointer.
+        XCTAssertEqual(PanelView.cornerOpacity(hovering: false), 0.35)
+        XCTAssertEqual(PanelView.cornerOpacity(hovering: true), 1)
+    }
+}
+
+/// sideB's ink is white on glass, so its windows keep the dark look even when macOS is in Light mode
+/// (there, the label colour turns black and the white highlights sit on pale glass).
+@MainActor
+final class DarkGlassTests: XCTestCase {
+    private func isDark(_ window: NSWindow) -> Bool {
+        window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    }
+
+    func testThePanelAndTheFloatingDialStayDarkInLightMode() {
+        let feed = URL(string: "https://example.com/feed")!
+        let library = LibraryStore.inMemory(fetcher: StubFetcher(responses: [feed: .success(SampleFeeds.longQuiet)]))
+        let player = PodcastPlayer(engine: FakeEngine(), library: library)
+        let nowPlaying = NowPlaying(player: player, media: FakeMediaCenter(), haptics: FakeHaptics(),
+                                    schedule: { _, _ in }, now: { 0 }, loadChapters: { _ in [] })
+        let previous = NSApp.appearance
+        NSApp.appearance = NSAppearance(named: .aqua)
+        defer { NSApp.appearance = previous }
+
+        let panel = PanelController(nowPlaying: nowPlaying, library: library, artwork: ArtworkCache(), onLibrary: {})
+        XCTAssertTrue(isDark(panel.window))
+        let mini = MiniPlayerController(nowPlaying: nowPlaying, placement: MiniPlacement(defaults: UserDefaults(suiteName: "DarkGlassTests")!),
+                                          onPutBack: {}, onLibrary: {})
+        XCTAssertTrue(isDark(mini.window))
+    }
+}

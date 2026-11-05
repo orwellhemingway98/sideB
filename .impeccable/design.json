@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-11-02T23:56:44Z",
-  "title": "Design System: Spindle",
+  "title": "Design System: sideB",
   "extensions": {
     "colorMeta": {
       "ink": {
@@ -184,10 +184,10 @@
   ],
   "narrative": {
     "northStar": "The Quiet Wheel",
-    "overview": "Spindle is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention: it hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel tactile, calm and precise — physical controls you feel through the trackpad, nothing shouting, every detail exact. The material is the see-through window glass macOS draws (AppKit NSGlassEffectView): the desktop and the windows behind show through the panel and the floating dial, so Spindle takes its colour from where it sits and from the artwork it shows. Spindle adds almost no colour of its own. Density is low and deliberate: a 272 pt panel holds a 240 pt cover, a title, the 150 pt disc and, when needed, one pill. The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to show what's inside. No Apple assets, logos or SF Symbols appear in Spindle's own controls; glyphs are drawn in code.",
+    "overview": "sideB is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention: it hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel tactile, calm and precise — physical controls you feel through the trackpad, nothing shouting, every detail exact. The material is the see-through window glass macOS draws (AppKit NSGlassEffectView): the desktop and the windows behind show through the panel and the floating dial, so sideB takes its colour from where it sits and from the artwork it shows. sideB adds almost no colour of its own. Density is low and deliberate: a 272 pt panel holds a 240 pt cover, a title, the 150 pt disc and, when needed, one pill. The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to show what's inside. No Apple assets, logos or SF Symbols appear in sideB's own controls; glyphs are drawn in code.",
     "keyCharacteristics": [
       "Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.",
-      "Colour comes from artwork and the desktop; Spindle's own ink is white at a few opacities.",
+      "Colour comes from artwork and the desktop; sideB's own ink is white at a few opacities.",
       "System type (SF Pro) at small, exact sizes; tabular digits for every time.",
       "Soft springs for every change; Reduce Motion always gets a plain crossfade.",
       "One gesture per thing: turn the disc, press its centre, click the cover."
@@ -195,7 +195,7 @@
     "rules": [
       {
         "name": "The Borrowed Colour Rule",
-        "body": "Spindle never paints a surface with a colour of its own. Colour comes from the artwork, the desktop through the glass, or the two source dots.",
+        "body": "sideB never paints a surface with a colour of its own. Colour comes from the artwork, the desktop through the glass, or the two source dots.",
         "section": "colors"
       },
       {
@@ -229,11 +229,11 @@
     ],
     "donts": [
       "Don't use SwiftUI .glassEffect for a whole window's surface: it only sees inside its own clear window and renders flat grey.",
-      "Don't use Apple logos, product artwork or SF Symbols in Spindle's own controls.",
+      "Don't use Apple logos, product artwork or SF Symbols in sideB's own controls.",
       "Don't shrink one of a pair of values (elapsed and remaining time) to make it fit.",
       "Don't add a window shadow to the panel; the glass carries its own.",
       "Don't open a second window for something the panel can show in place (the list lives on the back of the cover).",
-      "Don't paint surfaces with Spindle's own colour."
+      "Don't paint surfaces with sideB's own colour."
     ]
   }
 }

@@ -13,9 +13,9 @@ behaviour, not web patterns.
 ## Users
 
 - **Now:** the author, listening to podcasts and music on a MacBook while working in other apps (often AutoCAD).
-  Spindle lives in the menu bar so control never means leaving the work.
+  sideB lives in the menu bar so control never means leaving the work.
 - **Later:** a public release, as the author did with ClickWheel (a GitHub release). People who aren't the author
-  will meet Spindle for the first time, so first-run, empty states and plain-language setup start to matter.
+  will meet sideB for the first time, so first-run, empty states and plain-language setup start to matter.
 
 ## Product Purpose
 
@@ -35,7 +35,7 @@ macOS shows for Now Playing.
 ## Positioning
 
 A tactile dial rather than a window of buttons: turning it scrubs, with a haptic tick every 15 seconds and a firmer
-click at chapters, on the trackpad. One small object steers whatever is playing — Spindle's own podcasts, Apple
+click at chapters, on the trackpad. One small object steers whatever is playing — sideB's own podcasts, Apple
 Music or Spotify, whichever was started most recently — from the menu bar.
 
 ## Operating Context
@@ -43,7 +43,7 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 - Used in short glances between other work, mostly by mouse/trackpad; the panel drops from the menu bar strip and
   closes when you click elsewhere. It can also be popped out as a mini player: just the cover, floating, with its controls on
   hover and its list on the back.
-- Music apps are controlled through AppleScript; Spindle never launches an app that isn't running.
+- Music apps are controlled through AppleScript; sideB never launches an app that isn't running.
 - Podcasts come from RSS feeds the author follows (search Apple's podcast directory, paste a feed, or import OPML),
   with downloads for offline listening.
 
@@ -57,7 +57,7 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 - **Podcasts:** chapters (feed, Podcasting 2.0 JSON, in-file), speed, resume, Up Next, downloads, hourly refresh,
   OPML import, Library window.
 - **Music:** Apple Music albums and playlists read through AppleScript; Spotify albums and the user's own
-  playlists through the Web API after a personal sign-in (PKCE, `spindle://callback`).
+  playlists through the Web API after a personal sign-in (PKCE, `sideb://callback`).
 - **Menu bar menu:** Open Library, the mini player, Launch at Login, Spotify sign-in or sign-out, Quit.
 - **Haptics** need a Force Touch trackpad; everything else works without one.
 - **Repo:** private (`orwellhemingway98/spindle`); nothing is pushed or published unless the author asks.
@@ -67,7 +67,7 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 
 ## Brand Commitments
 
-- **Name:** Spindle. **App icon:** the author's own click-wheel icon (`Spindle/Resources/AppIcon.icon`).
+- **Name:** sideB. **App icon:** the author's own click-wheel icon (`SideB/Resources/AppIcon.icon`).
 - **No Apple assets:** original or system-provided artwork only; no Apple logos or product artwork. Liquid Glass, as
   a system material, is allowed, and so are SF Symbols for the playback buttons (back, play/pause, forward and the
   podcast skips), which the author chose so they read as the Mac's own; other glyphs stay drawn in code.
