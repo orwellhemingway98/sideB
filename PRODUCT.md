@@ -19,24 +19,24 @@ behaviour, not web patterns.
 
 ## Product Purpose
 
-A contemporary listening companion for the Mac: a dial in the menu bar that you turn and feel through the trackpad.
-It plays podcasts itself and acts as a remote for Apple Music and Spotify.
+A listening companion for the Mac, built round the cover: glance at the front, turn it over for what's on the back. It
+lives in the menu bar, plays podcasts itself and acts as a remote for Apple Music and Spotify.
 
 At its best it does two things at once (both confirmed by the author):
 
-1. **Control without leaving work:** glance at what's playing, turn to scrub, skip or pause from the menu bar,
-   then get back to the work in the other app.
-2. **An object you enjoy:** it should feel physical and beautiful — the dial, the haptic ticks, the glass, the
-   iPod lineage.
+1. **Control without leaving work:** glance at what's playing, scrub, skip or pause from the menu bar, then get back
+   to the work in the other app.
+2. **An object you enjoy:** it should feel physical and beautiful — the cover that turns over, the glass that takes
+   its colour, the small touches like haptic ticks while scrubbing.
 
 It is not a feed, a recommendation engine or a music library browser, and it sends no notifications beyond what
 macOS shows for Now Playing.
 
 ## Positioning
 
-A tactile dial rather than a window of buttons: turning it scrubs, with a haptic tick every 15 seconds and a firmer
-click at chapters, on the trackpad. One small object steers whatever is playing — sideB's own podcasts, Apple
-Music or Spotify, whichever was started most recently — from the menu bar.
+The cover as the object, rather than a window of controls: what's playing is on the front, and the album, playlist or
+episodes are on the back. One small object steers whatever is playing — sideB's own podcasts, Apple Music or Spotify,
+whichever was started most recently — from the menu bar, or floating over your work as just the cover.
 
 ## Operating Context
 
@@ -59,7 +59,8 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 - **Music:** Apple Music albums and playlists read through AppleScript; Spotify albums and the user's own
   playlists through the Web API after an optional personal sign-in (PKCE, `sideb://callback`).
 - **Menu bar menu:** Open Library, the mini player, Launch at Login, Spotify sign-in or sign-out, Quit.
-- **Haptics** need a Force Touch trackpad; everything else works without one.
+- **Haptics** are an extra while scrubbing (a tick every 15 seconds, firmer at chapters) and need a Force Touch
+  trackpad; everything else works without one.
 - **Repo:** private (`orwellhemingway98/spindle`); nothing is pushed or published unless the author asks.
 - **Public release (decided):** free, ad-hoc signed, from GitHub, for now; a Developer ID can come later. Spotify is a
   remote by default, with album and playlist lists as an optional extra using your own developer app, because Spotify
@@ -73,7 +74,8 @@ Music or Spotify, whichever was started most recently — from the menu bar.
   podcast skips), which the author chose so they read as the Mac's own; other glyphs stay drawn in code.
 - **Glass is the look:** the author wants the see-through window glass (AppKit `NSGlassEffectView`, as in the
   native popover) to be the look and feel of the whole app.
-- **iPod lineage** without imitation: the dial, the cover that turns over, the tactile clicks.
+- **iPod lineage** without imitation: the click-wheel icon and the love of album covers, not the wheel itself. sideB
+  dropped its dial on 3 November 2026 for a progress line and plain buttons; keep to that.
 - **Voice:** plain, short, friendly English in the UI ("Find a show in Library", "Resume …").
 
 ## Evidence on Hand
@@ -85,7 +87,8 @@ Music or Spotify, whichever was started most recently — from the menu bar.
 
 1. **Stay out of the way.** Every interaction should be a glance and a gesture; never pull the author out of the
    app they're working in.
-2. **Feel, then see.** The dial's haptics and motion carry meaning; visuals confirm what the hand already felt.
+2. **The cover first.** The artwork is the object and leads every surface: the glass takes its colour, and controls and
+   lists appear only when they're wanted.
 3. **One object, every source.** Podcasts, Apple Music and Spotify are steered the same way; differences show only
    where they must.
 4. **Native and quiet.** System materials and behaviours over custom chrome; restraint over decoration.

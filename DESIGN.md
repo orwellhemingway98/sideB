@@ -1,6 +1,6 @@
 ---
 name: sideB
-description: A Liquid Glass dial in the Mac menu bar, felt through the trackpad.
+description: A cover in the Mac menu bar, in Liquid Glass, that turns over to show what is on the other side.
 colors:
   ink: "#FFFFFF"
   ink-secondary: "rgba(235, 235, 245, 0.6)"
@@ -17,11 +17,6 @@ typography:
     fontFamily: "SF Pro (system), -apple-system"
     fontSize: "16pt"
     fontWeight: 600
-  volume:
-    fontFamily: "SF Pro (system), -apple-system"
-    fontSize: "17pt"
-    fontWeight: 600
-    fontFeature: "tnum"
   body:
     fontFamily: "SF Pro (system), -apple-system"
     fontSize: "12pt"
@@ -94,21 +89,21 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Quiet Wheel"**
+**Creative North Star: "The Other Side"**
 
-sideB is the iPod's wheel made calm and made of glass. One wheel, one cover, nothing else asking for attention:
-it hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel
-**tactile, calm and precise** — physical controls you feel through the trackpad, nothing shouting, every detail
-exact.
+sideB is a cover you can turn over. On the front, what's playing and nothing else; on the back, the album, the playlist
+or the episodes it belongs to. It hangs at the edge of the author's work in the menu bar, is touched for a moment, and is
+gone. It should feel **tactile, calm and precise**: the cover gives under the pointer and turns like a real sleeve,
+nothing shouts, every detail is exact.
 
 The material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows
 behind show through the panel and the mini player, so sideB takes its colour from where it sits and from the
 artwork it shows: the glass itself is tinted with the cover's colour. sideB adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
 240 pt cover, a title, the progress line and its controls and, when needed, one pill.
 
-The iPod lineage is in behaviour, not imitation: the wheel you turn, the click you feel, the cover that turns over to
-show what's inside. No Apple assets or logos appear; the playback buttons use Apple's SF Symbols so they read as the Mac's own,
-and every other glyph is drawn in code.
+The iPod lineage survives in the love of album covers and the click-wheel icon, not in a wheel: sideB tried a dial and
+dropped it for a progress line and plain buttons. No Apple assets or logos appear; the playback buttons use Apple's SF
+Symbols so they read as the Mac's own, and every other glyph is drawn in code.
 
 **Key Characteristics:**
 - Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.
@@ -232,7 +227,7 @@ Episodes | Notes (or Chapters): a 2 pt-inset track in Segment Track with the sel
 in SwiftUI rather than a system segmented control, because a system control doesn't turn with the cover.
 
 ### The Progress Line and Controls
-The dial is gone: sideB chose something simpler and more pragmatic. Under the title, a 240 pt progress line (a bold
+Simple and pragmatic, so the cover stays the signature. Under the title, a 240 pt progress line (a bold
 6 pt capsule, white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two
 ends in caption digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing), or scroll over
 it to scrub with haptic ticks. Option + scroll sets the volume, said in words where the elapsed time was ("Volume
