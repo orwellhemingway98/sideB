@@ -30,6 +30,9 @@ final class MusicRemote: ObservableObject {
         return contextKey.hasPrefix("playlist:") ? .playlist : .album
     }
 
+    /// The latest early look at a Spotify playlist, so tests can await it.
+    private(set) var lastContextCheck: Task<Void, Never>?
+
     /// The most recent command, so callers (and tests) can await it.
     private(set) var lastCommand: Task<Void, Never>?
 
@@ -94,7 +97,15 @@ final class MusicRemote: ObservableObject {
         if let song = track, song.trackID != keyTrackID,
            let source = sources.first(where: { $0.id == song.source }) {
             await updateContextKey(for: song, source: source)
+            checkSpotifyPlaylist(for: song)
         }
+    }
+
+    /// Spotify only lists a small app's own playlists; others fall back to the song's album. Asking as soon as a
+    /// new playlist starts lets the cover's hint say what turning it over will really show.
+    private func checkSpotifyPlaylist(for song: MusicTrack) {
+        guard song.source == .spotify, let key = contextKey, key.hasPrefix("playlist:"), contexts[key] == nil else { return }
+        lastContextCheck = Task { _ = await context(for: song) }
     }
 
     func playPause() { command { try $0.playPause() } }
@@ -156,6 +167,9 @@ final class MusicRemote: ObservableObject {
         switch result {
         case .success(let context?):
             contexts[key] = context
+            contexts[context.id] = context
+            // A playlist that came back as its song's album: the hint should say so.
+            if context.kind != contextKind, self.track?.trackID == track.trackID { contextKey = context.id }
             setContextFailed(false)
             return context
         case .success(nil):
