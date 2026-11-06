@@ -9,7 +9,7 @@ of its own and a remote for Apple Music and Spotify, built round the cover, whic
 
 | The panel | The back of the cover | The mini player |
 | --- | --- | --- |
-| ![The panel under the menu bar](docs/media/panel.png) | ![The back of the cover, listing an album](docs/media/cover-back.png) | ![Just the cover, floating over a window](docs/media/mini-player.png) |
+| ![The panel under the menu bar](docs/media/panel.png) | ![The back of the cover, listing an album](docs/media/cover-back.png) | ![Just the cover, floating on the desktop: the controls fade in on hover and it turns over to its list](docs/media/mini-player.gif) |
 
 ## What it does
 
