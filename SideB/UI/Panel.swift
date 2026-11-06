@@ -657,9 +657,14 @@ final class PanelController {
 
     private func installMonitors() {
         removeMonitors()
-        // Global monitors only see clicks in other apps; clicks on the strip toggle through its button.
+        // Clicks in other apps close the panel. Clicks on the strip toggle through its button instead.
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            MainActor.assumeIsolated { self?.close() }
+            let location = NSEvent.mouseLocation
+            MainActor.assumeIsolated {
+                guard let self, PanelClickPolicy.outsideClickClosesPanel(at: location, strip: self.anchorWindow?.frame)
+                else { return }
+                self.close()
+            }
         }
         // A local monitor catches clicks in sideB's other windows, such as the Library.
         ownWindowClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in

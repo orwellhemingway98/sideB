@@ -22,6 +22,17 @@ final class ListWindowTests: XCTestCase {
         XCTAssertTrue(PanelClickPolicy.closesPanel(clickWindow: library, panel: panel, anchor: statusBar, children: [list]))
     }
 
+    /// The strip's own click must toggle the panel. If the outside-click watcher closed it first, the
+    /// button would see it closed and open it again.
+    func testAnOutsideClickOnTheStripIsLeftToTheStrip() {
+        let strip = NSRect(x: 929, y: 950, width: 92, height: 24)
+        XCTAssertFalse(PanelClickPolicy.outsideClickClosesPanel(at: NSPoint(x: 975, y: 960), strip: strip))
+        XCTAssertTrue(PanelClickPolicy.outsideClickClosesPanel(at: NSPoint(x: 400, y: 500), strip: strip))
+        XCTAssertTrue(PanelClickPolicy.outsideClickClosesPanel(at: NSPoint(x: 1100, y: 960), strip: strip),
+                      "another menu bar item still closes the panel")
+        XCTAssertTrue(PanelClickPolicy.outsideClickClosesPanel(at: NSPoint(x: 975, y: 960), strip: nil))
+    }
+
 
     func testAlbumRowsQueueTheWholeAlbumFromTheClickedSong() {
         let script = AppleMusicSource.queueScript(trackIDs: ["a\"1", "b2"], startID: "b2", knownPlaylistID: "PL")

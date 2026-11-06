@@ -26,6 +26,13 @@ enum PanelClickPolicy {
         if clickWindow === panel || clickWindow === anchor { return false }
         return !children.contains { $0 === clickWindow }
     }
+
+    /// A click seen by the outside-click watcher. The strip's own clicks can reach that watcher too, and they
+    /// belong to the strip: closing here would make its button see a closed panel and open it again.
+    static func outsideClickClosesPanel(at location: NSPoint, strip: NSRect?) -> Bool {
+        guard let strip else { return true }
+        return !strip.contains(location)
+    }
 }
 
 /// The song or episode list on the back of the cover: clicking the cover turns it over. This keeps what the
