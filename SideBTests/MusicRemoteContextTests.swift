@@ -57,6 +57,53 @@ final class MusicRemoteContextTests: XCTestCase {
         XCTAssertFalse(spotifyRemote.contextFailed)
     }
 
+    // MARK: The hint's word on Spotify
+
+    private func spotifyRemote(key: String, answer: MusicContext?) async -> (MusicRemote, FakeMusicSource) {
+        let spotify = FakeMusicSource(.spotify)
+        spotify.contextKeyValue = key
+        spotify.contextResult = .success(answer)
+        let remote = MusicRemote(sources: [spotify], every: { _, _ in NSObject() })
+        spotify.play("Song", id: "s1")
+        await remote.refresh()
+        await remote.lastContextCheck?.value
+        return (remote, spotify)
+    }
+
+    func testAPlaylistSpotifyWontListSaysAlbumBeforeTheCoverTurns() async {
+        let (remote, spotify) = await spotifyRemote(key: "playlist:THEIRS", answer: album)
+        XCTAssertEqual(remote.contextKind, .album)
+        XCTAssertEqual(spotify.contextCalls, 1)
+        let track = remote.track!
+        XCTAssertEqual(remote.cachedContext(for: track), album, "the back of the cover is ready too")
+    }
+
+    func testAPlaylistSpotifyListsStaysAPlaylist() async {
+        let playlist = MusicContext(kind: .playlist, id: "playlist:MINE", title: "Mine", tracks: album.tracks, totalCount: 2)
+        let (remote, spotify) = await spotifyRemote(key: "playlist:MINE", answer: playlist)
+        XCTAssertEqual(remote.contextKind, .playlist)
+        XCTAssertEqual(spotify.contextCalls, 1)
+        spotify.play("Next song", id: "s2")
+        await remote.refresh()
+        await remote.lastContextCheck?.value
+        XCTAssertEqual(spotify.contextCalls, 1, "a playlist is only checked once")
+    }
+
+    func testAnAlbumIsNotCheckedEarly() async {
+        let (remote, spotify) = await spotifyRemote(key: album.id, answer: album)
+        XCTAssertEqual(remote.contextKind, .album)
+        XCTAssertEqual(spotify.contextCalls, 0)
+    }
+
+    func testAppleMusicPlaylistsAreNotCheckedEarly() async {
+        music.contextKeyValue = "playlist:FAV"
+        music.play("Other", id: "t9")
+        await remote.refresh()
+        await remote.lastContextCheck?.value
+        XCTAssertEqual(remote.contextKind, .playlist)
+        XCTAssertEqual(music.contextCalls, 0)
+    }
+
     func testPlayingARowGoesToTheSource() async {
         remote.play(contextTrack: album.tracks[1], in: album)
         await remote.lastCommand?.value
