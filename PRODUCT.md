@@ -43,7 +43,9 @@ whichever was started most recently — from the menu bar, or floating over your
 - Used in short glances between other work, mostly by mouse/trackpad; the panel drops from the menu bar strip and
   closes when you click elsewhere. It can also be popped out as a mini player: just the cover, floating, with its controls on
   hover and its list on the back.
-- Music apps are controlled through AppleScript; sideB never launches an app that isn't running.
+- Music apps are controlled through AppleScript; sideB never launches an app that isn't running. The exception is a
+  clicked Spotify row, which goes through the Web API when signed in, because Spotify's AppleScript command brings its
+  window forward; that command remains the fallback.
 - Podcasts come from RSS feeds the author follows (search Apple's podcast directory, paste a feed, or import OPML),
   with downloads for offline listening.
 

@@ -13,7 +13,7 @@ struct SpotifyTokens: Codable, Equatable {
 enum SpotifyAuth {
     static let redirectURI = "sideb://callback"
     static let callbackScheme = "sideb"
-    static let scopes = "user-read-currently-playing user-read-playback-state playlist-read-private playlist-read-collaborative"
+    static let scopes = "user-read-currently-playing user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative"
     static let tokenURL = URL(string: "https://accounts.spotify.com/api/token")!
 
     enum CallbackError: Error, Equatable {

@@ -159,4 +159,42 @@ final class SpotifyWebAPITests: XCTestCase {
         transport.reply("/api/token", .status(400))
         XCTAssertNil(try api.context())
     }
+
+    // MARK: Playing a song
+
+    private static let playPath = "/v1/me/player/play"
+
+    func testPlaySendsTheSongAndItsList() throws {
+        transport.reply(Self.playPath, .status(204))
+        XCTAssertTrue(api.play(trackURI: "spotify:track:T1", contextID: "playlist:PL1"))
+        let request = try XCTUnwrap(transport.requests(to: Self.playPath).last)
+        XCTAssertEqual(request.url?.absoluteString, "https://api.spotify.com/v1/me/player/play")
+        XCTAssertEqual(request.httpMethod, "PUT")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer A")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(request.httpBody)) as? NSDictionary)
+        XCTAssertEqual(body, ["context_uri": "spotify:playlist:PL1", "offset": ["uri": "spotify:track:T1"]])
+    }
+
+    func testPlayIsFalseWithoutThePermission() {
+        transport.reply(Self.playPath, .status(403))
+        XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
+    }
+
+    func testPlayIsFalseWithNoActiveDevice() {
+        transport.reply(Self.playPath, .status(404))
+        XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
+    }
+
+    func testPlayIsFalseOffline() {
+        transport.reply(Self.playPath, .offline)
+        XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
+    }
+
+    func testPlayIsFalseAndSendsNothingSignedOut() {
+        store.clear()
+        let api = SpotifyWebAPI(client: SpotifyClient(clientID: { "abc" }, store: store, transport: transport))
+        XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
+        XCTAssertTrue(transport.requests.isEmpty)
+    }
 }
