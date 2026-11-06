@@ -3,6 +3,14 @@
 The other side of what you're listening to. sideB is a listening companion for the Mac menu bar: a podcast player
 of its own and a remote for Apple Music and Spotify, built round the cover, which turns over to show what's on it.
 
+![The sideB panel in the menu bar, its cover turning over to show the album](docs/media/cover-turn.gif)
+
+**Free and open source, for macOS 26 or later.** [Download the latest release](https://github.com/orwellhemingway98/sideB/releases/latest).
+
+| The panel | The back of the cover | The mini player |
+| --- | --- | --- |
+| ![The panel under the menu bar](docs/media/panel.png) | ![The back of the cover, listing an album](docs/media/cover-back.png) | ![Just the cover, floating over a window](docs/media/mini-player.png) |
+
 ## What it does
 
 - **The panel:** click the strip in the menu bar for the big cover, the title, a progress line and the playback buttons.
