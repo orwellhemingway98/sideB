@@ -90,11 +90,24 @@ final class SpotifyClient: @unchecked Sendable {
 
     /// GETs a Web API URL. Nil for 204 No Content.
     func get(_ url: URL) throws -> Data? {
+        try authorized(URLRequest(url: url))
+    }
+
+    /// PUTs JSON to a Web API URL. Throws unless Spotify accepts it.
+    func put(_ url: URL, body: Data) throws {
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        _ = try authorized(request)
+    }
+
+    private func authorized(_ base: URLRequest) throws -> Data? {
         var token = try accessToken(forceRefresh: false)
         var refreshed = false
         var waited = false
         while true {
-            var request = URLRequest(url: url)
+            var request = base
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             let (data, response) = try send(request)
             switch response.statusCode {

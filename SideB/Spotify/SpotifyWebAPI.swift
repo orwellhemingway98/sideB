@@ -125,6 +125,18 @@ final class SpotifyWebAPI: @unchecked Sendable {
         }
     }
 
+    /// Starts a song in its list, without Spotify's window coming forward as its scripting command makes it do.
+    /// False when Spotify didn't start it (signed out, refused or offline), so the caller can use that command.
+    func play(trackURI: String, contextID: String) -> Bool {
+        guard client.isSignedIn,
+              let url = URL(string: Self.base + "/me/player/play"),
+              let body = try? JSONSerialization.data(withJSONObject: [
+                  "context_uri": "spotify:" + contextID,
+                  "offset": ["uri": trackURI],
+              ]) else { return false }
+        return (try? client.put(url, body: body)) != nil
+    }
+
     // MARK: - Private
 
     private func signedIn<T>(_ read: () throws -> T?) throws -> T? {

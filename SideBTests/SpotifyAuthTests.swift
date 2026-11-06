@@ -26,7 +26,7 @@ final class SpotifyAuthTests: XCTestCase {
         XCTAssertEqual(query["code_challenge_method"], "S256")
         XCTAssertEqual(query["code_challenge"], "xyz")
         XCTAssertEqual(query["state"], "s1")
-        XCTAssertEqual(query["scope"], "user-read-currently-playing user-read-playback-state playlist-read-private playlist-read-collaborative")
+        XCTAssertEqual(query["scope"], "user-read-currently-playing user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative")
     }
 
     func testCallbackGivesTheCode() throws {

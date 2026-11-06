@@ -53,6 +53,10 @@ Premium and a free developer app of your own: create one at
 [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) with the redirect URI `sideb://callback`, then
 choose **Set Up Album Lists…** on the back of the cover and paste its Client ID.
 
+Once you're signed in, clicking a row changes the song and leaves Spotify's window where it is. Without a sign-in, or if
+Spotify refuses the request (no active device, say), the click goes through the Spotify app instead and its window comes
+forward. If you signed in before version 0.16.4, sign out and back in to give sideB the permission this needs.
+
 ## Privacy
 
 There are no analytics and no account. sideB only talks to your podcast feeds and the hosts of their audio and artwork,

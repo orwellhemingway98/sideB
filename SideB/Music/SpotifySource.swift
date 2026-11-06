@@ -7,9 +7,9 @@ final class SpotifySource: AppleScriptMusicSource, MusicSource {
     /// Reads albums and playlists once signed in; nil (no lists) in tests and previews.
     private let api: SpotifyWebAPI?
 
-    init(api: SpotifyWebAPI? = nil) {
+    init(api: SpotifyWebAPI? = nil, bundleIdentifier: String = "com.spotify.client") {
         self.api = api
-        super.init(bundleIdentifier: "com.spotify.client", appName: "Spotify")
+        super.init(bundleIdentifier: bundleIdentifier, appName: "Spotify")
     }
 
     private static let snapshotScript = """
@@ -49,8 +49,10 @@ final class SpotifySource: AppleScriptMusicSource, MusicSource {
     func contextKey() throws -> String? { try api?.contextKey() }
     func context() throws -> MusicContext? { try api?.context() }
 
-    /// Playing goes through the app, so it needs no Web API player access.
+    /// Through the Web API when it can, because Spotify's own command brings its window forward. That command
+    /// is the fallback, for an older sign-in or when no device is active, so a click always plays the song.
     func play(trackID: String, in context: MusicContext) throws {
+        if api?.play(trackURI: trackID, contextID: context.id) == true { return }
         try tell(Self.playScript(trackID: trackID, contextID: context.id))
     }
 

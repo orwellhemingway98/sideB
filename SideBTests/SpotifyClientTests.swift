@@ -103,6 +103,47 @@ final class SpotifyClientTests: XCTestCase {
         XCTAssertThrowsError(try client().get(me)) { XCTAssertEqual($0 as? SpotifyError, .http(500)) }
     }
 
+    // MARK: PUT
+
+    func testPutSendsTheBodyAsJSONWithTheBearerToken() throws {
+        signIn()
+        transport.reply(me.path, .status(204))
+        try client().put(me, body: Data("{}".utf8))
+        let request = transport.requests.last
+        XCTAssertEqual(request?.httpMethod, "PUT")
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "Authorization"), "Bearer A")
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        XCTAssertEqual(request?.httpBody, Data("{}".utf8))
+    }
+
+    func testPutRetriesWithTheSameBodyAfterA401() throws {
+        signIn()
+        transport.reply(me.path, .status(401))
+        transport.reply(me.path, .status(204))
+        transport.reply("/api/token", json: #"{"access_token":"B","expires_in":3600}"#)
+        try client().put(me, body: Data("{}".utf8))
+        let retry = transport.requests(to: me.path).last
+        XCTAssertEqual(transport.requests(to: me.path).count, 2)
+        XCTAssertEqual(retry?.httpMethod, "PUT")
+        XCTAssertEqual(retry?.value(forHTTPHeaderField: "Authorization"), "Bearer B")
+        XCTAssertEqual(retry?.httpBody, Data("{}".utf8))
+    }
+
+    func testPutWaitsOnceWhenRateLimited() throws {
+        signIn()
+        transport.reply(me.path, .status(429, headers: ["Retry-After": "2"]))
+        transport.reply(me.path, .status(204))
+        try client().put(me, body: Data("{}".utf8))
+        XCTAssertEqual(slept, [2])
+        XCTAssertEqual(transport.requests(to: me.path).count, 2)
+    }
+
+    func testPutReportsARefusal() {
+        signIn()
+        transport.reply(me.path, .status(403))
+        XCTAssertThrowsError(try client().put(me, body: Data())) { XCTAssertEqual($0 as? SpotifyError, .http(403)) }
+    }
+
     func testSignOutForgetsTheLogin() {
         signIn()
         let client = client()

@@ -15,7 +15,7 @@ in once and Spotify songs list their album or playlist like Apple Music songs do
 ## Platform and constraints
 
 - **Unchanged:** macOS 26, Swift 5 mode, no SF Symbols or Apple artwork in our controls, nothing pushed unless
-  the author asks. Playback control stays AppleScript; Spindle never scripts an app that isn't running.
+  the author asks. Playback control stays AppleScript, except for playing a row (below); Spindle never scripts an app that isn't running.
 - **Spotify's rules (February 2026 Development Mode, checked 2026-11-02):**
   - The app owner needs Premium; at most 5 users may sign in.
   - `GET /playlists/{id}/items` only returns songs for playlists the user owns or collaborates on. For others,
@@ -48,8 +48,8 @@ in once and Spotify songs list their album or playlist like Apple Music songs do
 ## How it works
 
 - **Auth:** Authorization Code with PKCE (S256), no client secret.
-  - Scopes: `user-read-currently-playing user-read-playback-state playlist-read-private
-    playlist-read-collaborative`.
+  - Scopes: `user-read-currently-playing user-read-playback-state user-modify-playback-state
+    playlist-read-private playlist-read-collaborative`.
   - A random `state` is checked on return.
   - Info.plist registers the `spindle` URL scheme (`CFBundleURLTypes`) so the callback reaches the app.
 - **Storage:** Client ID in UserDefaults (`spotifyClientID`); access token, its expiry and refresh token in the
@@ -67,8 +67,11 @@ in once and Spotify songs list their album or playlist like Apple Music songs do
   - Row ids are `spotify:track:<id>` (the same form AppleScript's `id of current track` gives), so
     `MusicContext.row(for:)` highlights the current song by id, then by title and artist.
   - 429: wait `Retry-After` once, then fail.
-- **Playing a row:** AppleScript `play track "spotify:track:…" in context "spotify:album:…"` (or playlist),
-  through the Spotify app. No Web API player calls, so nothing depends on an active Connect device.
+- **Playing a row (changed in 0.16.4):** first the Web API, `PUT /me/player/play` with
+  `{"context_uri": "spotify:album:…", "offset": {"uri": "spotify:track:…"}}` (or playlist), because the AppleScript
+  command brings Spotify's window forward. If that is signed out, refused or offline, AppleScript
+  `play track "spotify:track:…" in context "spotify:album:…"`, so a click always plays the song, even with an older
+  sign-in or no active Connect device.
 - **Not signed in:** `SpotifySource` behaves as today (`contextKey`/`context` nil) and the list shows the button.
 
 ## Units
