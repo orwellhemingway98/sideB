@@ -50,11 +50,9 @@ components:
     typography: "{typography.label}"
     rounded: "{rounded.capsule}"
     padding: "4pt 8pt"
-  resume-pill:
+  resume-row:
     textColor: "{colors.ink}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.capsule}"
-    padding: "4pt 12pt 4pt 4pt"
+    rounded: "{rounded.row}"
   list-row:
     textColor: "{colors.ink}"
     typography: "{typography.body}"
@@ -122,7 +120,7 @@ artwork and two tiny source dots.
   colour (`NSColor.labelColor`) rather than SwiftUI's `.primary` or `.foreground`, which render grey on glass.
 
 ### Neutral
-- **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, "Resume" in the Resume pill, list
+- **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, the show and episode in the Resume row, list
   details, the podcast speed.
 - **Row Light** (`row-highlight`): the current song, episode or chapter in a list.
 - **Glass Tint**: the window glass of the panel and the mini player takes the cover's hue, lighter and livelier than
@@ -174,7 +172,7 @@ A single 272 pt column with 16 pt padding (`panel`): cover (240 × 240 pt), 10 p
 line with its times, the controls, then pills. Rows are 14 pt apart.
 
 Times sit under the two ends of the progress line. The bottom margin is 18 pt. The panel
-grows to fit its rows (about 507 pt with music and a Resume pill) and must fit a 1280 × 800 screen (720 pt max).
+grows to fit its rows (about 507 pt with music and a Resume row) and must fit a 1280 × 800 screen (720 pt max).
 
 The list lives on the back of the cover in the same 240 pt square: 10 pt inset at the top, 6 pt at the sides and
 32 pt at the bottom so the "Cover" pill never covers a row. Song rows are 30 pt; episode rows are 44 pt (title, then
@@ -210,9 +208,12 @@ Small glass capsule on the cover's bottom-right corner: "Episodes", "Album", "Pl
 edge-on, turning), 11 × 9 pt, stroked 1.3 pt in Glass Ink, mirrored on the back. Drawn in code; VoiceOver skips it
 and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding.
 
-### Resume Pill
-Soft glass capsule under the controls while music interrupts a podcast: a 22 pt show artwork (6 pt corners), "Resume" in
-Quiet Ink, then the episode title in regular weight. Interactive glass that gives under the pointer.
+### Resume Row
+A plain row under the controls while music interrupts a podcast, built like the Up Next rows and with no container, so
+it doesn't compete with the playback buttons. A 28 pt show artwork (6 pt corners) lined up with the cover's left edge,
+then "Resume podcast" in Glass Ink at 12 pt over the show and episode title in Quiet Ink at 11 pt, cut short at the end
+of the episode title. Under the pointer it lights up to 8 pt corners, reaching 5 pt past the column; Row Light when
+pressed.
 
 ### List Rows
 Plain rows, 30 pt (songs, chapters) or 44 pt (episodes), 8 pt corners; the current one gets Row Light and semibold.

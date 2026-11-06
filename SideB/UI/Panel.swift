@@ -1,6 +1,25 @@
 import AppKit
 import SwiftUI
 
+/// A plain row that lights up under the pointer, its light reaching just past the column so the artwork stays
+/// lined up with the cover above it.
+private struct ResumeRowStyle: ButtonStyle {
+    private static let reach: CGFloat = 5
+    @State private var hovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle().inset(by: -Self.reach))
+            .background {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.white.opacity(configuration.isPressed ? 0.18 : hovering ? 0.1 : 0))
+                    .padding(-Self.reach)
+            }
+            .onHover { hovering = $0 }
+            .animation(.easeOut(duration: 0.15), value: hovering)
+    }
+}
+
 /// The glass panel that drops from the menu bar strip.
 struct PanelView: View {
     static let width: CGFloat = 272
@@ -86,7 +105,7 @@ struct PanelView: View {
                     .frame(maxWidth: .infinity)
                 }
                 if display.kind == .podcast, !nowPlaying.chapters.isEmpty { chapterMenu }
-                if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumePill(paused) }
+                if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumeRow(paused) }
                 upNext
             } else {
                 VStack(spacing: 4) {
@@ -251,31 +270,38 @@ struct PanelView: View {
         }
     }
 
-    // MARK: Pills
+    // MARK: Pills and the Resume row
 
     /// While music has the controls, the waiting podcast is one click away.
-    private func resumePill(_ episode: Episode) -> some View {
-        // A side option, so it's quiet: the show's artwork, "Resume" in grey, the title in regular weight.
+    private func resumeRow(_ episode: Episode) -> some View {
+        // A side option, so it has no container until the pointer is on it, like the Up Next rows under it.
         Button { nowPlaying.resumePodcast() } label: {
             HStack(spacing: 8) {
                 ArtworkView(cache: artwork, url: episode.show?.artworkURL, seed: episode.show?.title ?? episode.title,
-                            size: 22, cornerRadius: 6)
-                Text("Resume").foregroundStyle(.secondary)
-                Text(episode.title)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                            size: 28, cornerRadius: 6)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Resume podcast")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color(nsColor: .labelColor))
+                    Text(Self.resumeDetail(show: episode.show?.title, episode: episode.title))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .truncationMode(.tail)
+                }
+                .lineLimit(1)
                 Spacer(minLength: 0)
             }
-            .font(.system(size: 11))
-            .padding(.leading, 4)
-            .padding(.trailing, 12)
-            .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
-            .contentShape(Capsule())
-            .glassEffect(.regular.interactive(), in: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ResumeRowStyle())
+        .help(episode.title)    // the row cuts a long title short; the pointer reads it whole
         .accessibilityLabel("Resume podcast: \(episode.title)")
+    }
+
+    /// The show comes first, so what's cut short is the episode's title and not what the row is about.
+    static func resumeDetail(show: String?, episode: String) -> String {
+        guard let show, !show.isEmpty else { return episode }
+        return "\(show) \u{00B7} \(episode)"
     }
 
     /// The chapter pill names the chapter playing; before the first one starts, it just says "Chapters".
