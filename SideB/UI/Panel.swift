@@ -347,10 +347,11 @@ struct PanelView: View {
         .accessibilityLabel("Chapters")
     }
 
-    fileprivate static func pill(_ title: String, action: @escaping () -> Void) -> some View {
+    static func pill(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
+                .foregroundStyle(Color(nsColor: .labelColor))
                 .lineLimit(1)
                 .fixedSize()
                 .padding(.horizontal, 10)
@@ -449,14 +450,16 @@ private struct MusicAccessNote: View {
 }
 
 /// A music command that failed says so, for a few seconds, and VoiceOver hears it too.
-private struct CommandFailureNote: View {
+struct CommandFailureNote: View {
     @ObservedObject var remote: MusicRemote
+    /// Over artwork the note sits on smoked glass, where Quiet Ink would be too faint.
+    var onArtwork = false
 
     var body: some View {
         if let failure = remote.commandFailure {
             Text(failure)
                 .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(onArtwork ? AnyShapeStyle(.white.opacity(0.9)) : AnyShapeStyle(.secondary))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .onAppear { AccessibilityNotification.Announcement(failure).post() }
@@ -465,15 +468,16 @@ private struct CommandFailureNote: View {
 }
 
 /// Spotify refused because this sign-in predates a permission. The song still played, through its window.
-private struct SpotifySignInNote: View {
+struct SpotifySignInNote: View {
     @ObservedObject var account: SpotifyAccount
+    var onArtwork = false
 
     var body: some View {
         if account.needsNewSignIn {
             VStack(spacing: 8) {
                 Text(SpotifyAccount.newSignInNote)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(onArtwork ? AnyShapeStyle(.white.opacity(0.9)) : AnyShapeStyle(.secondary))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 PanelView.pill(account.isSigningIn ? "Signing in\u{2026}" : "Sign In Again") {
@@ -614,6 +618,27 @@ enum PanelKey: Equatable {
         case 36, 76: self = .turnCover              // Return, Enter
         case 53: self = .escape
         default: return nil
+        }
+    }
+}
+
+extension PanelKey {
+    /// What a key does wherever it's pressed; only Escape differs between the panel and the mini player.
+    @MainActor
+    func perform(nowPlaying: NowPlaying, list: ListModel?, turnCover: () -> Void, library: () -> Void, escape: () -> Void) {
+        switch self {
+        case .playPause: nowPlaying.toggle()
+        case .back: nowPlaying.back()
+        case .forward: nowPlaying.forward()
+        case .up, .down:
+            // The rows on the back of the cover.
+            if list?.showsList == true { list?.moveKey(by: self == .up ? -1 : 1) }
+        case .turnCover:
+            // On the back, Return plays the outlined row; with none outlined it turns the cover back.
+            if list?.showsList == true, list?.playKeyRow() == true { return }
+            if nowPlaying.display != nil { turnCover() }
+        case .library: library()
+        case .escape: escape()
         }
     }
 }
@@ -770,22 +795,10 @@ final class PanelController {
     }
 
     private func press(_ key: PanelKey) {
-        switch key {
-        case .playPause: nowPlaying.toggle()
-        case .back: nowPlaying.back()
-        case .forward: nowPlaying.forward()
-        case .up, .down:
-            // The rows on the back of the cover.
-            if list?.showsList == true { list?.moveKey(by: key == .up ? -1 : 1) }
-        case .turnCover:
-            // On the back, Return plays the outlined row; with none outlined it turns the cover back.
-            if list?.showsList == true, list?.playKeyRow() == true { return }
-            if nowPlaying.display != nil { onCover?() }
-        case .library: onLibrary()
-        case .escape:
+        key.perform(nowPlaying: nowPlaying, list: list, turnCover: { [onCover] in onCover?() }, library: onLibrary) { [weak self] in
             // The back of the cover turns over first; the panel stays.
-            if escapeHandler?() == true { return }
-            close()
+            if self?.escapeHandler?() == true { return }
+            self?.close()
         }
     }
 

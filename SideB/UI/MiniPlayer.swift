@@ -32,6 +32,10 @@ final class MiniPlayerController {
     }
 
     private let panel: NSPanel
+    private let nowPlaying: NowPlaying
+    private let list: ListModel?
+    private let onLibrary: () -> Void
+    private var keyMonitor: Any?
     private let placement: MiniPlacement
     private let onPutBack: () -> Void
     /// The mini player's own list and flip, apart from the panel's.
@@ -39,11 +43,14 @@ final class MiniPlayerController {
 
     init(nowPlaying: NowPlaying, placement: MiniPlacement, onPutBack: @escaping () -> Void,
          onLibrary: @escaping () -> Void, artwork: ArtworkCache? = nil, list: ListModel? = nil) {
+        self.nowPlaying = nowPlaying
+        self.list = list
+        self.onLibrary = onLibrary
         self.placement = placement
         self.onPutBack = onPutBack
         let listController = list.map { ListController(model: $0, nowPlaying: nowPlaying, followsPanel: false) }
         self.listController = listController
-        panel = NSPanel(contentRect: NSRect(origin: .zero, size: Self.windowSize),
+        panel = MiniPlayerPanel(contentRect: NSRect(origin: .zero, size: Self.windowSize),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -75,20 +82,59 @@ final class MiniPlayerController {
 
     var isShown: Bool { panel.isVisible }
 
+    func press(_ key: PanelKey) {
+        key.perform(nowPlaying: nowPlaying, list: list, turnCover: { [listController] in listController?.toggle() },
+                    library: onLibrary) { [listController] in
+            // The back turns over; the mini player itself stays, because it floats by choice.
+            _ = listController?.handleEscape()
+        }
+    }
+
+    private func listenForKeys() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let key = PanelKey(keyCode: event.keyCode, modifiers: event.modifierFlags) else { return event }
+            let window = event.window
+            let handled = MainActor.assumeIsolated { () -> Bool in
+                guard let self, window === self.panel else { return false }
+                self.press(key)
+                return true
+            }
+            return handled ? nil : event
+        }
+    }
+
+    private func stopListeningForKeys() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
+    }
+
+    isolated deinit {
+        stopListeningForKeys()
+    }
+
     /// The mini player's window.
     var window: NSWindow { panel }
 
     func show() {
         placement.isPoppedOut = true
         panel.orderFrontRegardless()
+        listenForKeys()
     }
 
     func putBack() {
         listController?.close(animated: false)
+        stopListeningForKeys()
         placement.isPoppedOut = false
         panel.orderOut(nil)
         onPutBack()
     }
+}
+
+/// Takes keys once it's clicked, without bringing sideB forward or taking them before that.
+private final class MiniPlayerPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }
 
 private struct MiniPlayerWindow: View {
@@ -126,6 +172,13 @@ struct MiniPlayer: View {
     static let cornerRadius = PanelView.coverCornerRadius + frameWidth
     /// How far the pointer moves before a press on the cover is a drag and not a click.
     static let dragThreshold: CGFloat = 3
+
+    /// How far up the cover a note sits: clear of the Cover pill on the back, and of the title and controls under
+    /// the pointer.
+    static func noteLift(hovering: Bool, showsList: Bool) -> CGFloat {
+        if showsList { return 40 }
+        return hovering ? 112 : 10
+    }
 
     static func isDrag(from start: NSPoint, to now: NSPoint) -> Bool {
         hypot(now.x - start.x, now.y - start.y) >= dragThreshold
@@ -167,6 +220,11 @@ struct MiniPlayer: View {
                 empty
             }
         }
+        .overlay(alignment: .bottom) {
+            if nowPlaying.display?.kind == .music, let list, let remote = nowPlaying.music {
+                MiniNotes(list: list, remote: remote, hovering: hovering)
+            }
+        }
         .frame(width: CoverButton.size, height: CoverButton.size)
         .frame(width: Self.size.width, height: Self.size.height)
         .onHover { inside in withAnimation(.easeOut(duration: 0.2)) { hovering = inside } }
@@ -206,6 +264,7 @@ struct MiniPlayer: View {
             topRow
             Spacer(minLength: 0)
             VStack(spacing: 0) {
+                titles
                 ProgressLine(nowPlaying: nowPlaying, host: .floating, height: 4)
                 times
                 TransportControls(nowPlaying: nowPlaying, playSize: 40)
@@ -219,11 +278,29 @@ struct MiniPlayer: View {
         .background(alignment: .bottom) {
             // Keeps the white controls readable over any artwork.
             LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 130)
+                .frame(height: 160)
                 .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: PanelView.coverCornerRadius, style: .continuous))
         .frame(width: CoverButton.size, height: CoverButton.size)
+    }
+
+    /// The cover says the rest; with the pointer on it, the words too.
+    private var titles: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(nowPlaying.display?.title ?? "")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color(nsColor: .labelColor))
+            if let subtitle = nowPlaying.display?.subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+        }
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help(nowPlaying.display?.title ?? "")
+        .accessibilityElement(children: .combine)
     }
 
     private var topRow: some View {
@@ -279,10 +356,14 @@ struct MiniPlayer: View {
         ZStack {
             RoundedRectangle(cornerRadius: PanelView.coverCornerRadius, style: .continuous)
                 .fill(.white.opacity(0.08))
-            Text(PanelView.emptyTitle)
-                .font(.system(size: PanelView.titleSize, weight: .semibold))
-                .foregroundStyle(.secondary)
             ClickOrDragArea(onClick: nil, menu: { MiniPlayer.menu(onPutBack: onPutBack, onLibrary: onLibrary) })
+            VStack(spacing: 12) {
+                Text(PanelView.emptyTitle)
+                    .font(.system(size: PanelView.titleSize, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .allowsHitTesting(false)
+                PanelView.pill("Find a Show\u{2026}", action: onLibrary)
+            }
             if hovering {
                 VStack {
                     HStack {
@@ -296,6 +377,34 @@ struct MiniPlayer: View {
                 .transition(.opacity)
             }
         }
+    }
+}
+
+/// The panel's notes, on smoked glass so they read over any artwork or list. They show without the pointer, because
+/// a floating cover has nothing else to say that a click didn't work. One at a time, or they'd reach the corner
+/// buttons: a failure first, since it's about what just happened.
+private struct MiniNotes: View {
+    @ObservedObject var list: ListModel
+    @ObservedObject var remote: MusicRemote
+    let hovering: Bool
+
+    var body: some View {
+        let showsSignIn = remote.source == .spotify && list.spotify?.needsNewSignIn == true
+        Group {
+            if remote.commandFailure != nil {
+                CommandFailureNote(remote: remote, onArtwork: true)
+            } else if showsSignIn, let account = list.spotify {
+                SpotifySignInNote(account: account, onArtwork: true)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, 8)
+        .padding(.bottom, MiniPlayer.noteLift(hovering: hovering, showsList: list.showsList))
+        .opacity(remote.commandFailure != nil || showsSignIn ? 1 : 0)
+        .allowsHitTesting(remote.commandFailure == nil && showsSignIn)
     }
 }
 
