@@ -18,7 +18,7 @@ of its own and a remote for Apple Music and Spotify, built round the cover, whic
 - **The back of the cover:** click the cover and it turns over to the album, the playlist or the show's episodes.
   Click a row to play it.
 - **The mini player:** press Pop out in the cover's corner to float just the cover over your work. Move the pointer
-  over it for the controls, click to turn it over, drag to move it.
+  over it for the title and controls, click to turn it over, drag to move it.
 - **Scrubbing:** drag the line, or scroll over it, with haptic ticks on a Force Touch trackpad and a firmer one at
   chapters. Hold ⌥ while scrolling to set the volume.
 - **Podcasts:** follow shows by searching Apple's podcast directory, pasting a feed or importing OPML. Chapters, speed,
@@ -26,7 +26,8 @@ of its own and a remote for Apple Music and Spotify, built round the cover, whic
 - **Music:** whichever you started last is in control. Starting music pauses your podcast and keeps its place.
 
 Keys while the panel is open: Space plays or pauses, ← and → go back and forward, Return turns the cover, ↑ and ↓ move
-through the list on the back, ⌘L opens the Library, Esc turns the cover back and then closes the panel.
+through the list on the back, ⌘L opens the Library, Esc turns the cover back and then closes the panel. The mini player
+answers the same keys once you've clicked it, until you click another window; Esc only turns its cover back.
 
 ## Download
 

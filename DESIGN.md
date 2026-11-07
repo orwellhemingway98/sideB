@@ -220,7 +220,7 @@ of the episode title. Under the pointer it lights up to 8 pt corners, reaching 5
 pressed. Up Next is the podcast queue, so it shows only under a podcast and never beside this row.
 
 ### Notes Under the Controls
-Plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons never move. A
+In the panel, plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons never move. A
 failed music command says so ("Spotify didn't respond. Try again.") for five seconds, until a command works, or until
 the song changes. A Spotify sign-in that predates a permission asks to be renewed, with a Sign In Again pill, until it
 is; other refusals, like no Premium or no active device, never ask.
@@ -254,11 +254,13 @@ swaps with the system's replace effect, and forward (`backward.fill` / `forward.
 ### Mini Player
 The floating window is only the cover: the panel's 240 pt cover in a 10 pt frame of window glass tinted with the
 cover's colour, 260 × 260 pt with 24 pt corners (the cover's 14 plus the frame), in a clear window margin with no window
-shadow. At rest there is nothing else on it. With the pointer over it, controls fade in: Library, a turn hint and Put
-Back along the top, and the progress line, times and playback buttons along the bottom over a soft dark fade that
-keeps them readable on any artwork. Clicking the cover turns it over to its list, exactly as in the panel but with
+shadow. At rest there is nothing else on it, except a note when there's something to say: one at a time, on smoked glass
+at 85% with 8 pt corners, so it reads over any artwork or list. With the pointer over it, controls fade in: Library, a
+turn hint and Put Back along the top, and the title (12 pt semibold) and artist or show (11 pt), the progress line, times
+and playback buttons along the bottom over a soft dark fade that keeps them readable on any artwork. Clicking the cover turns it over to its list, exactly as in the panel but with
 its own list and flip; dragging it (past 3 pt) moves it; right-click gives Put Back, the Library and Quit. With nothing
-playing it is a plain glass tile saying "Nothing playing".
+playing it is a plain glass tile saying "Nothing playing", with a Find a Show pill. It takes the panel's keys once
+clicked, without bringing sideB forward; Esc only turns its cover back, because it floats by choice.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when
