@@ -155,7 +155,8 @@ artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or t
 **Character:** One family at small, exact sizes; hierarchy comes from size and weight steps, not from a second face.
 
 ### Hierarchy
-- **Title** (semibold, 16 pt): the episode or song title under the cover, up to two lines.
+- **Title** (semibold, 16 pt): the episode or song title under the cover, up to two lines. Room for two is always
+  kept, so a shorter title leaves a gap above the progress line.
 - **Volume** (caption, tabular digits): "Volume 40%" in place of the elapsed time during Option + scroll.
 - **Body** (regular, 12 pt): the artist or show line, list rows, descriptions.
 - **Caption** (regular, 11 pt, tabular digits): times under the progress line, row durations and dates, pill text.
@@ -166,13 +167,16 @@ artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or t
 **The Same Size Rule.** Paired values keep one size: elapsed and remaining times never shrink independently;
 when space runs out, move them rather than scale them.
 
+**The Steady Controls Rule.** The progress line and playback buttons stay put from song to song: a title that wraps
+never moves them under the pointer.
+
 ## Layout
 
 A single 272 pt column with 16 pt padding (`panel`): cover (240 × 240 pt), 10 pt, title block, then the progress
 line with its times, the controls, then pills. Rows are 14 pt apart.
 
 Times sit under the two ends of the progress line. The bottom margin is 18 pt. The panel
-grows to fit its rows (about 507 pt with music and a Resume row) and must fit a 1280 × 800 screen (720 pt max).
+grows to fit its rows (about 491 pt with music and a Resume row) and must fit a 1280 × 800 screen (720 pt max).
 
 The list lives on the back of the cover in the same 240 pt square: 10 pt inset at the top, 6 pt at the sides and
 32 pt at the bottom so the "Cover" pill never covers a row. Song rows are 30 pt; episode rows are 44 pt (title, then
