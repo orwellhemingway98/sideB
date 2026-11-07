@@ -10,6 +10,22 @@ struct StatusStripView: View {
     static let emptyWidth: CGFloat = 20
     private static let barWidth: CGFloat = 44
 
+    /// Paused, the artwork and the bar dim, so a glance tells them apart without opening anything.
+    static func contentOpacity(isPlaying: Bool) -> Double { isPlaying ? 1 : 0.4 }
+
+    /// What the pointer reads on hover: "Japan · Fontaines D.C."
+    static func toolTip(for display: NowPlayingDisplay?) -> String? {
+        guard let display else { return nil }
+        return ([display.title, display.subtitle].filter { !$0.isEmpty }).joined(separator: " \u{00B7} ")
+    }
+
+    /// What VoiceOver says after "sideB": "Paused, Japan, Fontaines D.C."
+    static func spokenValue(for display: NowPlayingDisplay?) -> String {
+        guard let display else { return "Nothing playing" }
+        return ([display.isPlaying ? "Playing" : "Paused", display.title, display.subtitle].filter { !$0.isEmpty })
+            .joined(separator: ", ")
+    }
+
     @ObservedObject var nowPlaying: NowPlaying
     @ObservedObject private var player: PodcastPlayer
     @ObservedObject var artwork: ArtworkCache
@@ -38,6 +54,8 @@ struct StatusStripView: View {
                     }
                     .frame(width: Self.barWidth, height: 3)
                 }
+                .opacity(Self.contentOpacity(isPlaying: display.isPlaying))
+                .animation(.easeOut(duration: 0.2), value: display.isPlaying)
                 .padding(.horizontal, 6)
                 .frame(width: Self.stripWidth, height: Self.height - 2)
                 .glassEffect(.regular, in: Capsule())
@@ -109,6 +127,23 @@ final class StatusStripController: NSObject {
                 button?.image = NSImage(size: NSSize(width: width, height: StatusStripView.height))
             }
             .store(in: &cancellables)
+
+        // The catcher sits on top of the button, so the tooltip goes on it as well.
+        nowPlaying.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .map { [weak nowPlaying] in nowPlaying?.display }
+            .prepend(nowPlaying.display)
+            .removeDuplicates()
+            .sink { [weak button, weak scrollCatcher] display in
+                if let button { Self.describe(button, as: display) }
+                scrollCatcher?.toolTip = StatusStripView.toolTip(for: display)
+            }
+            .store(in: &cancellables)
+    }
+
+    static func describe(_ view: NSView, as display: NowPlayingDisplay?) {
+        view.toolTip = StatusStripView.toolTip(for: display)
+        view.setAccessibilityValue(StatusStripView.spokenValue(for: display))
     }
 
     @objc private func togglePanel() {
