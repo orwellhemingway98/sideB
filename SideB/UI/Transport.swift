@@ -47,11 +47,14 @@ struct ProgressLine: View {
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: Transport.seekDragDistance)
                     .onChanged { value in
-                        guard duration != nil else { return }
-                        dragFraction = Transport.fraction(atX: value.location.x, width: geometry.size.width)
+                        guard let duration else { return }
+                        let fraction = Transport.fraction(atX: value.location.x, width: geometry.size.width)
+                        dragFraction = fraction
+                        nowPlaying.previewDrag(to: fraction * duration)
                     }
                     .onEnded { value in
-                        if let duration {
+                        // Nil if the drag was dropped: the panel closed under it, and this is the late mouse-up.
+                        if dragFraction != nil, let duration {
                             let fraction = Transport.fraction(atX: value.location.x, width: geometry.size.width)
                             nowPlaying.jump(to: fraction * duration)
                         }
@@ -70,9 +73,15 @@ struct ProgressLine: View {
             if host.followsPanel { installScroll() }
         }
         .onReceive(NotificationCenter.default.publisher(for: PanelController.didClose)) { _ in
-            if host.followsPanel { scroll.remove() }
+            if host.followsPanel {
+                scroll.remove()
+                dropDrag()
+            }
         }
-        .onDisappear { scroll.remove() }
+        .onDisappear {
+            scroll.remove()
+            dropDrag()
+        }
         .onChange(of: nowPlaying.displayPosition, initial: true) { _, position in
             positionStamp = (position, Date())
         }
@@ -98,6 +107,13 @@ struct ProgressLine: View {
                                              duration: duration, playing: true)
         }
         return Transport.lineFraction(dragging: dragFraction, position: nowPlaying.displayPosition, duration: duration)
+    }
+
+    /// A drag that can't finish goes back to the real place without seeking.
+    private func dropDrag() {
+        guard dragFraction != nil else { return }
+        dragFraction = nil
+        nowPlaying.endDragPreview()
     }
 
     private func installScroll() {

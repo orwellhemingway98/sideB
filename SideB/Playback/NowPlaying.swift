@@ -39,6 +39,8 @@ final class NowPlaying: ObservableObject {
 
     @Published private(set) var chapters: [Chapter] = []
     @Published private(set) var scrubPosition: TimeInterval?
+    /// Where the line is being dragged to; see `previewDrag`.
+    @Published private(set) var dragPosition: TimeInterval?
     @Published private(set) var mode: PlaybackMode = .podcast
     /// The volume being set with Option + scroll, shown for a moment; nil otherwise.
     @Published private(set) var volumeShown: Int?
@@ -129,10 +131,12 @@ final class NowPlaying: ObservableObject {
     private func dropScrub() {
         generation += 1
         scrubPosition = nil
+        dragPosition = nil
         dial.reset()
     }
 
     var displayPosition: TimeInterval {
+        if let dragPosition { return dragPosition }
         if let scrubPosition { return scrubPosition }
         return mode == .music ? music?.track?.position ?? 0 : player.position
     }
@@ -215,6 +219,22 @@ final class NowPlaying: ObservableObject {
         }
     }
 
+    /// While the line is being dragged, where letting go would land. Nothing seeks until then. It takes over from
+    /// a scroll that's about to seek, because the drag is what was asked for last.
+    func previewDrag(to time: TimeInterval) {
+        guard hasSomethingToSteer else { return }
+        generation += 1
+        scrubPosition = nil
+        var target = max(0, time)
+        if let duration = displayDuration { target = min(target, duration) }
+        dragPosition = target
+    }
+
+    /// The drag is over without a seek (the panel closed under it, say): back to the real place.
+    func endDragPreview() {
+        dragPosition = nil
+    }
+
     func jump(to time: TimeInterval) {
         guard hasSomethingToSteer else { return }
         generation += 1
@@ -222,6 +242,7 @@ final class NowPlaying: ObservableObject {
         if let duration = displayDuration { target = min(target, duration) }
         seek(to: target)
         scrubPosition = nil
+        dragPosition = nil
         publish()
     }
 
@@ -319,6 +340,7 @@ final class NowPlaying: ObservableObject {
         chapterTask?.cancel()
         chapters = []
         scrubPosition = nil
+        dragPosition = nil
         generation += 1
         dial.reset()
         guard let episode else {
