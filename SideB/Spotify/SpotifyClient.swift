@@ -4,6 +4,8 @@ enum SpotifyError: Error, Equatable {
     case notSignedIn
     /// Spotify refused the login (revoked or expired); it has been forgotten.
     case expired
+    /// This sign-in predates a permission the call needs; signing in again grants it.
+    case missingPermission
     case network
     case http(Int)
 }
@@ -46,6 +48,7 @@ final class SpotifyClient: @unchecked Sendable {
     private let now: @Sendable () -> Date
     private let sleep: @Sendable (TimeInterval) -> Void
     private let onSignedOut: @Sendable (_ expired: Bool) -> Void
+    private let onMissingPermission: @Sendable () -> Void
     private let lock = NSLock()
     /// The store, read once (the Keychain may ask the first time).
     private var cached: SpotifyTokens??
@@ -53,13 +56,15 @@ final class SpotifyClient: @unchecked Sendable {
     init(clientID: @escaping @Sendable () -> String?, store: SpotifyTokenStore,
          transport: HTTPTransport = URLSessionTransport(), now: @escaping @Sendable () -> Date = { Date() },
          sleep: @escaping @Sendable (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
-         onSignedOut: @escaping @Sendable (_ expired: Bool) -> Void = { _ in }) {
+         onSignedOut: @escaping @Sendable (_ expired: Bool) -> Void = { _ in },
+         onMissingPermission: @escaping @Sendable () -> Void = {}) {
         self.clientID = clientID
         self.store = store
         self.transport = transport
         self.now = now
         self.sleep = sleep
         self.onSignedOut = onSignedOut
+        self.onMissingPermission = onMissingPermission
     }
 
     var isSignedIn: Bool { tokens != nil }
@@ -119,10 +124,18 @@ final class SpotifyClient: @unchecked Sendable {
             case 429 where !waited:
                 waited = true
                 sleep(min(Double(response.value(forHTTPHeaderField: "Retry-After") ?? "") ?? 1, 10))
+            case 403 where Self.isMissingPermission(data):
+                onMissingPermission()
+                throw SpotifyError.missingPermission
             default:
                 throw SpotifyError.http(response.statusCode)
             }
         }
+    }
+
+    /// Spotify says why it refused in the reply: other 403s (no Premium, say) won't be cured by signing in again.
+    private static func isMissingPermission(_ reply: Data) -> Bool {
+        String(decoding: reply, as: UTF8.self).lowercased().contains("insufficient client scope")
     }
 
     private func accessToken(forceRefresh: Bool) throws -> String {

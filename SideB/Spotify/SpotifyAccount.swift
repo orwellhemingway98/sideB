@@ -9,11 +9,14 @@ final class SpotifyAccount: ObservableObject {
     static let clientIDKey = "spotifyClientID"
     static let expiredNotice = "Spotify sign-in expired."
     static let failedNotice = "Couldn't sign in to Spotify."
+    static let newSignInNote = "Sign in to Spotify again so its window stays where it is."
 
     @Published private(set) var isSignedIn: Bool
     @Published private(set) var isSigningIn = false
     /// Shown above the Sign in button: why sideB is signed out, when it wasn't the author's choice.
     @Published private(set) var notice: String?
+    /// Spotify refused a call because this sign-in predates a permission: signing in again grants it.
+    @Published private(set) var needsNewSignIn = false
 
     let api: SpotifyWebAPI
     private let client: SpotifyClient
@@ -32,6 +35,9 @@ final class SpotifyAccount: ObservableObject {
                                transport: transport,
                                onSignedOut: { expired in
                                    Task { @MainActor in owner.value?.signedOut(expired: expired) }
+                               },
+                               onMissingPermission: {
+                                   Task { @MainActor in owner.value?.needsNewSignIn = true }
                                })
         api = SpotifyWebAPI(client: client)
         isSignedIn = client.isSignedIn
@@ -57,6 +63,7 @@ final class SpotifyAccount: ObservableObject {
             let client = self.client
             try await Task.detached { try client.exchange(code: code, verifier: verifier) }.value
             notice = nil
+            needsNewSignIn = false
             isSignedIn = true
         } catch SpotifyAuth.CallbackError.denied {
             return
@@ -72,6 +79,7 @@ final class SpotifyAccount: ObservableObject {
 
     private func signedOut(expired: Bool) {
         if isSignedIn { isSignedIn = false }
+        needsNewSignIn = false
         notice = expired ? Self.expiredNotice : nil
     }
 }

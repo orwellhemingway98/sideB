@@ -89,4 +89,55 @@ final class SpotifyAccountTests: XCTestCase {
         XCTAssertNil(account.notice)
         XCTAssertNil(store.load())
     }
+
+    // MARK: A sign-in from before the permission
+
+    private static let playPath = "/v1/me/player/play"
+    private static let scopeRefusal = #"{"error":{"status":403,"message":"Insufficient client scope"}}"#
+
+    private func signedInAccount() -> SpotifyAccount {
+        store.save(SpotifyTokens(accessToken: "A", refreshToken: "R", expiresAt: .distantFuture))
+        return account { state in URL(string: "sideb://callback?code=C&state=\(state)")! }
+    }
+
+    private func clickARow(_ account: SpotifyAccount) async {
+        let api = account.api
+        _ = await Task.detached { api.play(trackURI: "spotify:track:T1", contextID: "album:AL1") }.value
+    }
+
+    func testAScopeRefusalAsksForANewSignIn() async {
+        transport.reply(Self.playPath, .status(403, Self.scopeRefusal))
+        let account = signedInAccount()
+        XCTAssertFalse(account.needsNewSignIn)
+        await clickARow(account)
+        for _ in 0..<1000 where !account.needsNewSignIn { await Task.yield() }
+        XCTAssertTrue(account.needsNewSignIn)
+    }
+
+    func testOtherRefusalsDoNotAsk() async {
+        transport.reply(Self.playPath, .status(404))
+        let account = signedInAccount()
+        await clickARow(account)
+        for _ in 0..<100 { await Task.yield() }
+        XCTAssertFalse(account.needsNewSignIn)
+    }
+
+    func testANewSignInClearsTheRequest() async {
+        transport.reply(Self.playPath, .status(403, Self.scopeRefusal))
+        transport.reply("/api/token", json: #"{"access_token":"B","expires_in":3600,"refresh_token":"R2"}"#)
+        let account = signedInAccount()
+        await clickARow(account)
+        for _ in 0..<1000 where !account.needsNewSignIn { await Task.yield() }
+        await account.signIn(clientID: "abc")
+        XCTAssertFalse(account.needsNewSignIn)
+    }
+
+    func testSigningOutClearsTheRequest() async {
+        transport.reply(Self.playPath, .status(403, Self.scopeRefusal))
+        let account = signedInAccount()
+        await clickARow(account)
+        for _ in 0..<1000 where !account.needsNewSignIn { await Task.yield() }
+        account.signOut()
+        XCTAssertFalse(account.needsNewSignIn)
+    }
 }

@@ -55,7 +55,8 @@ choose **Set Up Album Lists…** on the back of the cover and paste its Client I
 
 Once you're signed in, clicking a row changes the song and leaves Spotify's window where it is. Without a sign-in, or if
 Spotify refuses the request (no active device, say), the click goes through the Spotify app instead and its window comes
-forward. If you signed in before version 0.16.4, sign out and back in to give sideB the permission this needs.
+forward. If you signed in before version 0.16.4, the panel asks you to sign in again the first time you click a row,
+to give sideB the permission this needs.
 
 ## Privacy
 

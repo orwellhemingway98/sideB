@@ -7,6 +7,7 @@ final class SpotifyClientTests: XCTestCase {
     private var now = Date(timeIntervalSince1970: 10_000)
     private var signedOut: [Bool] = []
     private var slept: [TimeInterval] = []
+    private var missingPermission = 0
     private let me = URL(string: "https://api.spotify.com/v1/me/player/currently-playing")!
 
     override func setUp() {
@@ -14,12 +15,14 @@ final class SpotifyClientTests: XCTestCase {
         store = MemoryTokenStore()
         signedOut = []
         slept = []
+        missingPermission = 0
     }
 
     private func client(clientID: String? = "abc") -> SpotifyClient {
         SpotifyClient(clientID: { clientID }, store: store, transport: transport,
                       now: { [unowned self] in self.now }, sleep: { [unowned self] in self.slept.append($0) },
-                      onSignedOut: { [unowned self] in self.signedOut.append($0) })
+                      onSignedOut: { [unowned self] in self.signedOut.append($0) },
+                      onMissingPermission: { [unowned self] in self.missingPermission += 1 })
     }
 
     private func signIn(expiresIn: TimeInterval = 3600) {
@@ -142,6 +145,20 @@ final class SpotifyClientTests: XCTestCase {
         signIn()
         transport.reply(me.path, .status(403))
         XCTAssertThrowsError(try client().put(me, body: Data())) { XCTAssertEqual($0 as? SpotifyError, .http(403)) }
+    }
+
+    func testASignInWithoutThePermissionIsToldApart() {
+        signIn()
+        transport.reply(me.path, .status(403, #"{"error":{"status":403,"message":"Insufficient client scope"}}"#))
+        XCTAssertThrowsError(try client().put(me, body: Data())) { XCTAssertEqual($0 as? SpotifyError, .missingPermission) }
+        XCTAssertEqual(missingPermission, 1)
+    }
+
+    func testOtherRefusalsDoNotAskForANewSignIn() {
+        signIn()
+        transport.reply(me.path, .status(403, #"{"error":{"status":403,"message":"Player command failed: Premium required","reason":"PREMIUM_REQUIRED"}}"#))
+        XCTAssertThrowsError(try client().put(me, body: Data())) { XCTAssertEqual($0 as? SpotifyError, .http(403)) }
+        XCTAssertEqual(missingPermission, 0)
     }
 
     func testSignOutForgetsTheLogin() {

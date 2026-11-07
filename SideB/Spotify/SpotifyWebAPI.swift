@@ -172,6 +172,7 @@ final class SpotifyWebAPI: @unchecked Sendable {
         let data: Data?
         do { data = try client.get(URL(string: "\(Self.base)/playlists/\(id)?market=from_token")!) }
         catch SpotifyError.http(let code) where code == 403 || code == 404 { return nil }
+        catch SpotifyError.missingPermission { return nil }
         guard let data else { return nil }
         let playlist = try decode { try JSONDecoder().decode(SpotifyContextParser.Playlist.self, from: data) }
         guard let first = playlist.items else { return nil }
