@@ -110,7 +110,8 @@ struct PanelView: View {
                     SpotifySignInNote(account: account)
                 }
                 if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumeRow(paused) }
-                upNext
+                // The podcast queue: under a song it would read as what plays after the song.
+                if display.kind == .podcast { upNext }
             } else {
                 VStack(spacing: 4) {
                     Text(Self.emptyTitle).font(.system(size: Self.titleSize, weight: .semibold))
