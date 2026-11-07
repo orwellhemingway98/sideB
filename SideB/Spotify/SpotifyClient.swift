@@ -17,9 +17,12 @@ protocol HTTPTransport: Sendable {
 }
 
 struct URLSessionTransport: HTTPTransport {
+    /// Ten seconds, or less if the request asked for less.
+    static func timeout(for request: URLRequest) -> TimeInterval { min(request.timeoutInterval, 10) }
+
     func send(_ request: URLRequest) throws -> (Data, HTTPURLResponse) {
         var request = request
-        request.timeoutInterval = 10
+        request.timeoutInterval = Self.timeout(for: request)
         let done = DispatchSemaphore(value: 0)
         nonisolated(unsafe) var outcome: Result<(Data, HTTPURLResponse), Error> = .failure(URLError(.unknown))
         // The completion runs on URLSession's own queue, so waiting here never starves it.
@@ -98,9 +101,11 @@ final class SpotifyClient: @unchecked Sendable {
         try authorized(URLRequest(url: url))
     }
 
-    /// PUTs JSON to a Web API URL. Throws unless Spotify accepts it.
-    func put(_ url: URL, body: Data) throws {
+    /// PUTs JSON to a Web API URL. Throws unless Spotify accepts it. `timeout` is how long to wait for a reply
+    /// when someone is waiting on it; left out, the transport's own limit applies.
+    func put(_ url: URL, body: Data, timeout: TimeInterval? = nil) throws {
         var request = URLRequest(url: url)
+        if let timeout { request.timeoutInterval = timeout }
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body

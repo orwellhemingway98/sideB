@@ -29,13 +29,17 @@ final class ListModel: ObservableObject {
     private let cachedContext: (MusicTrack) -> MusicContext?
     private var generation = 0
     private var lastKey: String?
+    private var clickGeneration = 0
+    /// How long a clicked song stays lit while waiting for the app to report it.
+    private let rowPatience: TimeInterval
 
     /// `loadContext(track, refresh)` defaults to the music remote's cached reader; tests pass their own.
     init(nowPlaying: NowPlaying, library: LibraryStore, spotify: SpotifyAccount? = nil,
-         loadContext: ((MusicTrack, Bool) async -> MusicContext?)? = nil) {
+         loadContext: ((MusicTrack, Bool) async -> MusicContext?)? = nil, rowPatience: TimeInterval = 3) {
         self.nowPlaying = nowPlaying
         self.library = library
         self.spotify = spotify
+        self.rowPatience = rowPatience
         self.loadContext = loadContext ?? { [weak nowPlaying] track, refresh in
             await nowPlaying?.music?.context(for: track, refresh: refresh)
         }
@@ -63,6 +67,23 @@ final class ListModel: ObservableObject {
         keyRow = min(rows.count - 1, max(0, start + delta))
     }
 
+    /// Plays a song from the list and lights it up at once, since the app can take a moment to report it. A click
+    /// that fails, or a song that never arrives, goes back to what's really playing.
+    func play(_ song: ContextTrack, in context: MusicContext) {
+        guard let remote = nowPlaying.music else { return }
+        remote.play(contextTrack: song, in: context)
+        content = .music(context, currentTrackID: song.id)
+        clickGeneration += 1
+        let mine = clickGeneration
+        let command = remote.lastCommand
+        Task {
+            await command?.value
+            if remote.commandFailure == nil { try? await Task.sleep(for: .seconds(rowPatience)) }
+            guard mine == clickGeneration else { return }
+            await reload()
+        }
+    }
+
     /// Plays the outlined row. False when nothing is outlined, so Return can turn the cover back instead.
     @discardableResult
     func playKeyRow() -> Bool {
@@ -71,7 +92,7 @@ final class ListModel: ObservableObject {
         case .podcast(let episodes, _, let chapters, _, _):
             if tab == .episodes { nowPlaying.play(episodes[row]) } else { nowPlaying.jump(to: chapters[row].start) }
         case .music(let context, _):
-            nowPlaying.music?.play(contextTrack: context.tracks[row], in: context)
+            play(context.tracks[row], in: context)
         default:
             return false
         }

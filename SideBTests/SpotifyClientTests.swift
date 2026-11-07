@@ -106,6 +106,13 @@ final class SpotifyClientTests: XCTestCase {
         XCTAssertThrowsError(try client().get(me)) { XCTAssertEqual($0 as? SpotifyError, .http(500)) }
     }
 
+    // MARK: Waiting
+
+    func testRequestsWaitTenSecondsUnlessTheyAskForLess() {
+        XCTAssertEqual(URLSessionTransport.timeout(for: URLRequest(url: me)), 10)
+        XCTAssertEqual(URLSessionTransport.timeout(for: URLRequest(url: me, timeoutInterval: 2.5)), 2.5)
+    }
+
     // MARK: PUT
 
     func testPutSendsTheBodyAsJSONWithTheBearerToken() throws {

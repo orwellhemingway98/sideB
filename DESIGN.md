@@ -227,7 +227,8 @@ is; other refusals, like no Premium or no active device, never ask.
 
 ### List Rows
 Plain rows, 30 pt (songs, chapters) or 44 pt (episodes), 8 pt corners; the current one gets Row Light and semibold.
-The row the arrow keys have reached gets the Key Outline. The heading is the album or playlist name alone (label
+The row the arrow keys have reached gets the Key Outline. A clicked song takes Row Light at once, before the app has
+reported it, and gives it back if the click fails or the song hasn't arrived after three seconds. The heading is the album or playlist name alone (label
 type); the count sits at the foot of the list in caption type: "11 songs", or "500 of 812 songs" when only part
 could be read. No account controls on the back: Sign Out of Spotify lives in the menu bar menu.
 Number (albums only) in Quiet Ink, title, duration right-aligned in caption digits. Lists open centred on the
