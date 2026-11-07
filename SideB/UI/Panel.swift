@@ -1,19 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// A plain row that lights up under the pointer, its light reaching just past the column so the artwork stays
-/// lined up with the cover above it.
-private struct ResumeRowStyle: ButtonStyle {
-    private static let reach: CGFloat = 5
+/// Every row's light: soft under the pointer, Row Light when pressed or playing. `reach` lets it run past the
+/// column, so a row's artwork stays lined up with the cover above it.
+struct RowLightStyle: ButtonStyle {
+    /// Row Light (`row-highlight`).
+    static let rowLight = 0.18
+    static let hoverLight = 0.1
+
+    static func light(current: Bool, hovering: Bool, pressed: Bool) -> Double {
+        current || pressed ? rowLight : hovering ? hoverLight : 0
+    }
+
+    var current = false
+    var reach: CGFloat = 0
     @State private var hovering = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .contentShape(Rectangle().inset(by: -Self.reach))
+            .contentShape(Rectangle().inset(by: -reach))
             .background {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(.white.opacity(configuration.isPressed ? 0.18 : hovering ? 0.1 : 0))
-                    .padding(-Self.reach)
+                    .fill(.white.opacity(Self.light(current: current, hovering: hovering, pressed: configuration.isPressed)))
+                    .padding(-reach)
             }
             .onHover { hovering = $0 }
             .animation(.easeOut(duration: 0.15), value: hovering)
@@ -308,7 +317,7 @@ struct PanelView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(ResumeRowStyle())
+        .buttonStyle(RowLightStyle(reach: 5))
         .help(episode.title)    // the row cuts a long title short; the pointer reads it whole
         .accessibilityLabel("Resume podcast: \(episode.title)")
     }
@@ -379,7 +388,8 @@ struct PanelView: View {
                     .foregroundStyle(.secondary)
                 ForEach(Array(queue.enumerated()), id: \.offset) { _, episode in
                     Button { nowPlaying.play(episode) } label: { row(episode) }
-                        .buttonStyle(.plain)
+                        .buttonStyle(RowLightStyle(reach: 5))
+                        .help(episode.title)    // a long title is cut short; the pointer reads it whole
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
