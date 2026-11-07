@@ -122,7 +122,7 @@ artwork and two tiny source dots.
 ### Neutral
 - **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, the show and episode in the Resume row, list
   details, the podcast speed.
-- **Row Light** (`row-highlight`): the current song, episode or chapter in a list.
+- **Row Light** (`row-highlight`): the current song, episode or chapter in a list, and any row being pressed.
 - **Glass Tint**: the window glass of the panel and the mini player takes the cover's hue, lighter and livelier than
   the Cover Tint (HSB brightness 0.5–0.72, saturation up to 0.8), at 35% so the desktop still shows through. It eases
   in over about half a second when the cover changes; with no artwork the glass stays plain.
@@ -216,8 +216,8 @@ and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding.
 A plain row under the controls while music interrupts a podcast, built like the Up Next rows and with no container, so
 it doesn't compete with the playback buttons. A 28 pt show artwork (6 pt corners) lined up with the cover's left edge,
 then "Resume podcast" in Glass Ink at 12 pt over the show and episode title in Quiet Ink at 11 pt, cut short at the end
-of the episode title. Under the pointer it lights up to 8 pt corners, reaching 5 pt past the column; Row Light when
-pressed. Up Next is the podcast queue, so it shows only under a podcast and never beside this row.
+of the episode title. Under the pointer it lights like every row (see List Rows), reaching 5 pt past the column, as the Up
+Next rows do. Up Next is the podcast queue, so it shows only under a podcast and never beside this row.
 
 ### Notes Under the Controls
 In the panel, plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons never move. A
@@ -227,6 +227,8 @@ is; other refusals, like no Premium or no active device, never ask.
 
 ### List Rows
 Plain rows, 30 pt (songs, chapters) or 44 pt (episodes), 8 pt corners; the current one gets Row Light and semibold.
+Every row in sideB lights the same way: white at 10% under the pointer and Row Light when pressed, over 0.15 s; a row
+that cuts its title short shows it whole on hover.
 The row the arrow keys have reached gets the Key Outline. A clicked song takes Row Light at once, before the app has
 reported it, and gives it back if the click fails or the song hasn't arrived after three seconds. The heading is the album or playlist name alone (label
 type); the count sits at the foot of the list in caption type: "11 songs", or "500 of 812 songs" when only part

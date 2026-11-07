@@ -251,10 +251,9 @@ struct ListBody: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity)
-            .background(current ? Color.white.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 8))
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowLightStyle(current: current))
+        .help(title)    // a long title is cut short; the pointer reads it whole
         .accessibilityAddTraits(current ? .isSelected : [])
     }
 
@@ -267,10 +266,9 @@ struct ListBody: View {
             }
             .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, minHeight: ListPlacement.twoLineRow, alignment: .leading)
-            .background(current ? Color.white.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 8))
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RowLightStyle(current: current))
+        .help(episode.title)
         .accessibilityAddTraits(current ? .isSelected : [])
     }
 
