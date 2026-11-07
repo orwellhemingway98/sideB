@@ -222,4 +222,67 @@ final class NowPlayingTests: XCTestCase {
         engine.fireTime(2)
         XCTAssertEqual(media.published.count, count)   // only when it first becomes known
     }
+
+    // MARK: Dragging the line
+
+    func testDraggingShowsWhereYoullLandWithoutSeeking() {
+        open(at: 600)
+        nowPlaying.previewDrag(to: 1500)
+        XCTAssertEqual(nowPlaying.displayPosition, 1500)
+        XCTAssertTrue(newSeeks.isEmpty)
+    }
+
+    func testADragPastTheEndsStopsAtThem() {
+        open(at: 600)
+        nowPlaying.previewDrag(to: 9999)
+        XCTAssertEqual(nowPlaying.displayPosition, 3120)
+        nowPlaying.previewDrag(to: -5)
+        XCTAssertEqual(nowPlaying.displayPosition, 0)
+    }
+
+    func testLettingGoSeeksThere() {
+        open(at: 600)
+        nowPlaying.previewDrag(to: 1500)
+        nowPlaying.jump(to: 1500)
+        XCTAssertEqual(newSeeks, [1500])
+        XCTAssertEqual(nowPlaying.displayPosition, 1500)
+    }
+
+    func testAnInterruptedDragGoesBackToTheRealPlace() {
+        open(at: 600)
+        nowPlaying.previewDrag(to: 1500)
+        nowPlaying.endDragPreview()
+        XCTAssertEqual(nowPlaying.displayPosition, 600)
+        XCTAssertTrue(newSeeks.isEmpty)
+    }
+
+    func testPlayingOrPausingMidDragDoesNotSeek() {
+        open(at: 600)
+        nowPlaying.previewDrag(to: 1500)
+        nowPlaying.toggle()
+        XCTAssertTrue(newSeeks.isEmpty)
+        XCTAssertEqual(nowPlaying.displayPosition, 1500)
+    }
+
+    func testADragTakesOverFromAScrollAboutToSeek() {
+        open(at: 600)
+        nowPlaying.turn(degrees: 30)
+        nowPlaying.previewDrag(to: 1500)
+        scheduled.forEach { $0.run() }
+        XCTAssertTrue(newSeeks.isEmpty)
+        nowPlaying.endDragPreview()
+        XCTAssertEqual(nowPlaying.displayPosition, 600)
+    }
+
+    func testANewEpisodeForgetsTheDrag() {
+        open(at: 600)
+        nowPlaying.previewDrag(to: 1500)
+        nowPlaying.episodeChanged(nil)
+        XCTAssertEqual(nowPlaying.displayPosition, player.position)
+    }
+
+    func testWithNothingToSteerADragShowsNothing() {
+        nowPlaying.previewDrag(to: 1500)
+        XCTAssertEqual(nowPlaying.displayPosition, 0)
+    }
 }

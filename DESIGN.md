@@ -234,7 +234,8 @@ in SwiftUI rather than a system segmented control, because a system control does
 ### The Progress Line and Controls
 Simple and pragmatic, so the cover stays the signature. Under the title, a 240 pt progress line (a bold
 6 pt capsule, white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two
-ends in caption digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing), or scroll over
+ends in caption digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing; the elapsed and
+remaining times follow the pointer, and nothing seeks until you let go), or scroll over
 it to scrub with haptic ticks. Option + scroll sets the volume, said in words where the elapsed time was ("Volume
 40%"); the line always shows time.
 Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
