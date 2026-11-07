@@ -156,7 +156,7 @@ struct ListBody: View {
                     row(title: song.title, detail: TimeFormat.clock(song.duration),
                         number: context.kind == .album ? song.number : nil,
                         current: song.id == currentTrackID) {
-                        nowPlaying.music?.play(contextTrack: song, in: context)
+                        model.play(song, in: context)
                     }
                 }
             case .musicLoading:

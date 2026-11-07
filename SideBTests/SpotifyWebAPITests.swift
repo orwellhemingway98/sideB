@@ -176,6 +176,12 @@ final class SpotifyWebAPITests: XCTestCase {
         XCTAssertEqual(body, ["context_uri": "spotify:playlist:PL1", "offset": ["uri": "spotify:track:T1"]])
     }
 
+    func testPlayGivesUpSoonOnASlowConnection() throws {
+        transport.reply(Self.playPath, .status(204))
+        XCTAssertTrue(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
+        XCTAssertEqual(try XCTUnwrap(transport.requests(to: Self.playPath).last).timeoutInterval, 2.5)
+    }
+
     func testPlayIsFalseWithoutThePermission() {
         transport.reply(Self.playPath, .status(403))
         XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))

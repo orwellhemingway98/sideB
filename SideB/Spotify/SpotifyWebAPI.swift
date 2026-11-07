@@ -91,6 +91,8 @@ enum SpotifyContextParser {
 /// refuses reads as nothing (the list then offers to sign in again).
 final class SpotifyWebAPI: @unchecked Sendable {
     private static let base = "https://api.spotify.com/v1"
+    /// Someone just clicked a song: on a slow connection, soon move on to Spotify's own command.
+    private static let playPatience: TimeInterval = 2.5
 
     private let client: SpotifyClient
     private let lock = NSLock()
@@ -134,7 +136,7 @@ final class SpotifyWebAPI: @unchecked Sendable {
                   "context_uri": "spotify:" + contextID,
                   "offset": ["uri": trackURI],
               ]) else { return false }
-        return (try? client.put(url, body: body)) != nil
+        return (try? client.put(url, body: body, timeout: Self.playPatience)) != nil
     }
 
     // MARK: - Private
