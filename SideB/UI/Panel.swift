@@ -162,6 +162,15 @@ struct PanelView: View {
     }
 
     private func titles(_ display: NowPlayingDisplay) -> some View {
+        ZStack(alignment: .topLeading) {
+            // Always room for a two-line title and the line under it, so the playback buttons stay put from song
+            // to song and a click on Next can't miss because a title wrapped.
+            VStack(spacing: 2) {
+                Text(verbatim: "A\nA").font(.system(size: Self.titleSize, weight: .semibold))
+                Text(verbatim: "A").font(.system(size: Self.subtitleSize))
+            }
+            .hidden()
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(display.title)
                     .font(.system(size: Self.titleSize, weight: .semibold))
@@ -182,7 +191,8 @@ struct PanelView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The cover's picture, once it's in: the glass and the back of the cover take their colour from it.
