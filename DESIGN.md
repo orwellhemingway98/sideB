@@ -217,7 +217,7 @@ A plain row under the controls while music interrupts a podcast, built like the 
 it doesn't compete with the playback buttons. A 28 pt show artwork (6 pt corners) lined up with the cover's left edge,
 then "Resume podcast" in Glass Ink at 12 pt over the show and episode title in Quiet Ink at 11 pt, cut short at the end
 of the episode title. Under the pointer it lights up to 8 pt corners, reaching 5 pt past the column; Row Light when
-pressed.
+pressed. Up Next is the podcast queue, so it shows only under a podcast and never beside this row.
 
 ### Notes Under the Controls
 Plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons never move. A

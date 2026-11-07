@@ -53,7 +53,7 @@ whichever was started most recently — from the menu bar, or floating over your
 
 - **Panel:** big cover (turns over to show the album, playlist or episodes on its back), title and artist/show with
   a small coloured source dot and its name, a progress line with the times under it, back, play/pause and
-  forward (and a podcast's speed), Resume row when music interrupts a podcast, Up Next, chapter menu.
+  forward (and a podcast's speed), Resume row when music interrupts a podcast, Up Next and chapter menu under a podcast.
 - **Progress input:** drag the line, or scroll over it to scrub with haptic ticks; Option + scroll sets volume
   (tick every 10%).
 - **Podcasts:** chapters (feed, Podcasting 2.0 JSON, in-file), speed, resume, Up Next, downloads, hourly refresh,
