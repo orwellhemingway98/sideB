@@ -272,6 +272,12 @@ While the panel is open: Space plays or pauses, ← and → go back and forward 
 turns the cover, ⌘L opens the Library, Escape turns the cover back and then closes the panel. On the back, ↑ and ↓
 move the Key Outline and Return plays that row. Keys held with ⌘, ⌥ or ⌃ (other than ⌘L) are left to macOS.
 
+### The Menu Bar Strip
+The small glass capsule in the menu bar: a 13 pt artwork and a 44 pt progress bar, or an empty glass circle with nothing
+open. Paused, the artwork and bar dim to 40% on the same glass, so a glance tells playing from paused without opening
+anything, and the strip keeps its width. Hovering names the title and artist; VoiceOver hears the state too ("Paused,
+Japan, Fontaines D.C."). Click for the panel, right-click for the menu, scroll to scrub.
+
 ### Source Dot
 A 6 pt circle after the artist name in Spotify Green or Music Red, then the source's name ("Spotify" or "Music") in
 Quiet Ink, so the source never rests on colour alone (red and green are the pair colour-blind people confuse most).
