@@ -23,6 +23,8 @@ final class MusicRemote: ObservableObject {
     @Published private(set) var contextFailed = false
     /// Which album or playlist the current song plays from (worked out once per song, cheaply).
     @Published private(set) var contextKey: String?
+    /// What to say about a command that failed; nil once there's nothing to say.
+    @Published private(set) var commandFailure: String?
 
     /// Album or playlist, for the cover's hint.
     var contextKind: MusicContext.Kind? {
@@ -50,6 +52,9 @@ final class MusicRemote: ObservableObject {
     private var loadingArtworkFor: String?
     /// How long a new song waits for its cover before showing none.
     private let artworkPatience: TimeInterval
+    /// How long a failed command's note stays up.
+    private let commandNotePatience: TimeInterval
+    private var commandFailureGeneration = 0
     /// Albums and playlists already read, by context id ("playlist:…" / "album:…").
     private var contexts: [String: MusicContext] = [:]
     private var contextSource: MusicSourceID?
@@ -60,7 +65,8 @@ final class MusicRemote: ObservableObject {
 
     init(sources: [MusicSource],
          every: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> AnyObject = RefreshScheduler.repeatingTimer,
-         artworkPatience: TimeInterval = 1) {
+         artworkPatience: TimeInterval = 1, commandNotePatience: TimeInterval = 5) {
+        self.commandNotePatience = commandNotePatience
         self.sources = sources
         self.artworkPatience = artworkPatience
         self.every = every
@@ -247,6 +253,8 @@ final class MusicRemote: ObservableObject {
         } else if newTrack == nil {
             pendingSeek = nil
         }
+        // Another song means the app did move on, whatever its script said.
+        if newTrack?.trackID != track?.trackID { setCommandFailure(nil) }
         if track != newTrack { track = newTrack }
         var newVolume = newTrack == nil ? nil : snapshot?.volume
         if let pending = pendingVolume {
@@ -314,8 +322,28 @@ final class MusicRemote: ObservableObject {
                 catch let error as MusicSourceError { return error }
                 catch { return .scriptFailed(error.localizedDescription) }
             }.value
-            if case .permissionDenied = error { declined.insert(source.id) }
+            switch error {
+            case .permissionDenied:
+                // The panel empties and its access note takes over.
+                declined.insert(source.id)
+            case .scriptFailed:
+                setCommandFailure("\(source.id.shortName) didn't respond. Try again.")
+            case .notRunning, nil:
+                setCommandFailure(nil)
+            }
             await refresh()
+        }
+    }
+
+    private func setCommandFailure(_ text: String?) {
+        commandFailureGeneration += 1
+        if commandFailure != text { commandFailure = text }
+        guard text != nil else { return }
+        let mine = commandFailureGeneration
+        Task {
+            try? await Task.sleep(for: .seconds(commandNotePatience))
+            guard commandFailureGeneration == mine else { return }
+            commandFailure = nil
         }
     }
 }

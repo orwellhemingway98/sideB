@@ -100,11 +100,15 @@ struct PanelView: View {
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                         // Play reloads the episode after a failure.
-                        pill("Try Again") { player.play() }
+                        Self.pill("Try Again") { player.play() }
                     }
                     .frame(maxWidth: .infinity)
                 }
                 if display.kind == .podcast, !nowPlaying.chapters.isEmpty { chapterMenu }
+                if display.kind == .music, let remote = nowPlaying.music { CommandFailureNote(remote: remote) }
+                if nowPlaying.music?.source == .spotify, display.kind == .music, let account = list?.spotify {
+                    SpotifySignInNote(account: account)
+                }
                 if display.kind == .music, let paused = nowPlaying.pausedEpisode { resumeRow(paused) }
                 upNext
             } else {
@@ -116,7 +120,7 @@ struct PanelView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                pill("Find a Show\u{2026}", action: onLibrary)
+                Self.pill("Find a Show\u{2026}", action: onLibrary)
                 if let remote = nowPlaying.music { MusicAccessNote(remote: remote) }
             }
         }
@@ -342,7 +346,7 @@ struct PanelView: View {
         .accessibilityLabel("Chapters")
     }
 
-    private func pill(_ title: String, action: @escaping () -> Void) -> some View {
+    fileprivate static func pill(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -439,6 +443,45 @@ private struct MusicAccessNote: View {
                     .buttonStyle(.plain)
                     .font(.system(size: 11, weight: .medium))
             }
+        }
+    }
+}
+
+/// A music command that failed says so, for a few seconds, and VoiceOver hears it too.
+private struct CommandFailureNote: View {
+    @ObservedObject var remote: MusicRemote
+
+    var body: some View {
+        if let failure = remote.commandFailure {
+            Text(failure)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .onAppear { AccessibilityNotification.Announcement(failure).post() }
+        }
+    }
+}
+
+/// Spotify refused because this sign-in predates a permission. The song still played, through its window.
+private struct SpotifySignInNote: View {
+    @ObservedObject var account: SpotifyAccount
+
+    var body: some View {
+        if account.needsNewSignIn {
+            VStack(spacing: 8) {
+                Text(SpotifyAccount.newSignInNote)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                PanelView.pill(account.isSigningIn ? "Signing in\u{2026}" : "Sign In Again") {
+                    guard let id = account.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
+                    Task { await account.signIn(clientID: id) }
+                }
+                .disabled(account.isSigningIn)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 }

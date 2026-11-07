@@ -12,6 +12,7 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     private var _running = true
     private var _snapshot = MusicSnapshot(state: .stopped, track: nil, volume: 50)
     private var _failure: MusicSourceError?
+    private var _commandFailure: MusicSourceError?
     private var _artwork: ArtworkRef = .none
     private var _commands: [Command] = []
     private var _snapshotCalls = 0
@@ -28,6 +29,8 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
 
     var running: Bool { get { lock.withLock { _running } } set { lock.withLock { _running = newValue } } }
     var failure: MusicSourceError? { get { lock.withLock { _failure } } set { lock.withLock { _failure = newValue } } }
+    /// What commands throw, while polls keep working.
+    var commandFailure: MusicSourceError? { get { lock.withLock { _commandFailure } } set { lock.withLock { _commandFailure = newValue } } }
     var artworkRef: ArtworkRef { get { lock.withLock { _artwork } } set { lock.withLock { _artwork = newValue } } }
     var commands: [Command] { lock.withLock { _commands } }
     var snapshotCalls: Int { lock.withLock { _snapshotCalls } }
@@ -85,17 +88,25 @@ final class FakeMusicSource: MusicSource, @unchecked Sendable {
     }
 
     func play(trackID: String, in context: MusicContext) throws {
-        lock.withLock { _playedInContext.append((trackID, context.id)) }
+        try lock.withLock {
+            if let failure = _commandFailure { throw failure }
+            _playedInContext.append((trackID, context.id))
+        }
     }
 
-    private func record(_ command: Command) { lock.withLock { _commands.append(command) } }
-    func playPause() throws { record(.playPause) }
-    func pause() throws { record(.pause) }
-    func next() throws { record(.next) }
-    func previous() throws { record(.previous) }
-    func setPosition(_ seconds: Double) throws { record(.setPosition(seconds)) }
+    private func record(_ command: Command) throws {
+        try lock.withLock {
+            if let failure = _commandFailure { throw failure }
+            _commands.append(command)
+        }
+    }
+    func playPause() throws { try record(.playPause) }
+    func pause() throws { try record(.pause) }
+    func next() throws { try record(.next) }
+    func previous() throws { try record(.previous) }
+    func setPosition(_ seconds: Double) throws { try record(.setPosition(seconds)) }
     func setVolume(_ percent: Int) throws {
-        record(.setVolume(percent))
+        try record(.setVolume(percent))
         lock.withLock { if !_ignoresVolume { _snapshot.volume = percent } }
     }
 }

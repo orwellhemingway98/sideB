@@ -219,6 +219,12 @@ then "Resume podcast" in Glass Ink at 12 pt over the show and episode title in Q
 of the episode title. Under the pointer it lights up to 8 pt corners, reaching 5 pt past the column; Row Light when
 pressed.
 
+### Notes Under the Controls
+Plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons never move. A
+failed music command says so ("Spotify didn't respond. Try again.") for five seconds, until a command works, or until
+the song changes. A Spotify sign-in that predates a permission asks to be renewed, with a Sign In Again pill, until it
+is; other refusals, like no Premium or no active device, never ask.
+
 ### List Rows
 Plain rows, 30 pt (songs, chapters) or 44 pt (episodes), 8 pt corners; the current one gets Row Light and semibold.
 The row the arrow keys have reached gets the Key Outline. The heading is the album or playlist name alone (label

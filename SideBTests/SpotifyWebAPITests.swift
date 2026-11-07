@@ -197,4 +197,16 @@ final class SpotifyWebAPITests: XCTestCase {
         XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
         XCTAssertTrue(transport.requests.isEmpty)
     }
+
+    func testPlayIsFalseForASignInWithoutThePermission() {
+        transport.reply(Self.playPath, .status(403, #"{"error":{"status":403,"message":"Insufficient client scope"}}"#))
+        XCTAssertFalse(api.play(trackURI: "spotify:track:T1", contextID: "album:AL1"))
+    }
+
+    func testAPlaylistRefusedForThePermissionStillShowsTheAlbum() throws {
+        playing(context: "spotify:playlist:PL1")
+        transport.reply("/v1/playlists/PL1", .status(403, #"{"error":{"status":403,"message":"Insufficient client scope"}}"#))
+        album()
+        XCTAssertEqual(try api.context()?.id, "album:AL1")
+    }
 }
