@@ -207,10 +207,11 @@ hairlines, never solid borders.
 ## Components
 
 ### Hint Pill
-Small glass capsule on the cover's bottom-right corner: "Episodes", "Album", "Playlist" or "Spotify" on the front,
+Small glass capsule on the cover's bottom-right corner: "Episodes", "Album", "Playlist" or "Details" on the front,
 "Cover" on the back, each followed by the **turn mark**: an arc round a flat ellipse with an arrowhead (a coin seen
 edge-on, turning), 11 × 9 pt, stroked 1.3 pt in Glass Ink, mirrored on the back. Drawn in code; VoiceOver skips it
-and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding.
+and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding. In the panel it rests at 60%, so the art keeps
+its corner, and comes up to full with Library and Pop out when the pointer is on the panel.
 
 ### Resume Row
 A plain row under the controls while music interrupts a podcast, built like the Up Next rows and with no container, so

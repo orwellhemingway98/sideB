@@ -153,7 +153,8 @@ struct PanelView: View {
             // While waiting, a podcast's cover mustn't borrow the last song's artwork.
             let cover = CoverButton(artwork: artwork, display: display,
                                     image: display.kind == .music ? nowPlaying.musicArtwork : nil, identity: identity,
-                                    hint: coverHint, spokenHint: spokenCoverHint, action: onCover)
+                                    hint: coverHint, spokenHint: spokenCoverHint, action: onCover,
+                                    hintOpacity: Self.hintOpacity(hovering: hovering))
                 .overlay(alignment: .top) { coverCorners }
             if let list {
                 CoverFlip(list: list, nowPlaying: nowPlaying, tint: coverImage.flatMap(CoverTint.backColour(for:)),
@@ -226,6 +227,12 @@ struct PanelView: View {
     }
 
     /// Library and Pop out sit faintly in the cover's top corners, and come up fully under the pointer.
+    /// The cover's hint rests quieter than full, so the art keeps its corner, but louder than Library and Pop out,
+    /// because turning the cover is the thing to find. It comes up with them under the pointer.
+    static func hintOpacity(hovering: Bool) -> Double {
+        hovering ? 1 : 0.6
+    }
+
     static func cornerOpacity(hovering: Bool) -> Double {
         hovering ? 1 : 0.35
     }
@@ -836,12 +843,14 @@ struct CoverButton: View {
     let action: (() -> Void)?
     /// Draws the hint pill on the corner; the mini player shows only the cover at rest.
     let showsHint: Bool
+    /// How strongly the hint shows: the panel quiets it at rest.
+    let hintOpacity: Double
     @State private var hovering = false
     @State private var shownIdentity: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(artwork: ArtworkCache, display: NowPlayingDisplay, image: NSImage?, identity: String?, hint: String,
-         spokenHint: String, action: (() -> Void)?, showsHint: Bool = true) {
+         spokenHint: String, action: (() -> Void)?, showsHint: Bool = true, hintOpacity: Double = 1) {
         self.artwork = artwork
         self.display = display
         self.image = image
@@ -850,6 +859,7 @@ struct CoverButton: View {
         self.spokenHint = spokenHint
         self.action = action
         self.showsHint = showsHint
+        self.hintOpacity = hintOpacity
     }
 
     /// A cover coming into focus behind glass.
@@ -883,6 +893,8 @@ struct CoverButton: View {
                         .padding(.vertical, 4)
                         .glassEffect(.regular, in: Capsule())
                         .padding(10)
+                        .opacity(hintOpacity)
+                        .animation(.easeOut(duration: 0.15), value: hintOpacity)
                 }
             }
             .scaleEffect(pressed ? 0.97 : (hovering ? 1.015 : 1))

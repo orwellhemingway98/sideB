@@ -17,8 +17,8 @@ targets:
       properties:
         CFBundleName: sideB
         CFBundleDisplayName: sideB
-        CFBundleShortVersionString: "0.16.13"
-        CFBundleVersion: "64"
+        CFBundleShortVersionString: "0.16.14"
+        CFBundleVersion: "65"
         LSApplicationCategoryType: public.app-category.music
         LSUIElement: true
         NSAppleEventsUsageDescription: "sideB controls Apple Music and Spotify so it can show what's playing and play, pause, skip or scrub it."
