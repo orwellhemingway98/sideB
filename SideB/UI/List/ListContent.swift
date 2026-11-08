@@ -64,8 +64,9 @@ enum ListContent {
         switch mode {
         case .podcast: return "Episodes"
         case .music:
-            // Signed out of Spotify, there is no list, only the song's details.
-            if source == .spotify, contextKind == nil { return "Spotify" }
+            // Signed out of Spotify, there is no list, only the song's details. The line under the title already
+            // says Spotify.
+            if source == .spotify, contextKind == nil { return "Details" }
             return contextKind == .playlist ? "Playlist" : "Album"
         }
     }

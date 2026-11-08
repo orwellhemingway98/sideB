@@ -203,6 +203,13 @@ final class CoverCornersTests: XCTestCase {
         XCTAssertEqual(PanelView.cornerOpacity(hovering: false), 0.35)
         XCTAssertEqual(PanelView.cornerOpacity(hovering: true), 1)
     }
+
+    func testTheHintRestsQuieterThanFullButLouderThanTheCorners() {
+        let rest = PanelView.hintOpacity(hovering: false)
+        XCTAssertLessThan(rest, 1)
+        XCTAssertGreaterThan(rest, PanelView.cornerOpacity(hovering: false), "still findable without the pointer")
+        XCTAssertEqual(PanelView.hintOpacity(hovering: true), 1)
+    }
 }
 
 /// sideB's ink is white on glass, so its windows keep the dark look even when macOS is in Light mode

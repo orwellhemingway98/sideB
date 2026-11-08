@@ -337,7 +337,7 @@ final class ListContentTests: XCTestCase {
         XCTAssertEqual(ListContent.hint(mode: .podcast, source: nil, contextKind: nil), "Episodes")
         XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: .playlist), "Playlist")
         XCTAssertEqual(ListContent.hint(mode: .music, source: .appleMusic, contextKind: nil), "Album")
-        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: nil), "Spotify")
+        XCTAssertEqual(ListContent.hint(mode: .music, source: .spotify, contextKind: nil), "Details")
     }
 
     func testPlainTextFromHTML() {
