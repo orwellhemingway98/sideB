@@ -1,10 +1,10 @@
 import AppKit
 import ServiceManagement
 
-/// The menu bar icon's right-click menu: Library, the mini player, Launch at Login, signing out of Spotify
+/// The menu bar icon's right-click menu: Library, the mini player, the keys, Launch at Login, signing out of Spotify
 /// and Quit.
 enum StatusMenu {
-    enum Command: Equatable { case library, miniPlayer, launchAtLogin, signInToSpotify, signOutOfSpotify, quit }
+    enum Command: Equatable { case library, miniPlayer, keyboardShortcuts, launchAtLogin, signInToSpotify, signOutOfSpotify, quit }
 
     struct Row: Equatable {
         let title: String
@@ -19,6 +19,7 @@ enum StatusMenu {
         if let out = miniPlayer {
             rows.append(Row(title: out ? "Hide Mini Player" : "Show Mini Player", command: .miniPlayer, isOn: false))
         }
+        rows.append(Row(title: "Keyboard Shortcuts\u{2026}", command: .keyboardShortcuts, isOn: false))
         rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil]
         switch spotifySignedIn {
         case true?: rows += [Row(title: "Sign Out of Spotify", command: .signOutOfSpotify, isOn: false), nil]

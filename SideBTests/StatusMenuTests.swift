@@ -14,28 +14,28 @@ final class StatusMenuTests: XCTestCase {
 
     func testRowsTopToBottom() {
         let rows = StatusMenu.rows(miniPlayer: false, launchAtLogin: false)
-        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", "Show Mini Player", nil, "Launch at Login", nil,
-                                                "Quit sideB"])
-        XCTAssertEqual(rows.compactMap { $0?.command }, [.library, .miniPlayer, .launchAtLogin, .quit])
+        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", "Show Mini Player", "Keyboard Shortcuts\u{2026}",
+                                                nil, "Launch at Login", nil, "Quit sideB"])
+        XCTAssertEqual(rows.compactMap { $0?.command }, [.library, .miniPlayer, .keyboardShortcuts, .launchAtLogin, .quit])
     }
 
     func testSignedInToSpotifyTheMenuOffersToSignOut() {
         let rows = StatusMenu.rows(miniPlayer: nil, launchAtLogin: false, spotifySignedIn: true)
-        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", nil, "Launch at Login", nil,
-                                                "Sign Out of Spotify", nil, "Quit sideB"])
-        XCTAssertEqual(rows[4]?.command, .signOutOfSpotify)
+        XCTAssertEqual(rows.map { $0?.title }, ["Open Library\u{2026}", "Keyboard Shortcuts\u{2026}", nil, "Launch at Login",
+                                                nil, "Sign Out of Spotify", nil, "Quit sideB"])
+        XCTAssertEqual(rows[5]?.command, .signOutOfSpotify)
         XCTAssertFalse(StatusMenu.rows(miniPlayer: nil, launchAtLogin: false).contains { $0?.command == .signOutOfSpotify })
     }
 
     func testSignedOutOfSpotifyTheMenuOffersToSignIn() {
         let rows = StatusMenu.rows(miniPlayer: nil, launchAtLogin: false, spotifySignedIn: false)
-        XCTAssertEqual(rows[4]?.title, "Sign In to Spotify\u{2026}")
-        XCTAssertEqual(rows[4]?.command, .signInToSpotify)
+        XCTAssertEqual(rows[5]?.title, "Sign In to Spotify\u{2026}")
+        XCTAssertEqual(rows[5]?.command, .signInToSpotify)
     }
 
     func testTheTickFollowsTheLoginItem() {
         XCTAssertEqual(StatusMenu.rows(miniPlayer: nil, launchAtLogin: true).compactMap { $0?.isOn },
-                       [false, true, false])
+                       [false, false, true, false])
         XCTAssertEqual(StatusMenu.rows(miniPlayer: true, launchAtLogin: false)[1]?.title, "Hide Mini Player")
     }
 
