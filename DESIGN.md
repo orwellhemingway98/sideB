@@ -4,7 +4,10 @@ description: A cover in the Mac menu bar, in Liquid Glass, that turns over to sh
 colors:
   ink: "#FFFFFF"
   ink-secondary: "rgba(235, 235, 245, 0.6)"
+  ink-faint: "rgba(235, 235, 245, 0.3)"
   row-highlight: "rgba(255, 255, 255, 0.18)"
+  row-hover: "rgba(255, 255, 255, 0.10)"
+  note-glass: "rgba(0, 0, 0, 0.85)"
   hairline: "rgba(255, 255, 255, 0.18)"
   card-back: "rgba(0, 0, 0, 0.22)"
   key-outline: "rgba(255, 255, 255, 0.55)"
@@ -26,6 +29,11 @@ typography:
     fontSize: "11pt"
     fontWeight: 400
     fontFeature: "tnum"
+  control:
+    fontFamily: "SF Pro (system), -apple-system"
+    fontSize: "11pt"
+    fontWeight: 500
+    fontFeature: "tnum"
   label:
     fontFamily: "SF Pro (system), -apple-system"
     fontSize: "10pt"
@@ -36,6 +44,7 @@ rounded:
   cover: "14pt"
   row: "8pt"
   thumb: "6pt"
+  keycap: "4pt"
   capsule: "999pt"
 spacing:
   hairline: "2pt"
@@ -47,12 +56,29 @@ spacing:
 components:
   hint-pill:
     textColor: "{colors.ink}"
-    typography: "{typography.label}"
     rounded: "{rounded.capsule}"
     padding: "4pt 8pt"
+  pill:
+    textColor: "{colors.ink}"
+    typography: "{typography.control}"
+    rounded: "{rounded.capsule}"
+    padding: "6pt 10pt"
   resume-row:
     textColor: "{colors.ink}"
+    typography: "{typography.body}"
     rounded: "{rounded.row}"
+  row-hover:
+    backgroundColor: "{colors.row-hover}"
+    rounded: "{rounded.row}"
+  keycap:
+    textColor: "{colors.ink-faint}"
+    rounded: "{rounded.keycap}"
+    size: "16pt"
+  mini-note:
+    backgroundColor: "{colors.note-glass}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.row}"
+    padding: "8pt 10pt"
   list-row:
     textColor: "{colors.ink}"
     typography: "{typography.body}"
@@ -90,14 +116,15 @@ components:
 **Creative North Star: "The Other Side"**
 
 sideB is a cover you can turn over. On the front, what's playing and nothing else; on the back, the album, the playlist
-or the episodes it belongs to. It hangs at the edge of the author's work in the menu bar, is touched for a moment, and is
-gone. It should feel **tactile, calm and precise**: the cover gives under the pointer and turns like a real sleeve,
+or the episodes it belongs to. It hangs at the edge of the author's work in the menu bar, is touched for a moment, and
+is gone. It should feel **tactile, calm and precise**: the cover gives under the pointer and turns like a real sleeve,
 nothing shouts, every detail is exact.
 
 The material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows
 behind show through the panel and the mini player, so sideB takes its colour from where it sits and from the
-artwork it shows: the glass itself is tinted with the cover's colour. sideB adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a
-240 pt cover, a title, the progress line and its controls and, when needed, one pill.
+artwork it shows: the glass itself is tinted with the cover's colour. sideB adds no colour of its own. Density is low
+and deliberate: a 272 pt panel holds a 240 pt cover, a title, the progress line and its controls and, under them, only
+what the moment needs: a note, the chapter menu, the Resume row or Up Next.
 
 The iPod lineage survives in the love of album covers and the click-wheel icon, not in a wheel: sideB tried a dial and
 dropped it for a progress line and plain buttons. No Apple assets or logos appear; the playback buttons use Apple's SF
@@ -116,13 +143,18 @@ A monochrome glass palette: white ink at a few strengths over translucent glass,
 artwork and two tiny source dots.
 
 ### Primary
-- **Glass Ink** (`ink`): titles, the playback buttons, the progress line's fill, pill text. Always drawn with the system label
-  colour (`NSColor.labelColor`) rather than SwiftUI's `.primary` or `.foreground`, which render grey on glass.
+- **Glass Ink** (`ink`): titles, the playback buttons, the progress line's fill, pill text. Always drawn with the system
+  label colour (`NSColor.labelColor`) rather than SwiftUI's `.primary` or `.foreground`, which render grey on glass.
 
 ### Neutral
-- **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, the show and episode in the Resume row, list
-  details, the podcast speed.
+- **Quiet Ink** (`ink-secondary`): artist or show line, times under the progress line, the show and episode in the
+  Resume row, list details, the podcast speed.
+- **Faint Ink** (`ink-faint`, the system's tertiary label colour): the Resume row's R keycap, there to be found, not
+  read.
 - **Row Light** (`row-highlight`): the current song, episode or chapter in a list, and any row being pressed.
+- **Hover Light** (`row-hover`): any row under the pointer: list rows, Up Next and the Resume row.
+- **Note Glass** (`note-glass`): behind the mini player's notes, dark enough to read over any artwork or list. The
+  panel's own notes need none: they sit on the panel glass.
 - **Glass Tint**: the window glass of the panel and the mini player takes the cover's hue, lighter and livelier than
   the Cover Tint (HSB brightness 0.5–0.72, saturation up to 0.8), at 35% so the desktop still shows through. It eases
   in over about half a second when the cover changes; with no artwork the glass stays plain.
@@ -159,9 +191,14 @@ artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or t
   kept, so a shorter title leaves a gap above the progress line.
 - **Volume** (caption, tabular digits): "Volume 40%" in place of the elapsed time during Option + scroll.
 - **Body** (regular, 12 pt): the artist or show line, list rows, descriptions.
-- **Caption** (regular, 11 pt, tabular digits): times under the progress line, row durations and dates, pill text.
-- **Label** (semibold, 10 pt, 1 pt tracking, uppercase for list headings): the cover's hint pill, "UP NEXT", the
-  album heading on the back of the cover. The podcast speed between the times is 11 pt semibold.
+- **Caption** (regular, 11 pt, tabular digits): times under the progress line, row durations and dates, notes under
+  the controls, the second line of the Resume row.
+- **Control** (medium, 11 pt, tabular digits): the text of a pill (Try Again, Find a Show…, Sign In Again) and the
+  chapter menu. The podcast speed between the times is 11 pt semibold.
+- **Label** (semibold, 10 pt): the cover's hint pill as written, and uppercase with tracking for the headings: the album
+  or playlist on the back of the cover (1 pt) and "UP NEXT" (1.2 pt). The Resume row's R keycap is 10 pt semibold too.
+- **Mini player** (on its dark fade): the title at 12 pt semibold, the artist or show at 11 pt, and the times at
+  10 pt medium in white at 80%, a step down from the panel's because they sit over artwork.
 
 ### Named Rules
 **The Same Size Rule.** Paired values keep one size: elapsed and remaining times never shrink independently;
@@ -173,7 +210,9 @@ never moves them under the pointer.
 ## Layout
 
 A single 272 pt column with 16 pt padding (`panel`): cover (240 × 240 pt), 10 pt, title block, then the progress
-line with its times, the controls, then pills. Rows are 14 pt apart.
+line with its times and the controls. Under them, only when there's something to show, in this order: the one-time
+scrolling caption, a podcast's failure with Try Again, the chapter menu, a music note (a failed command, then a Spotify
+sign-in to renew), the Resume row, and Up Next under a podcast. Rows are 14 pt apart.
 
 Times sit under the two ends of the progress line. The bottom margin is 18 pt. The panel
 grows to fit its rows (about 491 pt with music and a Resume row) and must fit a 1280 × 800 screen (720 pt max).
@@ -199,8 +238,8 @@ the glass's own shadow fades out instead of being cut off. The mini player's win
 
 Continuous (squircle) corners throughout, nested so curves run parallel: the panel at 30 pt, the cover and its back
 at 14 pt (30 pt less the 16 pt padding), list rows and the tab switch at 8 pt, small artwork and selected segments at
-6 pt. Pills and the progress line are capsules; the source dot is a circle. Edges are 0.5 pt glass
-hairlines, never solid borders.
+6 pt, the Resume row's keycap at 4 pt. Pills and the progress line are capsules; the source dot is a circle. Edges
+are 0.5 pt glass hairlines, never solid borders.
 
 **The Parallel Corners Rule.** An inner radius is the outer radius less the gap between them.
 
@@ -210,18 +249,21 @@ hairlines, never solid borders.
 Small glass capsule on the cover's bottom-right corner: "Episodes", "Album", "Playlist" or "Details" on the front,
 "Cover" on the back, each followed by the **turn mark**: an arc round a flat ellipse with an arrowhead (a coin seen
 edge-on, turning), 11 × 9 pt, stroked 1.3 pt in Glass Ink, mirrored on the back. Drawn in code; VoiceOver skips it
-and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding. In the panel it rests at 60%, so the art keeps
+and reads "Show album" or "Show the cover". Label type without tracking, 4 × 8 pt padding. In the panel it rests at
+60%, so the art keeps
 its corner, and comes up to full with the corner buttons when the pointer is on the panel.
 
 ### Resume Row
 A plain row under the controls while music interrupts a podcast, built like the Up Next rows and with no container, so
 it doesn't compete with the playback buttons. A 28 pt show artwork (6 pt corners) lined up with the cover's left edge,
 then "Resume podcast" in Glass Ink at 12 pt over the show and episode title in Quiet Ink at 11 pt, cut short at the end
-of the episode title. Under the pointer it lights like every row (see List Rows), reaching 5 pt past the column, as the Up
-Next rows do. Up Next is the podcast queue, so it shows only under a podcast and never beside this row.
+of the episode title, and at the right a faint R keycap (16 pt, 4 pt corners, a 0.5 pt hairline) for its key. Under
+the pointer it lights like every row (see List Rows), reaching 5 pt past the column, as the Up Next rows do. Up Next
+is the podcast queue, so it shows only under a podcast and never beside this row.
 
 ### Notes Under the Controls
-In the panel, plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons never move. A
+In the panel, plain centred text in Quiet Ink at 11 pt, with no container, under the playback buttons so the buttons
+never move. The mini player shows the same notes on Note Glass (see Mini Player). A
 failed music command says so ("Spotify didn't respond. Try again.") for five seconds, until a command works, or until
 the song changes. A Spotify sign-in that predates a permission asks to be renewed, with a Sign In Again pill, until it
 is; other refusals, like no Premium or no active device, never ask.
@@ -229,25 +271,23 @@ is; other refusals, like no Premium or no active device, never ask.
 ### List Rows
 Plain rows, 30 pt (songs, chapters) or 44 pt (episodes), 8 pt corners; the current one gets Row Light and semibold.
 Every row in sideB lights the same way: white at 10% under the pointer and Row Light when pressed, over 0.15 s; a row
-that cuts its title short shows it whole on hover.
-The row the arrow keys have reached gets the Key Outline. A clicked song takes Row Light at once, before the app has
-reported it, and gives it back if the click fails or the song hasn't arrived after three seconds. The heading is the album or playlist name alone (label
-type); the count sits at the foot of the list in caption type: "11 songs", or "500 of 812 songs" when only part
-could be read. No account controls on the back: Sign Out of Spotify lives in the menu bar menu.
-Number (albums only) in Quiet Ink, title, duration right-aligned in caption digits. Lists open centred on the
-current item and fade softly at their scroll edges.
+that cuts its title short shows it whole on hover. The row the arrow keys have reached gets the Key Outline. A clicked
+song takes Row Light at once, before the app has reported it, and gives it back if the click fails or the song hasn't
+arrived after three seconds. The heading is the album or playlist name alone (label type); the count sits at the foot of
+the list in caption type: "11 songs", or "500 of 812 songs" when only part could be read. No account controls on the
+back: Sign Out of Spotify lives in the menu bar menu. Number (albums only) in Quiet Ink, title, duration right-aligned
+in caption digits. Lists open centred on the current item and fade softly at their scroll edges.
 
 ### Tab Switch
 Episodes | Notes (or Chapters): a 2 pt-inset track in Segment Track with the selected half in Segment Light. Drawn
 in SwiftUI rather than a system segmented control, because a system control doesn't turn with the cover.
 
 ### The Progress Line and Controls
-Simple and pragmatic, so the cover stays the signature. Under the title, a 240 pt progress line (a bold
-6 pt capsule, white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two
-ends in caption digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing; the elapsed and
-remaining times follow the pointer, and nothing seeks until you let go), or scroll over
-it to scrub with haptic ticks. Option + scroll sets the volume, said in words where the elapsed time was ("Volume
-40%"); the line always shows time.
+Simple and pragmatic, so the cover stays the signature. Under the title, a 240 pt progress line (a bold 6 pt capsule,
+white 22% track, white fill; 8 pt under the pointer or while dragging) with the times under its two ends in caption
+digits. Drag it to move through the song or episode (a real drag, past 3 pt: a stray click does nothing; the elapsed and
+remaining times follow the pointer, and nothing seeks until you let go), or scroll over it to scrub with haptic ticks.
+Option + scroll sets the volume, said in words where the elapsed time was ("Volume 40%"); the line always shows time.
 Playing, the fill glides on between the player's ticks at the playback speed (never more than 1.5 s ahead).
 
 Under it, centred, in Apple's SF Symbols at 20 pt: back, play/pause (a plain 30 pt symbol, no glass circle) whose symbol
@@ -255,16 +295,17 @@ swaps with the system's replace effect, and forward (`backward.fill` / `forward.
 `goforward.30` for podcasts). A podcast's speed sits between the two times as a quiet text button, clear of the buttons.
 
 ### Mini Player
-The floating window is only the cover: the panel's 240 pt cover in a 10 pt frame of window glass tinted with the
-cover's colour, 260 × 260 pt with 24 pt corners (the cover's 14 plus the frame), in a clear window margin with no window
-shadow. At rest there is nothing else on it, except a note when there's something to say: one at a time, on smoked glass
-at 85% with 8 pt corners, so it reads over any artwork or list. With the pointer over it, controls fade in: Library, a
-turn hint and Hide Mini Player along the top, and the title (12 pt semibold) and artist or show (11 pt), the progress line, times
-and playback buttons along the bottom over a soft dark fade that keeps them readable on any artwork. Clicking the cover turns it over to its list, exactly as in the panel but with
-its own list and flip; dragging it (past 3 pt) moves it; right-click gives Hide Mini Player, the Library and Quit. It has one pair of names everywhere it's offered: Show
-Mini Player and Hide Mini Player. With nothing
-playing it is a plain glass tile saying "Nothing playing", with a Find a Show pill. It takes the panel's keys once
-clicked, without bringing sideB forward; Esc only turns its cover back, because it floats by choice.
+The floating window is only the cover: the panel's 240 pt cover in a 10 pt frame of window glass tinted with the cover's
+colour, 260 × 260 pt with 24 pt corners (the cover's 14 plus the frame), in a clear window margin with no window shadow.
+At rest there is nothing else on it, except a note when there's something to say: one at a time, on Note Glass
+with 8 pt corners, so it reads over any artwork or list. With the pointer over it, controls fade in: Library, a turn
+hint and Hide Mini Player along the top, and the title (12 pt semibold) and artist or show (11 pt), the progress line,
+times and playback buttons along the bottom over a soft dark fade that keeps them readable on any artwork. Clicking the
+cover turns it over to its list, exactly as in the panel but with its own list and flip; dragging it (past 3 pt) moves
+it; right-click gives Hide Mini Player, the Library and Quit. It has one pair of names everywhere it's offered: Show
+Mini Player and Hide Mini Player. With nothing playing it is a plain glass tile saying "Nothing playing", with a Find a
+Show pill. It takes the panel's keys once clicked, without bringing sideB forward; Esc only turns its cover back,
+because it floats by choice.
 
 ### The Cover (signature)
 240 pt artwork with 14 pt corners and the Cover lift. It gives a little under the pointer (scale 1.015) and when
@@ -272,13 +313,15 @@ pressed (0.97). New artwork **develops in**: from blurred, 96% and transparent t
 spring (response 0.45, damping 0.9); the title rises 6 pt and fades in with it, and the old cover stays until the new
 one is ready. Clicking it **turns it over** (a 3D flip about the vertical axis, spring response 0.5, damping 0.86)
 to the list on the Cover Tint; each face shows only while it faces you, and VoiceOver reads only that face and
-moves to it after the turn. Library and Show Mini Player sit in its top corners at 35% at rest and full under the pointer.
+moves to it after the turn. Library and Show Mini Player sit in its top corners at 35% at rest, and come up to full
+whenever the pointer is on the panel.
 
 ### Keys
-While the panel is open: Space plays or pauses, ← and → go back and forward (a song, or 15 and 30 seconds), Return
-turns the cover, R resumes the podcast music interrupted (the Resume row shows a faint R keycap), ⌘L opens the Library, Escape turns the cover back and then closes the panel. On the back, ↑ and ↓
-move the Key Outline and Return plays that row. Keys held with ⌘, ⌥ or ⌃ (other than ⌘L) are left to macOS. The menu bar
-menu's Keyboard Shortcuts… lists them all, and the scroll gestures after them.
+While the panel is open: Space plays or pauses, ← and → go back and forward (a song, or 15 and 30 seconds), Return turns
+the cover, R resumes the podcast music interrupted (the Resume row shows a faint R keycap), ⌘L opens the Library, Escape
+turns the cover back and then closes the panel. On the back, ↑ and ↓ move the Key Outline and Return plays that row.
+Keys held with ⌘, ⌥ or ⌃ (other than ⌘L) are left to macOS. The mini player answers the same keys once clicked. The menu
+bar menu's Keyboard Shortcuts… lists them all, and the scroll gestures after them.
 
 ### The Menu Bar Strip
 The small glass capsule in the menu bar: a 13 pt artwork and a 44 pt progress bar, or an empty glass circle with nothing
@@ -314,6 +357,7 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 - **Don't** add a window shadow to the panel; the glass carries its own.
 - **Don't** use up and down arrows (⌄ ⌃) on the cover's hint: the cover turns sideways, it doesn't drop down.
 - **Don't** put account controls on the back of the cover.
-- **Don't** hide controls entirely until hover; show them faintly at rest.
+- **Don't** hide the panel's controls until hover; show them faintly at rest. The mini player is the one exception:
+  at rest it is only the cover, by design.
 - **Don't** open a second window for something the panel can show in place (the list lives on the back of the cover).
 - **Don't** paint surfaces with sideB's own colour.
