@@ -11,14 +11,18 @@ final class MiniPlacement: ObservableObject {
         isPoppedOut = defaults.bool(forKey: Self.key)
     }
 
-    /// Published so the panel's pill can read Pop out or Put back.
+    /// The mini player's one pair of names, wherever it's offered: the cover's corner, the right-click menu and
+    /// the menu bar menu.
+    static func title(isOut: Bool) -> String { isOut ? "Hide Mini Player" : "Show Mini Player" }
+
+    /// Published so the cover's corner button can offer to show or hide it.
     @Published var isPoppedOut: Bool {
         didSet { defaults.set(isPoppedOut, forKey: Self.key) }
     }
 }
 
 /// The mini player: just the cover, floating in a thin glass frame above other windows. The pointer brings up the
-/// controls, a click turns it over to its list, and a drag moves it. Its position is remembered; "Put Back" returns
+/// controls, a click turns it over to its list, and a drag moves it. Its position is remembered; Hide Mini Player returns
 /// it to the menu bar.
 @MainActor
 final class MiniPlayerController {
@@ -162,7 +166,7 @@ private struct MiniPlayerWindow: View {
     private func menu() -> NSMenu { MiniPlayer.menu(onPutBack: onPutBack, onLibrary: onLibrary) }
 }
 
-/// The cover and nothing else, until the pointer comes over it: then Library, a turn-over hint and Put Back along
+/// The cover and nothing else, until the pointer comes over it: then Library, a turn-over hint and Hide Mini Player along
 /// the top, and the progress line, times and buttons along the bottom over a soft dark fade.
 struct MiniPlayer: View {
     /// The thin glass frame round the panel's 240 pt cover.
@@ -184,11 +188,11 @@ struct MiniPlayer: View {
         hypot(now.x - start.x, now.y - start.y) >= dragThreshold
     }
 
-    /// The right-click menu: Put Back, the Library and Quit.
+    /// The right-click menu: Hide Mini Player, the Library and Quit.
     @MainActor
     static func menu(onPutBack: @escaping () -> Void, onLibrary: @escaping () -> Void) -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(ActionItem("Put Back", run: onPutBack))
+        menu.addItem(ActionItem(MiniPlacement.title(isOut: true), run: onPutBack))
         menu.addItem(ActionItem("Open Library\u{2026}", run: onLibrary))
         menu.addItem(.separator())
         menu.addItem(ActionItem("Quit sideB") { NSApp.terminate(nil) })
@@ -330,7 +334,7 @@ struct MiniPlayer: View {
     }
 
     private var putBackButton: some View {
-        CornerButton(label: "Put back", action: onPutBack) { PopOutArrow(back: true) }
+        CornerButton(label: MiniPlacement.title(isOut: true), action: onPutBack) { PopOutArrow(back: true) }
     }
 
     private var times: some View {

@@ -44,7 +44,7 @@ struct PanelView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Pops the mini player out, or puts it back; nil hides the button.
     let onPopOut: (() -> Void)?
-    /// Whether the mini player is out, so the button reads Pop out or Put back.
+    /// Whether the mini player is out, so the corner button offers to show or hide it.
     let placement: MiniPlacement?
     /// Clicking the cover opens or closes the list window.
     let onCover: (() -> Void)?
@@ -226,8 +226,8 @@ struct PanelView: View {
                                contextKind: nowPlaying.music?.contextKind)
     }
 
-    /// Library and Pop out sit faintly in the cover's top corners, and come up fully under the pointer.
-    /// The cover's hint rests quieter than full, so the art keeps its corner, but louder than Library and Pop out,
+    /// Library and Show Mini Player sit faintly in the cover's top corners, and come up fully under the pointer.
+    /// The cover's hint rests quieter than full, so the art keeps its corner, but louder than the corner buttons,
     /// because turning the cover is the thing to find. It comes up with them under the pointer.
     static func hintOpacity(hovering: Bool) -> Double {
         hovering ? 1 : 0.6
@@ -247,7 +247,7 @@ struct PanelView: View {
                 if let placement {
                     PopOutCorner(placement: placement, action: onPopOut)
                 } else {
-                    CornerButton(label: "Pop out", action: onPopOut) { PopOutArrow(back: false) }
+                    CornerButton(label: MiniPlacement.title(isOut: false), action: onPopOut) { PopOutArrow(back: false) }
                 }
             }
         }
@@ -506,7 +506,7 @@ struct SpotifySignInNote: View {
                     .foregroundStyle(onArtwork ? AnyShapeStyle(.white.opacity(0.9)) : AnyShapeStyle(.secondary))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                PanelView.pill(account.isSigningIn ? "Signing in\u{2026}" : "Sign In Again") {
+                PanelView.pill(account.isSigningIn ? SpotifyAccount.signingInTitle : "Sign In Again") {
                     guard let id = account.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
                     Task { await account.signIn(clientID: id) }
                 }
@@ -558,19 +558,19 @@ struct CornerButton<Glyph: View>: View {
     }
 }
 
-/// Pop out while the mini player is away, Put back while it floats.
+/// Show Mini Player while it's away, Hide Mini Player while it floats.
 private struct PopOutCorner: View {
     @ObservedObject var placement: MiniPlacement
     let action: () -> Void
 
     var body: some View {
-        CornerButton(label: placement.isPoppedOut ? "Put back" : "Pop out", action: action) {
+        CornerButton(label: MiniPlacement.title(isOut: placement.isPoppedOut), action: action) {
             PopOutArrow(back: placement.isPoppedOut)
         }
     }
 }
 
-/// Pop out (up and away) or Put back (down and in), drawn in code like the Library's spines.
+/// Out (up and away) or back (down and in), drawn in code like the Library's spines.
 struct PopOutGlyph: Shape {
     var back: Bool
 
@@ -590,7 +590,7 @@ struct PopOutGlyph: Shape {
     }
 }
 
-/// The Pop out / Put back glyph at the size and stroke of the corner buttons.
+/// The show or hide glyph at the size and stroke of the corner buttons.
 struct PopOutArrow: View {
     let back: Bool
 

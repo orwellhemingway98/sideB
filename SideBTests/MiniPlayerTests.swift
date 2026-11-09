@@ -44,7 +44,7 @@ final class MiniPlayerTests: XCTestCase {
     }
 
     func testPoppingOutIsAnnounced() {
-        // The panel's Pop out / Put back pill follows it.
+        // The panel's Show Mini Player / Hide Mini Player button follows it.
         let placement = MiniPlacement(defaults: defaults)
         var seen: [Bool] = []
         let watch = placement.$isPoppedOut.dropFirst().sink { seen.append($0) }
@@ -97,7 +97,7 @@ final class MiniPlayerTests: XCTestCase {
 
     func testRightClickingAnywhereOnTheMiniPlayerOffersItsMenu() {
         let menu = MiniPlayer.menu(onPutBack: {}, onLibrary: {})
-        XCTAssertEqual(menu.items.map { $0.title }, ["Put Back", "Open Library\u{2026}", "", "Quit sideB"])
+        XCTAssertEqual(menu.items.map { $0.title }, ["Hide Mini Player", "Open Library\u{2026}", "", "Quit sideB"])
         XCTAssertTrue(menu.items[2].isSeparatorItem)
     }
 }
