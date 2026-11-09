@@ -278,7 +278,7 @@ moves to it after the turn. Library and Show Mini Player sit in its top corners 
 While the panel is open: Space plays or pauses, ← and → go back and forward (a song, or 15 and 30 seconds), Return
 turns the cover, R resumes the podcast music interrupted (the Resume row shows a faint R keycap), ⌘L opens the Library, Escape turns the cover back and then closes the panel. On the back, ↑ and ↓
 move the Key Outline and Return plays that row. Keys held with ⌘, ⌥ or ⌃ (other than ⌘L) are left to macOS. The menu bar
-menu's Keyboard Shortcuts… lists them all.
+menu's Keyboard Shortcuts… lists them all, and the scroll gestures after them.
 
 ### The Menu Bar Strip
 The small glass capsule in the menu bar: a 13 pt artwork and a 44 pt progress bar, or an empty glass circle with nothing
