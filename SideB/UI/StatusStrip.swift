@@ -180,6 +180,7 @@ final class StatusStripController: NSObject {
         case .signInToSpotify:
             guard let spotify, let id = spotify.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
             Task { await spotify.signIn(clientID: id) }
+        case .keyboardShortcuts: KeyboardShortcuts.show()
         case .quit: NSApp.terminate(nil)
         }
     }

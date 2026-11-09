@@ -26,7 +26,8 @@ of its own and a remote for Apple Music and Spotify, built round the cover, whic
 - **Music:** whichever you started last is in control. Starting music pauses your podcast and keeps its place.
 
 Keys while the panel is open: Space plays or pauses, ← and → go back and forward, Return turns the cover, ↑ and ↓ move
-through the list on the back, ⌘L opens the Library, Esc turns the cover back and then closes the panel. The mini player
+through the list on the back, R resumes the podcast music interrupted, ⌘L opens the Library, Esc turns the cover back and
+then closes the panel. **Keyboard Shortcuts…** in the menu bar menu lists them. The mini player
 answers the same keys once you've clicked it, until you click another window; Esc only turns its cover back.
 
 ## Download

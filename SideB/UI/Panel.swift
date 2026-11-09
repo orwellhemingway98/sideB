@@ -320,13 +320,22 @@ struct PanelView: View {
                         .truncationMode(.tail)
                 }
                 .lineLimit(1)
-                Spacer(minLength: 0)
+                Spacer(minLength: 6)
+                // Its key, faint, so it can be found without the list in the menu.
+                Text(verbatim: "R")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 16, height: 16)
+                    .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+                    .accessibilityHidden(true)
             }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(RowLightStyle(reach: 5))
         .help(episode.title)    // the row cuts a long title short; the pointer reads it whole
         .accessibilityLabel("Resume podcast: \(episode.title)")
+        .accessibilityHint("Or press R")
     }
 
     /// The show comes first, so what's cut short is the episode's title and not what the row is about.
@@ -616,7 +625,7 @@ struct LibraryGlyph: Shape {
 /// The keys the panel answers while it's the key window. Keys held with Command, Option or Control
 /// belong to the system, except ⌘L.
 enum PanelKey: Equatable {
-    case playPause, back, forward, up, down, turnCover, library, escape
+    case playPause, back, forward, up, down, turnCover, library, escape, resume
 
     init?(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
         let held = modifiers.intersection([.command, .option, .control, .shift])
@@ -634,6 +643,7 @@ enum PanelKey: Equatable {
         case 125: self = .down
         case 36, 76: self = .turnCover              // Return, Enter
         case 53: self = .escape
+        case 15: self = .resume                     // R
         default: return nil
         }
     }
@@ -656,7 +666,34 @@ extension PanelKey {
             if nowPlaying.display != nil { turnCover() }
         case .library: library()
         case .escape: escape()
+        case .resume:
+            // Only while the Resume row is showing: music interrupted a podcast.
+            if nowPlaying.mode == .music, nowPlaying.pausedEpisode != nil { nowPlaying.resumePodcast() }
         }
+    }
+}
+
+/// The keys, listed from the menu bar menu's Keyboard Shortcuts, so they can be found without the README.
+enum KeyboardShortcuts {
+    static let text = """
+        Space \u{2014} play or pause
+        \u{2190} \u{2192} \u{2014} back and forward (a song, or 15 and 30 seconds)
+        Return \u{2014} turn the cover over; on its back, play the outlined row
+        \u{2191} \u{2193} \u{2014} move through the list on the back
+        R \u{2014} resume the podcast music interrupted
+        \u{2318}L \u{2014} open the Library
+        Esc \u{2014} turn the cover back, then close the panel
+
+        They work while the panel is open, and in the mini player once you've clicked it.
+        """
+
+    @MainActor
+    static func show() {
+        let alert = NSAlert()
+        alert.messageText = "Keyboard Shortcuts"
+        alert.informativeText = text
+        NSApp.forceActivate()
+        alert.runModal()
     }
 }
 
