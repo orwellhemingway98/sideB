@@ -17,7 +17,7 @@ enum StatusMenu {
     static func rows(miniPlayer: Bool?, launchAtLogin: Bool, spotifySignedIn: Bool? = nil) -> [Row?] {
         var rows: [Row?] = [Row(title: "Open Library\u{2026}", command: .library, isOn: false)]
         if let out = miniPlayer {
-            rows.append(Row(title: out ? "Hide Mini Player" : "Show Mini Player", command: .miniPlayer, isOn: false))
+            rows.append(Row(title: MiniPlacement.title(isOut: out), command: .miniPlayer, isOn: false))
         }
         rows.append(Row(title: "Keyboard Shortcuts\u{2026}", command: .keyboardShortcuts, isOn: false))
         rows += [nil, Row(title: "Launch at Login", command: .launchAtLogin, isOn: launchAtLogin), nil]

@@ -17,8 +17,9 @@ of its own and a remote for Apple Music and Spotify, built round the cover, whic
   The glass takes its colour from the cover.
 - **The back of the cover:** click the cover and it turns over to the album, the playlist or the show's episodes.
   Click a row to play it.
-- **The mini player:** press Pop out in the cover's corner to float just the cover over your work. Move the pointer
-  over it for the title and controls, click to turn it over, drag to move it.
+- **The mini player:** press Show Mini Player in the cover's corner (or choose it from the menu bar menu) to float
+  just the cover over your work. Move the pointer over it for the title and controls, click to turn it over, drag to
+  move it.
 - **Scrubbing:** drag the line, or scroll over it, with haptic ticks on a Force Touch trackpad and a firmer one at
   chapters. Hold ⌥ while scrolling to set the volume.
 - **Podcasts:** follow shows by searching Apple's podcast directory, pasting a feed or importing OPML. Chapters, speed,

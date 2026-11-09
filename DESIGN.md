@@ -211,7 +211,7 @@ Small glass capsule on the cover's bottom-right corner: "Episodes", "Album", "Pl
 "Cover" on the back, each followed by the **turn mark**: an arc round a flat ellipse with an arrowhead (a coin seen
 edge-on, turning), 11 × 9 pt, stroked 1.3 pt in Glass Ink, mirrored on the back. Drawn in code; VoiceOver skips it
 and reads "Show album" or "Show the cover". Label type, 4 × 8 pt padding. In the panel it rests at 60%, so the art keeps
-its corner, and comes up to full with Library and Pop out when the pointer is on the panel.
+its corner, and comes up to full with the corner buttons when the pointer is on the panel.
 
 ### Resume Row
 A plain row under the controls while music interrupts a podcast, built like the Up Next rows and with no container, so
@@ -259,9 +259,10 @@ The floating window is only the cover: the panel's 240 pt cover in a 10 pt frame
 cover's colour, 260 × 260 pt with 24 pt corners (the cover's 14 plus the frame), in a clear window margin with no window
 shadow. At rest there is nothing else on it, except a note when there's something to say: one at a time, on smoked glass
 at 85% with 8 pt corners, so it reads over any artwork or list. With the pointer over it, controls fade in: Library, a
-turn hint and Put Back along the top, and the title (12 pt semibold) and artist or show (11 pt), the progress line, times
+turn hint and Hide Mini Player along the top, and the title (12 pt semibold) and artist or show (11 pt), the progress line, times
 and playback buttons along the bottom over a soft dark fade that keeps them readable on any artwork. Clicking the cover turns it over to its list, exactly as in the panel but with
-its own list and flip; dragging it (past 3 pt) moves it; right-click gives Put Back, the Library and Quit. With nothing
+its own list and flip; dragging it (past 3 pt) moves it; right-click gives Hide Mini Player, the Library and Quit. It has one pair of names everywhere it's offered: Show
+Mini Player and Hide Mini Player. With nothing
 playing it is a plain glass tile saying "Nothing playing", with a Find a Show pill. It takes the panel's keys once
 clicked, without bringing sideB forward; Esc only turns its cover back, because it floats by choice.
 
@@ -271,7 +272,7 @@ pressed (0.97). New artwork **develops in**: from blurred, 96% and transparent t
 spring (response 0.45, damping 0.9); the title rises 6 pt and fades in with it, and the old cover stays until the new
 one is ready. Clicking it **turns it over** (a 3D flip about the vertical axis, spring response 0.5, damping 0.86)
 to the list on the Cover Tint; each face shows only while it faces you, and VoiceOver reads only that face and
-moves to it after the turn. Library and Pop out sit in its top corners at 35% at rest and full under the pointer.
+moves to it after the turn. Library and Show Mini Player sit in its top corners at 35% at rest and full under the pointer.
 
 ### Keys
 While the panel is open: Space plays or pauses, ← and → go back and forward (a song, or 15 and 30 seconds), Return
@@ -303,7 +304,7 @@ The artist line gives way first when space runs short; VoiceOver reads "Spotify"
 - **Do** give every motion a Reduce Motion crossfade.
 - **Do** use SF Symbols for the playback buttons (`backward.fill`, `play.fill` / `pause.fill` with the symbol
   replace transition, `forward.fill`; `gobackward.15` and `goforward.30` for podcasts) and draw the other glyphs in
-  code (library, pop out and put back, the turn mark), never Unicode arrows.
+  code (library, show and hide the mini player, the turn mark), never Unicode arrows.
 
 ### Don't:
 - **Don't** use SwiftUI `.glassEffect` for a whole window's surface: it only sees inside its own clear window and

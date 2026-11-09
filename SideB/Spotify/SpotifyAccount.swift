@@ -9,6 +9,8 @@ final class SpotifyAccount: ObservableObject {
     static let clientIDKey = "spotifyClientID"
     static let expiredNotice = "Spotify sign-in expired."
     static let failedNotice = "Couldn't sign in to Spotify."
+    /// Buttons are Title Case, as macOS's are; sentences like the notes stay sentence case.
+    static let signingInTitle = "Signing In\u{2026}"
     static let newSignInNote = "Sign in to Spotify again so its window stays where it is."
 
     @Published private(set) var isSignedIn: Bool
@@ -130,7 +132,7 @@ enum SpotifyClientIDPrompt {
         + "sideb://callback, then paste its Client ID."
 
     static func buttonTitle(hasClientID: Bool) -> String {
-        hasClientID ? "Sign in to Spotify" : "Set Up Album Lists\u{2026}"
+        hasClientID ? "Sign In to Spotify" : "Set Up Album Lists\u{2026}"
     }
     static let notAnID = "That isn't a Client ID. It's 32 letters and numbers at the top of your Spotify app's "
         + "Settings page (not the app name or the client secret)."

@@ -99,6 +99,6 @@ final class SpotifyIsOptionalTests: XCTestCase {
 
     func testTheButtonOnlySaysSignInOnceAClientIDIsSaved() {
         XCTAssertEqual(SpotifyClientIDPrompt.buttonTitle(hasClientID: false), "Set Up Album Lists\u{2026}")
-        XCTAssertEqual(SpotifyClientIDPrompt.buttonTitle(hasClientID: true), "Sign in to Spotify")
+        XCTAssertEqual(SpotifyClientIDPrompt.buttonTitle(hasClientID: true), "Sign In to Spotify")
     }
 }

@@ -296,7 +296,7 @@ private struct SpotifySignInButton: View {
                 guard let id = account.clientID ?? SpotifyClientIDPrompt.ask(current: nil) else { return }
                 Task { await account.signIn(clientID: id) }
             } label: {
-                Text(account.isSigningIn ? "Signing in\u{2026}"
+                Text(account.isSigningIn ? SpotifyAccount.signingInTitle
                      : SpotifyClientIDPrompt.buttonTitle(hasClientID: account.clientID != nil))
                     .font(.system(size: 12, weight: .medium))
                     .padding(.horizontal, 14)
