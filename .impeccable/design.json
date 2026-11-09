@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-05T23:22:01Z",
+  "generatedAt": "2026-11-09T22:49:33Z",
   "title": "Design System: sideB",
   "extensions": {
     "colorMeta": {
@@ -75,6 +75,19 @@
           "#fb6c7f",
           "#fdb0ba"
         ]
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "canonical": "NSColor.tertiaryLabelColor / .tertiary"
+      },
+      "row-hover": {
+        "role": "neutral",
+        "displayName": "Hover Light"
+      },
+      "note-glass": {
+        "role": "neutral",
+        "displayName": "Note Glass"
       }
     },
     "typographyMeta": {
@@ -97,6 +110,10 @@
       "label": {
         "displayName": "Label",
         "purpose": "Hint pills and uppercase list headings."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "The text of a pill and the chapter menu."
       }
     },
     "shadows": [
@@ -131,6 +148,11 @@
         "name": "reduce-motion",
         "value": "crossfade, 0.2s ease-in-out",
         "purpose": "Replaces every motion above when Reduce Motion is on."
+      },
+      {
+        "name": "row-light",
+        "value": "easeOut 0.15s",
+        "purpose": "Every row's hover light coming and going."
       }
     ]
   },
@@ -144,20 +166,28 @@
       "css": ".ds-hint { display: inline-flex; align-items: center; gap: 4px; font: 600 10px -apple-system, sans-serif; color: #fff; padding: 4px 8px; border-radius: 999px; background: rgba(70,70,80,.55); backdrop-filter: blur(8px); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3); transition: transform .25s; } .ds-hint:hover { transform: scale(1.04); } .ds-hint:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 2px; }"
     },
     {
-      "name": "Resume Pill",
-      "kind": "button",
-      "refersTo": "resume-pill",
-      "description": "Quiet glass capsule to return to a paused podcast while music plays.",
-      "html": "<button class=\"ds-resume\"><span class=\"ds-resume-art\"></span><span class=\"ds-resume-k\">Resume</span><span>Tricks, Treats and Trends</span></button>",
-      "css": ".ds-resume { display: flex; align-items: center; gap: 8px; width: 240px; padding: 4px 12px 4px 4px; border: 0; border-radius: 999px; font: 400 11px -apple-system, sans-serif; color: #fff; background: rgba(70,70,80,.35); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.22); cursor: pointer; transition: background .2s, transform .2s; } .ds-resume:hover { background: rgba(90,90,100,.45); } .ds-resume:active { transform: scale(.98); } .ds-resume:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 2px; } .ds-resume-art { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(160deg,#2f5fd6,#0f2a73); } .ds-resume-k { color: rgba(235,235,245,.6); }"
+      "name": "Resume Row",
+      "kind": "custom",
+      "refersTo": "resume-row",
+      "description": "A plain row under the controls while music interrupts a podcast, with its R key.",
+      "html": "<button class=\"ds-resume\"><span class=\"ds-resume-art\"></span><span class=\"ds-resume-text\"><span class=\"ds-resume-title\">Resume podcast</span><span class=\"ds-resume-detail\">The Long Quiet · Ep. 112 — Rooms &amp; Rooms</span></span><span class=\"ds-keycap\">R</span></button>",
+      "css": ".ds-resume { display: flex; align-items: center; gap: 8px; width: 240px; padding: 0; background: transparent; border: 0; border-radius: 8px; color: #fff; font-family: -apple-system, sans-serif; text-align: left; box-shadow: 0 0 0 5px transparent; transition: background .15s ease-out, box-shadow .15s ease-out; } .ds-resume:hover { background: rgba(255,255,255,.10); box-shadow: 0 0 0 5px rgba(255,255,255,.10); } .ds-resume:active { background: rgba(255,255,255,.18); box-shadow: 0 0 0 5px rgba(255,255,255,.18); } .ds-resume:focus-visible { outline: 1.5px solid rgba(255,255,255,.55); outline-offset: 3px; } .ds-resume-art { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg,#e08a9a,#b8905c); flex: none; } .ds-resume-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; } .ds-resume-title { font-size: 12px; } .ds-resume-detail { font-size: 11px; color: rgba(235,235,245,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-keycap { width: 16px; height: 16px; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 600; color: rgba(235,235,245,.3); border-radius: 4px; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18); }"
+    },
+    {
+      "name": "Mini Note",
+      "kind": "custom",
+      "refersTo": "mini-note",
+      "description": "The mini player's one note at a time, on Note Glass so it reads over any artwork or list.",
+      "html": "<div class=\"ds-mini-note\">Spotify didn’t respond. Try again.</div>",
+      "css": ".ds-mini-note { width: 224px; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.85); color: rgba(255,255,255,.9); font: 11px -apple-system, sans-serif; text-align: center; }"
     },
     {
       "name": "List Row",
       "kind": "custom",
       "refersTo": "list-row",
-      "description": "A song in an album on the back of the cover; the current one is lit.",
+      "description": "A song in an album on the back of the cover; the current one is lit; every row lights white at 10% under the pointer and Row Light when pressed.",
       "html": "<div class=\"ds-rows\"><div class=\"ds-row\"><span class=\"ds-n\">2</span><span class=\"ds-t\">Blue Hour Drive</span><span class=\"ds-d\">3:59</span></div><div class=\"ds-row ds-cur\"><span class=\"ds-n\">3</span><span class=\"ds-t\">Night Roads</span><span class=\"ds-d\">4:12</span></div><div class=\"ds-row ds-key\"><span class=\"ds-n\">4</span><span class=\"ds-t\">Sodium Glow</span><span class=\"ds-d\">3:20</span></div><div class=\"ds-foot\">11 songs</div></div>",
-      "css": ".ds-rows { width: 228px; padding: 6px; background: linear-gradient(160deg, rgba(120,40,95,.85), rgba(40,18,60,.85)); border-radius: 14px; } .ds-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; border-radius: 8px; font: 400 12px -apple-system, sans-serif; color: #fff; transition: background .15s; } .ds-row:hover { background: rgba(255,255,255,.08); } .ds-cur { background: rgba(255,255,255,.18); font-weight: 600; } .ds-key { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); } .ds-foot { text-align: center; padding-top: 6px; font: 400 11px -apple-system, sans-serif; color: rgba(235,235,245,.6); } .ds-n { width: 18px; text-align: right; color: rgba(235,235,245,.6); font-variant-numeric: tabular-nums; } .ds-t { flex: 1; } .ds-d { color: rgba(235,235,245,.6); font-size: 11px; font-variant-numeric: tabular-nums; }"
+      "css": ".ds-rows { width: 228px; padding: 6px; background: linear-gradient(160deg, rgba(120,40,95,.85), rgba(40,18,60,.85)); border-radius: 14px; } .ds-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; border-radius: 8px; font: 400 12px -apple-system, sans-serif; color: #fff; transition: background .15s; } .ds-row:hover { background: rgba(255,255,255,.08); } .ds-cur { background: rgba(255,255,255,.18); font-weight: 600; } .ds-key { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); } .ds-foot { text-align: center; padding-top: 6px; font: 400 11px -apple-system, sans-serif; color: rgba(235,235,245,.6); } .ds-n { width: 18px; text-align: right; color: rgba(235,235,245,.6); font-variant-numeric: tabular-nums; } .ds-t { flex: 1; } .ds-d { color: rgba(235,235,245,.6); font-size: 11px; font-variant-numeric: tabular-nums; } .ds-row:hover { background: rgba(255,255,255,.10); } .ds-row:active { background: rgba(255,255,255,.18); }"
     },
     {
       "name": "Tab Switch",
@@ -185,7 +215,7 @@
   ],
   "narrative": {
     "northStar": "The Other Side",
-    "overview": "sideB is a cover you can turn over. On the front, what's playing and nothing else; on the back, the album, the playlist or the episodes it belongs to. It hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel tactile, calm and precise: the cover gives under the pointer and turns like a real sleeve, nothing shouts, every detail is exact. The material is the see-through window glass macOS draws (AppKit NSGlassEffectView), tinted with the cover's colour; sideB adds no colour of its own. A 272 pt panel holds a 240 pt cover, a title, the progress line and its controls and, when needed, one pill. The mini player is just the cover in a thin glass frame.",
+    "overview": "sideB is a cover you can turn over. On the front, what's playing and nothing else; on the back, the album, the playlist or the episodes it belongs to. It hangs at the edge of the author's work in the menu bar, is touched for a moment, and is gone. It should feel **tactile, calm and precise**: the cover gives under the pointer and turns like a real sleeve, nothing shouts, every detail is exact.\n\nThe material is the see-through window glass macOS draws (AppKit `NSGlassEffectView`): the desktop and the windows behind show through the panel and the mini player, so sideB takes its colour from where it sits and from the artwork it shows: the glass itself is tinted with the cover's colour. sideB adds no colour of its own. Density is low and deliberate: a 272 pt panel holds a 240 pt cover, a title, the progress line and its controls and, under them, only what the moment needs: a note, the chapter menu, the Resume row or Up Next.\n\nThe iPod lineage survives in the love of album covers and the click-wheel icon, not in a wheel: sideB tried a dial and dropped it for a progress line and plain buttons. No Apple assets or logos appear; the playback buttons use Apple's SF Symbols so they read as the Mac's own, and every other glyph is drawn in code.",
     "keyCharacteristics": [
       "Window glass everywhere the app has a surface; SwiftUI glass only for small controls inside it.",
       "Colour comes from artwork and the desktop; sideB's own ink is white at a few opacities.",
@@ -196,17 +226,22 @@
     "rules": [
       {
         "name": "The Borrowed Colour Rule",
-        "body": "sideB never paints a surface with a colour of its own. Colour comes from the artwork, the desktop through the glass, or the two source dots.",
+        "body": "sideB never paints a surface with a colour of its own. Colour comes from the artwork (the Glass Tint and the Cover Tint), the desktop through the glass, or the two source dots.",
         "section": "colors"
       },
       {
         "name": "The Label Ink Rule",
-        "body": "Anything that must read as white on glass uses NSColor.labelColor; .primary and .foreground render grey there.",
+        "body": "Anything that must read as white on glass uses `NSColor.labelColor`; `.primary` and `.foreground` render grey there.",
         "section": "colors"
       },
       {
         "name": "The Same Size Rule",
         "body": "Paired values keep one size: elapsed and remaining times never shrink independently; when space runs out, move them rather than scale them.",
+        "section": "typography"
+      },
+      {
+        "name": "The Steady Controls Rule",
+        "body": "The progress line and playback buttons stay put from song to song: a title that wraps never moves them under the pointer.",
         "section": "typography"
       },
       {
@@ -221,20 +256,24 @@
       }
     ],
     "dos": [
-      "Do put window glass (NSGlassEffectView) behind every surface that should see the desktop: the panel and the mini player, tinted with the cover's colour.",
-      "Do draw white ink with NSColor.labelColor.",
-      "Do nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.",
-      "Do use tabular digits for every time and number.",
-      "Do give every motion a Reduce Motion crossfade.",
-      "Do draw glyphs in code (play, pause, skip, library)."
+      "**Do** put window glass (`NSGlassEffectView`) behind every surface that should see the desktop: the panel and the mini player, tinted with the cover's colour.",
+      "**Do** draw white ink with `NSColor.labelColor`.",
+      "**Do** keep the panel and the mini player in the dark appearance (`darkAqua`), so that ink stays white in Light mode too.",
+      "**Do** nest corners: 30 pt panel → 14 pt cover → 8 pt rows → 6 pt thumbs.",
+      "**Do** use tabular digits for every time and number.",
+      "**Do** give every motion a Reduce Motion crossfade.",
+      "**Do** use SF Symbols for the playback buttons (`backward.fill`, `play.fill` / `pause.fill` with the symbol replace transition, `forward.fill`; `gobackward.15` and `goforward.30` for podcasts) and draw the other glyphs in code (library, show and hide the mini player, the turn mark), never Unicode arrows."
     ],
     "donts": [
-      "Don't use SwiftUI .glassEffect for a whole window's surface: it only sees inside its own clear window and renders flat grey.",
-      "Don't use Apple logos, product artwork or SF Symbols in sideB's own controls.",
-      "Don't shrink one of a pair of values (elapsed and remaining time) to make it fit.",
-      "Don't add a window shadow to the panel; the glass carries its own.",
-      "Don't open a second window for something the panel can show in place (the list lives on the back of the cover).",
-      "Don't paint surfaces with sideB's own colour."
+      "**Don't** use SwiftUI `.glassEffect` for a whole window's surface: it only sees inside its own clear window and renders flat grey.",
+      "**Don't** use Apple logos or product artwork; keep SF Symbols to the playback buttons.",
+      "**Don't** shrink one of a pair of values (elapsed and remaining time) to make it fit.",
+      "**Don't** add a window shadow to the panel; the glass carries its own.",
+      "**Don't** use up and down arrows (⌄ ⌃) on the cover's hint: the cover turns sideways, it doesn't drop down.",
+      "**Don't** put account controls on the back of the cover.",
+      "**Don't** hide the panel's controls until hover; show them faintly at rest. The mini player is the one exception: at rest it is only the cover, by design.",
+      "**Don't** open a second window for something the panel can show in place (the list lives on the back of the cover).",
+      "**Don't** paint surfaces with sideB's own colour."
     ]
   }
 }
