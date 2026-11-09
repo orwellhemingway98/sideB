@@ -54,6 +54,13 @@ final class KeyboardShortcutsTests: XCTestCase {
         XCTAssertTrue(spotify.commands.isEmpty)
     }
 
+    func testTheListNamesTheScrollGesturesToo() {
+        let text = KeyboardShortcuts.text
+        XCTAssertTrue(text.contains("Scroll over the line"))
+        XCTAssertTrue(text.contains("\u{2325} + scroll"), "volume")
+        XCTAssertTrue(text.contains("menu bar"), "scrolling over the strip")
+    }
+
     func testTheListNamesEveryKey() {
         let text = KeyboardShortcuts.text
         for key in ["Space", "\u{2190}", "\u{2192}", "Return", "\u{2191}", "\u{2193}", "R", "\u{2318}L", "Esc"] {

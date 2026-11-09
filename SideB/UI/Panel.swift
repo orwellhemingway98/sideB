@@ -673,7 +673,8 @@ extension PanelKey {
     }
 }
 
-/// The keys, listed from the menu bar menu's Keyboard Shortcuts, so they can be found without the README.
+/// The keys and the scroll gestures, listed from the menu bar menu's Keyboard Shortcuts, so they can be found without
+/// the README or the one-time caption.
 enum KeyboardShortcuts {
     static let text = """
         Space \u{2014} play or pause
@@ -685,6 +686,11 @@ enum KeyboardShortcuts {
         Esc \u{2014} turn the cover back, then close the panel
 
         They work while the panel is open, and in the mini player once you've clicked it.
+
+        Gestures
+        Scroll over the line \u{2014} move through the song or episode
+        \u{2325} + scroll \u{2014} set the volume
+        Both work over the strip in the menu bar too, without opening anything.
         """
 
     @MainActor
